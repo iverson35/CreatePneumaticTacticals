@@ -1,58 +1,47 @@
 package dev.ignis.createpneumatictacticals.module;
 
-import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import dev.ignis.createpneumatictacticals.gunpack.GunPacks;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
-import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Central registry of module definitions, loaded from data/<ns>/cpt_modules/*.json.
+ * Central registry of module definitions, loaded from installed gunpacks
+ * ({@code <gamedir>/gunpacks/<pack>/modules/*.json}) on BOTH sides — the
+ * network handshake guarantees client and server agree on the contents.
+ * Reload: {@code /cpt reload} (server) or F3+T (client).
  */
-@Mod.EventBusSubscriber
-public final class ModuleManager extends SimpleJsonResourceReloadListener {
+public final class ModuleManager {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final String FOLDER = "cpt_modules";
 
-    private static final Map<ResourceLocation, ModuleDefinition> MODULES = new HashMap<>();
+    private static volatile Map<ResourceLocation, ModuleDefinition> MODULES = Map.of();
 
-    public ModuleManager() {
-        super(new com.google.gson.Gson(), FOLDER);
-    }
+    private ModuleManager() {}
 
     public static ModuleDefinition get(ResourceLocation id) {
         return MODULES.get(id);
     }
 
     public static Map<ResourceLocation, ModuleDefinition> all() {
-        return Map.copyOf(MODULES);
+        return MODULES;
     }
 
-    @Override
-    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager resourceManager, ProfilerFiller profiler) {
-        MODULES.clear();
-        for (Map.Entry<ResourceLocation, JsonElement> entry : files.entrySet()) {
+    /** (re)load every module definition from the installed gunpacks */
+    public static synchronized void loadFromGunPacks() {
+        Map<ResourceLocation, ModuleDefinition> fresh = new HashMap<>();
+        for (Map.Entry<ResourceLocation, JsonObject> entry : GunPacks.loadModuleJsons().entrySet()) {
             ResourceLocation id = entry.getKey();
             try {
-                ModuleDefinition def = ModuleDefinition.fromJson(id, entry.getValue().getAsJsonObject());
-                MODULES.put(id, def);
+                fresh.put(id, ModuleDefinition.fromJson(id, entry.getValue()));
             } catch (Exception ex) {
                 LOGGER.error("Failed to load module definition {}: {}", id, ex.getMessage());
             }
         }
-        LOGGER.info("Loaded {} module definitions", MODULES.size());
-    }
-
-    @SubscribeEvent
-    public static void onAddReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new ModuleManager());
+        MODULES = Map.copyOf(fresh);
+        LOGGER.info("Loaded {} module definitions from gunpacks", MODULES.size());
     }
 }

@@ -5,13 +5,16 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class CptNetwork {
-    private static final String PROTOCOL = "1";
-
+    /**
+     * Protocol version = gunpack module content hash: Forge's handshake
+     * rejects any client whose installed gunpack modules differ from the
+     * server's, before the world join screen.
+     */
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(CreatePneumaticTacticals.MODID, "main"),
-            () -> PROTOCOL,
-            PROTOCOL::equals,
-            PROTOCOL::equals
+            dev.ignis.createpneumatictacticals.gunpack.GunPacks::contentHash,
+            dev.ignis.createpneumatictacticals.gunpack.GunPacks.contentHash()::equals,
+            dev.ignis.createpneumatictacticals.gunpack.GunPacks.contentHash()::equals
     );
 
     private CptNetwork() {

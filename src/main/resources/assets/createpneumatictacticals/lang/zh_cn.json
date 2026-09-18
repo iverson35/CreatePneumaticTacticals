@@ -17,7 +17,6 @@
   "tooltip.createpneumatictacticals.incomplete": "未完成组装 - 无法射击",
   "tooltip.createpneumatictacticals.pod_content": "内容物：%s",
   "tooltip.createpneumatictacticals.loaded_ammo": "已装填：%s x%d",
-  "module.createpneumatictacticals.mak_1_receiver": "MAK-1 机匣",
   "container.createpneumatictacticals.gun_workbench.stats": "属性",
   "gui.createpneumatictacticals.recipes": "可制作配件",
   "gui.createpneumatictacticals.dyeing": "染色",
@@ -69,10 +68,5 @@
   "fire_mode.createpneumatictacticals.auto": "全自动",
   "fire_mode.createpneumatictacticals.burst": "三连发",
   "gui.createpneumatictacticals.hud.no_ammo": "未装弹",
-  "gui.createpneumatictacticals.hud.air": "气压 %d%%",
-  "gun.createpneumatictacticals.mak_1": "MAK-1 突击步枪",
-  "module.createpneumatictacticals.mak_1_ammo_20": "MAK-1 20发弹匣",
-  "module.createpneumatictacticals.mak_1_barrel_short": "MAK-1 短枪管",
-  "module.createpneumatictacticals.mak_1_cartridge_supply": "MAK-1 整装气瓶",
-  "module.createpneumatictacticals.mak_1_tactical_handguard": "MAK-1 战术护木"
+  "gui.createpneumatictacticals.hud.air": "气压 %d%%"
 }

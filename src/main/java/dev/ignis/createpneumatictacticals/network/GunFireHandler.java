@@ -211,11 +211,12 @@ public final class GunFireHandler {
             GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
         }
 
-        // --- sound from receiver definition ---
+        // --- sound from receiver definition; the shooter already heard it
+        // client-side (instant feedback), so exclude them from the broadcast ---
         if (receiver.fireSound != null) {
             SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(receiver.fireSound));
             if (sound != null) {
-                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                player.level().playSound(player, player.getX(), player.getY(), player.getZ(),
                         sound, SoundSource.PLAYERS, 1.0f, 1.0f);
             }
         }

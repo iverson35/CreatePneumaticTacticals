@@ -17,7 +17,6 @@
   "tooltip.createpneumatictacticals.incomplete": "Incomplete assembly - cannot fire",
   "tooltip.createpneumatictacticals.pod_content": "Content: %s",
   "tooltip.createpneumatictacticals.loaded_ammo": "Loaded: %s x%d",
-  "module.createpneumatictacticals.mak_1_receiver": "MAK-1 Receiver",
   "container.createpneumatictacticals.gun_workbench": "Gun Assembly Bench",
   "container.createpneumatictacticals.gun_workbench.stats": "Stats",
   "gui.createpneumatictacticals.recipes": "Craftable Modules",
@@ -70,10 +69,5 @@
   "fire_mode.createpneumatictacticals.auto": "Auto",
   "fire_mode.createpneumatictacticals.burst": "Burst",
   "gui.createpneumatictacticals.hud.no_ammo": "No ammo",
-  "gui.createpneumatictacticals.hud.air": "Air %d%%",
-  "gun.createpneumatictacticals.mak_1": "MAK-1 Assault Rifle",
-  "module.createpneumatictacticals.mak_1_ammo_20": "MAK-1 20-Round Magazine",
-  "module.createpneumatictacticals.mak_1_barrel_short": "MAK-1 Short Barrel",
-  "module.createpneumatictacticals.mak_1_cartridge_supply": "MAK-1 Cartridge Supply",
-  "module.createpneumatictacticals.mak_1_tactical_handguard": "MAK-1 Tactical Handguard"
+  "gui.createpneumatictacticals.hud.air": "Air %d%%"
 }

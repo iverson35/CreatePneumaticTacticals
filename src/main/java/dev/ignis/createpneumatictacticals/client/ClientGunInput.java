@@ -112,7 +112,6 @@ public final class ClientGunInput {
         }
 
         // --- models tick ---
-        RecoilModel.tick(player);
         SpreadModel.tick(player, gun);
     }
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
@@ -144,13 +143,20 @@ public final class ClientGunInput {
 
         // burst: single request per click for now (server sequences the burst)
         CptNetwork.CHANNEL.sendToServer(new FireRequestPacket());
+        // instant local fire sound; the server broadcast excludes the shooter
+        if (stats.receiver.fireSound != null) {
+            var fireSoundEvent = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS
+                    .getValue(net.minecraft.resources.ResourceLocation.tryParse(stats.receiver.fireSound));
+            if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, 1.0f);
+        }
         lastLocalShotMs = now;
         wasFiring = true;
 
         // local feel: recoil + bloom + fire animation
         double recoilMult = stats.recoilMultiplier;
         boolean aiming = ModKeybinds.isAiming();
-        RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw, recoilMult, aiming);
+        RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw, recoilMult, aiming,
+                stats.recoilRecovery);
         SpreadModel.addBloom(ext);
         GunAnimationDriver.onFire(gun);
     }

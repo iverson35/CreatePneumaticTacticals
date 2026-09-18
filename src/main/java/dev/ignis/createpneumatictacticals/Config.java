@@ -40,7 +40,7 @@ public class Config {
             .comment("Vertical offset of the gun ammo widget (from the bottom edge)")
             .defineInRange("gunHudOffsetY", 0, -2000, 2000);
 
-    static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
+    public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean recoilViewReset;
     public static int readyDelayMs;

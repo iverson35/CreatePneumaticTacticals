@@ -235,6 +235,12 @@ tasks.named('processResources', ProcessResources).configure {
     filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
+
+    // ship the repo-root gunpacks/ as jar gunpack_defaults/ (extracted on
+    // first launch; dev runtime uses a run/gunpacks symlink instead)
+    from('gunpacks') {
+        into 'gunpack_defaults'
+    }
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
