@@ -139,6 +139,15 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+
+    maven {
+        // Modrinth maven - hosts Create and Armourer's Workshop
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 dependencies {
@@ -153,6 +162,16 @@ dependencies {
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}-common-api:${jei_version}")
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}-forge-api:${jei_version}")
+
+    // Create: required dependency, present at compile time and in the dev runtime
+    implementation fg.deobf("maven.modrinth:create:${create_version}")
+
+    // Armourer's Workshop: optional dependency (mandatory=false in mods.toml);
+    // included in the dev runtime so the integration can be exercised in-game
+    implementation fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
+
+    // GeckoLib: required animation library
+    implementation fg.deobf("maven.modrinth:geckolib:${geckolib_version}")
     // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
@@ -179,6 +198,9 @@ tasks.named('processResources', ProcessResources).configure {
             loader_version_range: loader_version_range,
             mod_id              : mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
             mod_authors         : mod_authors, mod_description: mod_description,
+            create_version_range: create_version_range,
+            armourers_workshop_version_range: armourers_workshop_version_range,
+            geckolib_version_range: geckolib_version_range,
     ]
 
     inputs.properties replaceProperties
