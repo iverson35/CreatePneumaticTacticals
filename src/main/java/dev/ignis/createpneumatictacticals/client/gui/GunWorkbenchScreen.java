@@ -45,9 +45,18 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
         this.renderStatsPanel(graphics, mouseX, mouseY);
+        // reject reason when carrying a module over a module slot
+        ItemStack carried = this.menu.getCarried();
+        if (!carried.isEmpty() && this.hoveredSlot instanceof GunWorkbenchMenu.ModuleSlot moduleSlot) {
+            String reason = this.menu.rejectReason(moduleSlot.type, carried);
+            if (reason != null) {
+                graphics.drawString(this.font, Component.translatable(
+                                "gui." + CreatePneumaticTacticals.MODID + ".reject." + reason),
+                        this.leftPos + 8, this.topPos + this.imageHeight - 102, 0xFFFF6060, false);
+            }
+        }
         this.renderTooltip(graphics, mouseX, mouseY);
     }
-
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         if (HAS_TEXTURE) {
@@ -71,12 +80,32 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
                 drawSlotBox(graphics, this.menu.slots.get(i));
             }
         }
+        drawSlotTypeLabels(graphics);
     }
 
-    private static void drawSlotBox(GuiGraphics graphics, net.minecraft.world.inventory.Slot slot) {
+    /** Half-scale type label under every module slot so players see what fits where. */
+    private void drawSlotTypeLabels(GuiGraphics graphics) {
+        graphics.pose().pushPose();
+        graphics.pose().scale(0.5f, 0.5f, 1.0f);
+        for (int i = 1; i <= GunWorkbenchMenu.MODULE_COUNT; i++) {
+            net.minecraft.world.inventory.Slot slot = this.menu.slots.get(i);
+            if (!slot.isActive()) continue;
+            if (!(slot instanceof GunWorkbenchMenu.ModuleSlot moduleSlot)) continue;
+            Component label = Component.translatable(
+                    "module_type." + CreatePneumaticTacticals.MODID + "." + moduleSlot.type.getSerializedName());
+            float scale = 2.0f; // inverse of pose scale: coords in scaled space
+            int w = this.font.width(label);
+            int x = (int) ((this.leftPos + slot.x + 9) * scale - w / 2.0f);
+            int y = (int) ((this.topPos + slot.y + 19) * scale);
+            graphics.drawString(this.font, label, x, y, 0xFF777777, false);
+        }
+        graphics.pose().popPose();
+    }
+
+    private void drawSlotBox(GuiGraphics graphics, net.minecraft.world.inventory.Slot slot) {
         if (!slot.isActive()) return;
-        int x = slot.x;
-        int y = slot.y;
+        int x = this.leftPos + slot.x;
+        int y = this.topPos + slot.y;
         graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF1E1E1E);
         graphics.renderOutline(x - 1, y - 1, 18, 18, 0xFF8B8B8B);
     }
@@ -87,11 +116,8 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
         graphics.drawString(this.font, this.playerInventoryTitle,
                 this.inventoryLabelX, this.inventoryLabelY, 0xFFE0E0E0, false);
         graphics.drawString(this.font, Component.translatable(
-                        "container." + CreatePneumaticTacticals.MODID + ".gun_workbench.modules"),
-                56, 6, 0xFFAAAAAA, false);
-        graphics.drawString(this.font, Component.translatable(
                         "container." + CreatePneumaticTacticals.MODID + ".gun_workbench.stats"),
-                190, 14, 0xFFAAAAAA, false);
+                190, 6, 0xFFAAAAAA, false);
     }
 
     /** Right-side live stats panel (simple text lines). */

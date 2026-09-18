@@ -1,0 +1,11 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"idle": {},
+		"fire": {},
+		"reload": {},
+		"reload_round": {},
+		"bolt": {}
+	},
+	"geckolib_format_version": 2
+}

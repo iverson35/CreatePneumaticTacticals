@@ -162,6 +162,11 @@ repositories {
         name = 'ithundxr mirror'
         url = 'https://maven.ithundxr.dev/mirror'
     }
+    // JEI maven (mezz)
+    maven {
+        name = 'BlameJared'
+        url = 'https://maven.blamejared.com'
+    }
 }
 
 dependencies {
@@ -184,6 +189,9 @@ dependencies {
     // compileOnly: its compat mixins break in the dev runtime (unmapped refmap);
     // the integration hook (ModuleRenderOverride) does not reference AW classes yet.
     compileOnly fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
+    // JEI: recipe browsing in the dev runtime; the CPT plugin exposes the
+    // dynamic pod filling/assembly recipes as per-ammo display recipes
+    implementation fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.106")
 
     // GeckoLib: required animation library (cursemaven artifact: official mappings;
     // the Modrinth artifact ships intermediary names which break fg.deobf)

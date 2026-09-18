@@ -42,22 +42,39 @@ public final class GunReloadHandler {
         // BACKPACK feed: no magazine state; nothing to do.
     }
 
-    /** consume up to n pods matching the gun's selected ammo; returns consumed count */
+    /**
+     * Consume up to n pods matching the gun's selected ammo TYPE; returns the
+     * loaded count. Cartridge-supply guns load pressurized pods, others plain
+     * pods. Creative: loads without consuming (and without requiring pods).
+     */
     private static int consumePods(ServerPlayer player, ItemStack gun, int n) {
-        if (n <= 0 || player.isCreative()) return n;
+        if (n <= 0) return 0;
         String ammoId = GunNbt.getAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) return 0;
+        if (player.isCreative()) return n;
+        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        boolean cartridge = stats.supply != null && stats.supply.supplyType
+                == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
+        net.minecraft.world.item.Item requiredItem = cartridge
+                ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
+                : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
         int consumed = 0;
         for (ItemStack stack : player.getInventory().items) {
             if (consumed >= n) break;
-            if (stack.getItem() instanceof PodItem) {
-                var typeOpt = PodItem.projectileType(player.level(), stack);
-                if (typeOpt.isPresent()) {
-                    int take = Math.min(n - consumed, stack.getCount());
-                    stack.shrink(take);
-                    consumed += take;
-                }
-            }
+            if (stack.getItem() != requiredItem) continue;
+            var content = PodItem.contentId(stack);
+            if (content == null) continue;
+            // pod content is an item id; the gun selects a projectile TYPE id
+            net.minecraft.world.item.Item item =
+                    net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(content);
+            if (item == null || item == net.minecraft.world.item.Items.AIR) continue;
+            var typeRef = com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType
+                    .getTypeForItem(player.level().registryAccess(), item);
+            if (typeRef.isEmpty()
+                    || !typeRef.get().unwrapKey().orElseThrow().location().toString().equals(ammoId)) continue;
+            int take = Math.min(n - consumed, stack.getCount());
+            stack.shrink(take);
+            consumed += take;
         }
         return consumed;
     }

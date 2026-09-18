@@ -55,17 +55,41 @@ public final class GunActionHandler {
         }
     }
 
+    /**
+     * Ammo types the player can actually use: inventory pods (plain pods, or
+     * pressurized pods for cartridge supply) whose projectile type the
+     * receiver accepts, sorted alphabetically. Creative: all compatible
+     * registered types (pods not required).
+     */
     private static List<String> compatibleAmmoIds(ServerPlayer player, GunStats stats) {
-        List<String> out = new ArrayList<>();
-        var registry = player.level().registryAccess()
-                .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
-        for (var entry : registry.entrySet()) {
-            String key = entry.getKey().location().toString();
-            AmmoExtension ext = AmmoExtension.get(key);
-            if (stats.receiver.gunType.accepts(ext.gunType)) {
-                out.add(key);
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        if (player.isCreative()) {
+            var registry = player.level().registryAccess()
+                    .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
+            for (var entry : registry.entrySet()) {
+                String key = entry.getKey().location().toString();
+                if (stats.receiver.gunType.accepts(AmmoExtension.get(key).gunType)) out.add(key);
             }
+            return new ArrayList<>(out);
         }
-        return out;
+        boolean cartridge = stats.supply != null && stats.supply.supplyType
+                == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
+        net.minecraft.world.item.Item requiredPod = cartridge
+                ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
+                : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.getItem() != requiredPod) continue;
+            var content = dev.ignis.createpneumatictacticals.item.PodItem.contentId(stack);
+            if (content == null) continue;
+            net.minecraft.world.item.Item item =
+                    net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(content);
+            if (item == null || item == net.minecraft.world.item.Items.AIR) continue;
+            var typeRef = com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType
+                    .getTypeForItem(player.level().registryAccess(), item);
+            if (typeRef.isEmpty()) continue;
+            String typeId = typeRef.get().unwrapKey().orElseThrow().location().toString();
+            if (stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) out.add(typeId);
+        }
+        return new ArrayList<>(out);
     }
 }

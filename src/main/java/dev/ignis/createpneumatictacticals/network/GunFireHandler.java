@@ -51,7 +51,10 @@ public final class GunFireHandler {
         String key = player.getStringUUID();
         long now = player.level().getGameTime();
         String ammoId = GunNbt.getAmmo(gun);
-        if (ammoId == null || ammoId.isEmpty()) return;
+        if (ammoId == null || ammoId.isEmpty()) {
+            feedback(player, "no_ammo_selected");
+            return;
+        }
         AmmoExtension ext = AmmoExtension.get(ammoId);
         long intervalTicks = Math.max(1, (long) (1200.0 / (ext.fireRate * stats.fireRateMultiplier)));
         Long last = LAST_SHOT.get(key);
@@ -61,7 +64,10 @@ public final class GunFireHandler {
         // --- backpack feed bypasses count; others need rounds in magazine ---
         boolean backpack = feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
         if (!backpack) {
-            if (GunNbt.getAmmoCount(gun) <= 0) return;
+            if (GunNbt.getAmmoCount(gun) <= 0) {
+                feedback(player, "magazine_empty");
+                return;
+            }
         }
 
         // --- air ---
@@ -70,21 +76,29 @@ public final class GunFireHandler {
             if (air >= supply.airPerShot) {
                 gun.setDamageValue(air - supply.airPerShot);
             } else {
+                feedback(player, "no_air");
                 return;
             }
         }
         // CARTRIDGE type consumes the pod itself (stack shrink below);
         // BACKPACK_TANK consumes nothing.
 
-        // --- find pod in inventory for backpack/cartridge modes ---
+        // --- find a plain pod in inventory for backpack feed (clip-based feeds
+        // already consumed their pods at reload; cartridge guns loaded
+        // pressurized pods then) ---
         ItemStack pod = null;
-        if (backpack || supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE) {
+        if (backpack) {
             pod = findPod(player, ammoId);
-            if (pod == null) return;
+            if (pod == null) {
+                feedback(player, "no_pod");
+                return;
+            }
         }
-
         // --- gun type compatibility ---
-        if (!receiver.gunType.accepts(ext.gunType)) return;
+        if (!receiver.gunType.accepts(ext.gunType)) {
+            feedback(player, "ammo_type_mismatch");
+            return;
+        }
 
         // --- spawn projectile (mirrors PotatoCannonItem.use) ---
         Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
@@ -116,7 +130,7 @@ public final class GunFireHandler {
 
         // --- consume ---
         if (!player.isCreative()) {
-            if (backpack || supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE) {
+            if (backpack) {
                 pod.shrink(1);
             } else {
                 GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
@@ -133,21 +147,26 @@ public final class GunFireHandler {
         }
     }
 
+    /** Finds a plain pod whose content item maps to the selected ammo TYPE id. */
     private static ItemStack findPod(ServerPlayer player, String ammoId) {
-        // Find a pod whose content matches the current ammo type id
         for (ItemStack stack : player.getInventory().items) {
-            if (stack.getItem() instanceof PodItem) {
-                ResourceLocation content = PodItem.contentId(stack);
-                if (content != null && ammoId.startsWith("create:")) {
-                    // ammoId references the projectile type; pods store item ids.
-                    // Accept pods whose content item maps to this type.
-                    var item = player.level().registryAccess()
-                            .registryOrThrow(Registries.ITEM).get(content);
-                    if (item != null) return stack;
-                }
+            if (stack.getItem() != dev.ignis.createpneumatictacticals.item.ModItems.POD.get()) continue;
+            ResourceLocation content = PodItem.contentId(stack);
+            if (content == null) continue;
+            net.minecraft.world.item.Item item = ForgeRegistries.ITEMS.getValue(content);
+            if (item == null || item == net.minecraft.world.item.Items.AIR) continue;
+            var typeRef = PotatoCannonProjectileType.getTypeForItem(player.level().registryAccess(), item);
+            if (typeRef.isPresent()
+                    && typeRef.get().unwrapKey().orElseThrow().location().toString().equals(ammoId)) {
+                return stack;
             }
         }
         return null;
+    }
+
+    private static void feedback(ServerPlayer player, String key) {
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "gui." + CreatePneumaticTacticals.MODID + ".fire_fail." + key), true);
     }
 
     private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, ItemStack contentStack) {
@@ -155,16 +174,18 @@ public final class GunFireHandler {
                 .map(ref -> ref.value());
     }
 
-    private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, String ammoOrItemId) {
-        var item = player.level().registryAccess().registryOrThrow(Registries.ITEM)
-                .get(ResourceLocation.tryParse(ammoOrItemId));
-        if (item == null) return Optional.empty();
-        return resolveType(player, new ItemStack(item));
+    /** ammoId is a potato-projectile-TYPE registry key (e.g. create:potato). */
+    private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, String typeId) {
+        return Optional.ofNullable(player.level().registryAccess()
+                .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
+                .get(ResourceLocation.tryParse(typeId)));
     }
 
-    private static ItemStack contentFor(ServerPlayer player, String itemId) {
-        var item = player.level().registryAccess().registryOrThrow(Registries.ITEM)
-                .get(ResourceLocation.tryParse(itemId));
-        return item == null ? null : new ItemStack(item);
+    /** Synthesizes a plain content stack: first item registered for the type. */
+    private static ItemStack contentFor(ServerPlayer player, String typeId) {
+        return resolveType(player, typeId)
+                .flatMap(t -> t.items().stream().findFirst())
+                .map(h -> new ItemStack(h.value()))
+                .orElse(null);
     }
 }

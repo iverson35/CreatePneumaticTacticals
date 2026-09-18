@@ -24,6 +24,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                              MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         GunHandsLayer.isFirstPersonPass = context == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
                 || context == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
+        ((GunGeoModel) getGeoModel()).setStack(stack);
         super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
         GunHandsLayer.isFirstPersonPass = false;
     }

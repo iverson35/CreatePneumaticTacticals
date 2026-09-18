@@ -35,7 +35,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     private static final int COLOR_SWATCH_GAP = 2;
 
     /** rows visible in the recipe list */
-    private static final int LIST_ROWS = 5;
+    private static final int LIST_ROWS = 4;
     private static final int LIST_ROW_HEIGHT = 20;
 
     private final List<ModuleCraftingRecipe> recipes = new ArrayList<>();
@@ -120,7 +120,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
             int y = 30 + row * LIST_ROW_HEIGHT;
             boolean selected = index == selectedRecipe;
             if (selected) {
-                gfx.fill(this.leftPos + 6, this.topPos + y - 3, this.leftPos + 128, this.topPos + y + 15, 0x805A5A8A);
+                gfx.fill(6, y - 3, 128, y + 15, 0x805A5A8A);
             }
             // highlight affordable recipes
             boolean canCraft = this.minecraft != null && this.minecraft.player != null
@@ -145,9 +145,9 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
             gfx.drawString(this.font,
                     Component.translatable("gui.createpneumatictacticals.region", r + 1), 158, y + 2, 0xE0E0E0, false);
             int cur = currentColor(be, def, r);
-            gfx.fill(this.leftPos + 236, this.topPos + y, this.leftPos + 246, this.topPos + y + 10, 0xFF000000 | cur);
+            gfx.fill(236, y, 246, y + 10, 0xFF000000 | cur);
             if (be.getRegion() == r) {
-                gfx.renderOutline(this.leftPos + 235, this.topPos + y - 1, 12, 12, 0xFFFFFFFF);
+                gfx.renderOutline(235, y - 1, 12, 12, 0xFFFFFFFF);
             }
         }
         // 16-color swatch grid
@@ -156,11 +156,10 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
             int col = i % 8, row = i / 8;
             int x = gridX + col * (COLOR_SWATCH_SIZE + 2);
             int y = gridY + row * (COLOR_SWATCH_SIZE + 2);
-            gfx.fill(this.leftPos + x, this.topPos + y,
-                    this.leftPos + x + COLOR_SWATCH_SIZE, this.topPos + y + COLOR_SWATCH_SIZE,
+            gfx.fill(x, y, x + COLOR_SWATCH_SIZE, y + COLOR_SWATCH_SIZE,
                     dev.ignis.createpneumatictacticals.menu.DyePalette.argbOf(i));
             if (be.getChosenColor() == i) {
-                gfx.renderOutline(this.leftPos + x - 1, this.topPos + y - 1,
+                gfx.renderOutline(x - 1, y - 1,
                         COLOR_SWATCH_SIZE + 2, COLOR_SWATCH_SIZE + 2, 0xFFFFFFFF);
             }
         }

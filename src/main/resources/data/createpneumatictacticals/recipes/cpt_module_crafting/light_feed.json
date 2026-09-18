@@ -1,0 +1,8 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "create:iron_sheet"},
+    {"item": "minecraft:iron_ingot"}
+  ],
+  "result": "createpneumatictacticals:light_feed"
+}

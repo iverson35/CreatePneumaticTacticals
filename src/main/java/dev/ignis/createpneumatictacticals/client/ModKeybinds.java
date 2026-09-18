@@ -20,9 +20,9 @@ public final class ModKeybinds {
 
     private ModKeybinds() {}
 
-    /** True while the player holds right mouse (aiming). */
+    /** True while aiming (holding a gun + right mouse); see AimHandler. */
     public static boolean isAiming() {
-        return Minecraft.getInstance().options.keyUse.isDown();
+        return AimHandler.isAiming();
     }
 
     private static KeyMapping register(String name, int key) {

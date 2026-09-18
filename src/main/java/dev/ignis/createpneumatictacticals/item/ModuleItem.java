@@ -10,16 +10,28 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Single registered item representing any module; the module definition is
  * selected via the ModuleId NBT string. Registry name is NOT the definition id.
+ * GeckoLib-rendered: per-stack geo/texture from the module id (ModuleGeoModel),
+ * placeholder cube while the module has no art assets.
  */
-public class ModuleItem extends Item {
+public class ModuleItem extends Item implements GeoItem {
+
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public static final String TAG_MODULE_ID = "ModuleId";
 
@@ -67,6 +79,13 @@ public class ModuleItem extends Item {
         String nameKey = "module." + id.getNamespace() + "." + id.getPath();
         tooltip.add(Component.translatable(nameKey).withStyle(ChatFormatting.AQUA));
         if (def == null) return;
+        if (def.gunType != null) {
+            tooltip.add(Component.translatable("stat.createpneumatictacticals.gun_type")
+                    .append(": ")
+                    .append(Component.translatable("gun_type.createpneumatictacticals."
+                            + def.gunType.getSerializedName()))
+                    .withStyle(ChatFormatting.YELLOW));
+        }
         addStatLines(tooltip, Map.of(
                 "module.stat.reload_speed", def.reloadSpeed,
                 "module.stat.damage_multiplier", def.damageMultiplier,
@@ -94,5 +113,32 @@ public class ModuleItem extends Item {
         if (Math.abs(v) >= 100) return String.valueOf((int) v);
         if (Math.abs(v) == Math.floor(Math.abs(v))) return String.valueOf((int) v);
         return String.format("%.1f", v);
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
+        // module items are static props; reload animation is driven on the gun's
+        // own animatable, not the item stack
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            private dev.ignis.createpneumatictacticals.client.render.ModuleItemRenderer renderer;
+
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    renderer = new dev.ignis.createpneumatictacticals.client.render.ModuleItemRenderer();
+                }
+                return renderer;
+            }
+        });
     }
 }

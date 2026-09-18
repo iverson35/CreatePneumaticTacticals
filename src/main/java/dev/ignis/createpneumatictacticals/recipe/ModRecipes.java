@@ -25,6 +25,14 @@ public final class ModRecipes {
     public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<ModuleCraftingRecipe>> MODULE_CRAFTING_SERIALIZER =
             RECIPE_SERIALIZERS.register("cpt_module_crafting", ModuleCraftingRecipe.Serializer::new);
 
+    public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<PodFillingRecipe>> POD_FILLING_SERIALIZER =
+            RECIPE_SERIALIZERS.register("pod_filling",
+                    () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(PodFillingRecipe::new));
+
+    public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<PodAssemblyRecipe>> POD_ASSEMBLY_SERIALIZER =
+            RECIPE_SERIALIZERS.register("pod_assembly",
+                    () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(PodAssemblyRecipe::new));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus modBus) {
         RECIPE_TYPES.register(modBus);
         RECIPE_SERIALIZERS.register(modBus);

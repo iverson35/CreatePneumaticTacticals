@@ -1,8 +1,4 @@
 {
   "type": "createpneumatictacticals:pod_assembly",
-  "category": "misc",
-  "ingredients": [
-    "createpneumatictacticals:pod",
-    "createpneumatictacticals:pressurized_air_vial"
-  ]
+  "category": "misc"
 }

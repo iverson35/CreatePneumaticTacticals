@@ -30,7 +30,7 @@ public final class ModuleDefinition {
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
             recoilMultiplier, recoilRecovery;
-    /** receiver-only fields */
+    /** receiver/barrel: gun type; barrel must match the installed receiver's */
     @Nullable public final GunType gunType;
     @Nullable public final List<FireMode> fireModes;
     @Nullable public final String fireSound;
@@ -114,10 +114,12 @@ public final class ModuleDefinition {
         b.recoilMultiplier = GsonHelper.getAsDouble(props, "recoil_multiplier", 0);
         b.recoilRecovery = GsonHelper.getAsDouble(props, "recoil_recovery", 0);
         // receiver
-        if (type == ModuleType.RECEIVER) {
-            if (!json.has("gun_type")) throw new IllegalArgumentException("receiver requires gun_type: " + id);
+        if (type == ModuleType.RECEIVER || type == ModuleType.BARREL) {
+            if (!json.has("gun_type")) throw new IllegalArgumentException(type.getSerializedName() + " requires gun_type: " + id);
             b.gunType = GunType.byName(json.get("gun_type").getAsString(), null);
             if (b.gunType == null) throw new IllegalArgumentException("bad gun_type in " + id);
+        }
+        if (type == ModuleType.RECEIVER) {
             if (!json.has("fire_modes")) throw new IllegalArgumentException("receiver requires fire_modes: " + id);
             List<FireMode> modes = new ArrayList<>();
             for (JsonElement el : json.getAsJsonArray("fire_modes")) {

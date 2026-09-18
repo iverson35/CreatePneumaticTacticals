@@ -1,7 +1,6 @@
 package dev.ignis.createpneumatictacticals.item;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
-import dev.ignis.createpneumatictacticals.item.crafting.ModRecipes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -51,6 +50,5 @@ public final class ModItems {
 
     public static void register(IEventBus modBus) {
         ITEMS.register(modBus);
-        ModRecipes.register(modBus);
     }
 }

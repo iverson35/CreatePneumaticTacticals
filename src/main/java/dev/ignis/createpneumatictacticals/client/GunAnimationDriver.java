@@ -46,9 +46,15 @@ public final class GunAnimationDriver {
         if (!(gun.getItem() instanceof GeoGunItem)) return;
         GunStats stats = GunStats.of(GunNbt.readModules(gun));
         if (stats.feed == null) return;
-        RawAnimation anim = stats.feed.feedType == FeedType.ROUND
-                ? GunAnimations.RELOAD_ROUND
-                : GunAnimations.RELOAD_MAGAZINE;
+        boolean round = stats.feed.feedType == FeedType.ROUND;
+        // empty magazine appends the bolt cycle (timing mirrors GunAnimTiming)
+        boolean empty = GunNbt.getAmmoCount(gun) <= 0;
+        RawAnimation anim = round ? GunAnimations.RELOAD_ROUND : GunAnimations.RELOAD_MAGAZINE;
+        if (empty) {
+            anim = RawAnimation.begin()
+                    .thenPlay(round ? "reload_round" : "reload")
+                    .thenPlay("bolt");
+        }
         triggerReceiver(gun, anim);
         triggerModule(stats.feed.id, anim);
     }

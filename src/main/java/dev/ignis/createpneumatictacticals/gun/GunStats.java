@@ -26,6 +26,7 @@ public final class GunStats {
     @Nullable public ModuleDefinition receiver;
     @Nullable public ModuleDefinition feed;
     @Nullable public ModuleDefinition supply;
+    @Nullable public ModuleDefinition barrel;
 
     public static GunStats of(Map<ModuleType, ModuleDefinition> installed) {
         GunStats s = new GunStats();
@@ -42,6 +43,7 @@ public final class GunStats {
         s.receiver = installed.get(ModuleType.RECEIVER);
         s.feed = installed.get(ModuleType.FEED);
         s.supply = installed.get(ModuleType.SUPPLY);
+        s.barrel = installed.get(ModuleType.BARREL);
         if (installed.containsKey(ModuleType.SIGHT)) {
             s.aimZoom = installed.get(ModuleType.SIGHT).aimZoom;
         }
@@ -64,6 +66,6 @@ public final class GunStats {
     }
 
     public boolean isComplete() {
-        return receiver != null && feed != null && supply != null;
+        return receiver != null && feed != null && supply != null && barrel != null;
     }
 }

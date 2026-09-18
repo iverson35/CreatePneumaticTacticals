@@ -122,3 +122,5 @@ gradle/
 /gradlew
 /gradlew.bat
 run-data/
+build_err.txt
+client_log*.txt

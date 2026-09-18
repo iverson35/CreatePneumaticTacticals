@@ -52,4 +52,45 @@ public class GunItem extends Item {
     public boolean isFoil(ItemStack stack) {
         return false;
     }
+
+    // --- left click is FIRE, not attack: suppress all vanilla attack paths ---
+
+    @Override
+    public boolean onLeftClickEntity(ItemStack stack, net.minecraft.world.entity.player.Player player,
+                                     net.minecraft.world.entity.Entity entity) {
+        return true; // cancel entity attack
+    }
+
+    @Override
+    public boolean canAttackBlock(net.minecraft.world.level.block.state.BlockState state,
+                                  net.minecraft.world.level.Level level,
+                                  net.minecraft.core.BlockPos pos,
+                                  net.minecraft.world.entity.player.Player player) {
+        return false; // no block breaking
+    }
+
+    @Override
+    public boolean onEntitySwing(ItemStack stack, net.minecraft.world.entity.LivingEntity entity) {
+        return true; // suppress arm swing
+    }
+
+    // --- right click is AIM: consume all vanilla use paths ---
+
+    @Override
+    public net.minecraft.world.InteractionResultHolder<ItemStack> use(Level level,
+            net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand) {
+        return net.minecraft.world.InteractionResultHolder.consume(player.getItemInHand(hand));
+    }
+
+    @Override
+    public net.minecraft.world.InteractionResult useOn(net.minecraft.world.item.context.UseOnContext context) {
+        return net.minecraft.world.InteractionResult.CONSUME;
+    }
+
+    @Override
+    public net.minecraft.world.InteractionResult interactLivingEntity(ItemStack stack,
+            net.minecraft.world.entity.player.Player player, net.minecraft.world.entity.LivingEntity target,
+            net.minecraft.world.InteractionHand hand) {
+        return net.minecraft.world.InteractionResult.CONSUME;
+    }
 }

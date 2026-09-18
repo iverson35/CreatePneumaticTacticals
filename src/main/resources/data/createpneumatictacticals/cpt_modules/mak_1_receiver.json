@@ -1,0 +1,13 @@
+{
+  "name": "createpneumatictacticals:mak_1_receiver",
+  "module_type": "receiver",
+  "gun_properties": {
+    "reload_speed": 0.0
+  },
+  "gun_type": "medium",
+  "burst_count": 3,
+  "fire_modes": ["semi", "auto"],
+  "fire_sound": "minecraft:entity.goat.horn_break",
+  "base_recoil_pitch": 1.2,
+  "base_recoil_yaw": 0.3
+}

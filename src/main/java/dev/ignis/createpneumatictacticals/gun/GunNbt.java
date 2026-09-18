@@ -138,6 +138,17 @@ public final class GunNbt {
      */
     @Nullable
     public static String validate(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
+        // barrel gun_type must match the receiver's gun_type (checked both directions
+        // so swapping the receiver under an installed barrel is also rejected)
+        ModuleDefinition receiver = candidate.type == ModuleType.RECEIVER ? candidate
+                : installed.get(ModuleType.RECEIVER);
+        ModuleDefinition barrel = candidate.type == ModuleType.BARREL ? candidate
+                : installed.get(ModuleType.BARREL);
+        if (receiver != null && barrel != null
+                && receiver.gunType != null && barrel.gunType != null
+                && receiver.gunType != barrel.gunType) {
+            return "gun_type_mismatch";
+        }
         for (ModuleDefinition existing : installed.values()) {
             if (existing.id.equals(candidate.id)) continue;
             for (ModuleDefinition.Affected rule : existing.affected) {

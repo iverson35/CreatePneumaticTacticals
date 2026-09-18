@@ -53,8 +53,8 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     /** screen-space x/y per module slot (matches GunWorkbenchScreen layout) */
     private static final int[][] MODULE_SLOT_POS = {
             {56, 16}, {78, 16}, {100, 16}, {122, 16},
-            {56, 52}, {78, 52}, {100, 52}, {122, 52}, {144, 52}, {166, 52},
-            {56, 88}, {78, 88}, {100, 88}
+            {56, 50}, {78, 50}, {100, 50}, {122, 50}, {144, 50}, {166, 50},
+            {56, 84}, {78, 84}, {100, 84}
     };
 
     private final ContainerLevelAccess access;
@@ -125,10 +125,19 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
 
     /** Full legality check for placing a candidate module into a module slot. */
     private boolean isValidModule(ModuleType type, ItemStack stack) {
-        if (!this.depsSatisfied(type)) return false;
+        return rejectReason(type, stack) == null;
+    }
+
+    /**
+     * Why a module can't go into a slot, as a lang key suffix
+     * (gui.createpneumatictacticals.reject.<reason>); null if it can.
+     */
+    @Nullable
+    public String rejectReason(ModuleType type, ItemStack stack) {
+        if (!this.depsSatisfied(type)) return "missing_dependency";
         ModuleDefinition def = definitionOf(stack);
-        if (def == null || def.type != type) return false;
-        return GunNbt.validate(GunNbt.readModules(this.container.getItem(SLOT_GUN)), def) == null;
+        if (def == null || def.type != type) return "wrong_type";
+        return GunNbt.validate(GunNbt.readModules(this.container.getItem(SLOT_GUN)), def);
     }
 
     // --- click handling: keep gun NBT in sync with module slots ---
@@ -145,7 +154,8 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     /**
      * Server-side: keep the gun NBT equal to the module slot contents.
      * - empty gun + valid receiver staged  -> auto-create bare gun
-     * - gun removed -> module items returned to the player
+     * - gun removed -> staged modules are CONSUMED (they now live in the gun
+     *   NBT; ejecting them would duplicate every module)
      * - module removed from a slot -> removed from gun NBT on next rebuild
      */
     private void syncGun(Player player) {
@@ -172,26 +182,30 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             }
             if (this.container.getItem(SLOT_GUN).isEmpty()) {
                 this.modulesLoaded = false;
-                this.ejectModules(player);
+                this.consumeModules();
                 return;
             }
         }
-        // materialize NBT modules into empty slots; eject anything incompatible
-        Map<ModuleType, ModuleDefinition> nbt = GunNbt.readModules(gun);
-        for (int i = 0; i < MODULE_COUNT; i++) {
-            int idx = SLOT_GUN + 1 + i;
-            ModuleType type = SLOT_TYPES[i];
-            ItemStack slotStack = this.container.getItem(idx);
-            ModuleDefinition slotDef = slotStack.isEmpty() ? null : definitionOf(slotStack);
-            if (slotDef == null || slotDef.type != type) {
-                if (!slotStack.isEmpty()) this.eject(idx, player);
-                ModuleDefinition nbtDef = nbt.get(type);
-                if (nbtDef != null) {
-                    this.container.setItem(idx, ModuleItem.of(nbtDef.id));
+        // materialize NBT modules into slots ONCE when a gun is placed;
+        // afterwards slot edits rebuild the NBT (removing a module from its
+        // slot must NOT re-materialize it from the still-stale NBT)
+        if (!this.modulesLoaded) {
+            Map<ModuleType, ModuleDefinition> nbt = GunNbt.readModules(gun);
+            for (int i = 0; i < MODULE_COUNT; i++) {
+                int idx = SLOT_GUN + 1 + i;
+                ModuleType type = SLOT_TYPES[i];
+                ItemStack slotStack = this.container.getItem(idx);
+                ModuleDefinition slotDef = slotStack.isEmpty() ? null : definitionOf(slotStack);
+                if (slotDef == null || slotDef.type != type) {
+                    if (!slotStack.isEmpty()) this.eject(idx, player);
+                    ModuleDefinition nbtDef = nbt.get(type);
+                    if (nbtDef != null) {
+                        this.container.setItem(idx, ModuleItem.of(nbtDef.id));
+                    }
                 }
             }
+            this.modulesLoaded = true;
         }
-        this.modulesLoaded = true;
 
         // eject modules whose dependency was removed (e.g. receiver taken out)
         for (int i = 0; i < MODULE_COUNT; i++) {
@@ -229,24 +243,45 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             this.eject(SLOT_GUN + 1 + i, player);
         }
     }
+    /** Drops the staged modules: they are baked into the gun NBT it left with. */
+    private void consumeModules() {
+        for (int i = 0; i < MODULE_COUNT; i++) {
+            this.container.setItem(SLOT_GUN + 1 + i, ItemStack.EMPTY);
+        }
+    }
 
     @Override
     public void removed(Player player) {
         if (!player.level().isClientSide) {
-            this.ejectModules(player);
             ItemStack gun = this.container.getItem(SLOT_GUN);
-            if (!gun.isEmpty() && !player.getInventory().add(gun)) {
-                player.drop(gun, false);
+            if (!gun.isEmpty()) {
+                // gun still staged: hand it over, its modules are in its NBT
+                if (!player.getInventory().add(gun)) {
+                    player.drop(gun, false);
+                }
+                this.container.setItem(SLOT_GUN, ItemStack.EMPTY);
+                this.consumeModules();
+            } else {
+                // defensive: no gun was ever assembled, return staged leftovers
+                this.ejectModules(player);
             }
-            this.container.setItem(SLOT_GUN, ItemStack.EMPTY);
         }
         super.removed(player);
     }
 
-    // --- quick move ---
-
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        ItemStack result = quickMoveStackInner(player, index);
+        // shift-click bypasses clicked(); rebuild gun NBT after any quick move
+        // (also consumes staged modules when the gun is shift-taken)
+        if (!player.level().isClientSide) {
+            this.syncGun(player);
+        }
+        this.broadcastChanges();
+        return result;
+    }
+
+    private ItemStack quickMoveStackInner(Player player, int index) {
         Slot slot = this.slots.get(index);
         if (!slot.hasItem()) return ItemStack.EMPTY;
         ItemStack stack = slot.getItem();
