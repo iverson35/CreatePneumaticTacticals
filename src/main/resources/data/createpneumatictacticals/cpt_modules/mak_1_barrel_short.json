@@ -1,0 +1,9 @@
+{
+  "name": "createpneumatictacticals:mak_1_barrel_short",
+  "module_type": "barrel",
+  "gun_type": "medium",
+  "gun_properties": {
+    "bullet_speed": 0.1,
+    "ergonomics": 0.1
+  }
+}

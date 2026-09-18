@@ -1,0 +1,32 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.mak_1_ammo_20",
+				"texture_width": 16,
+				"texture_height": 16,
+				"visible_bounds_width": 2,
+				"visible_bounds_height": 1.5,
+				"visible_bounds_offset": [0, 0.25, 0]
+			},
+			"bones": [
+				{
+					"name": "main",
+					"pivot": [0, 0, 0.5],
+					"cubes": [
+						{"origin": [-1, -1, -1.5], "size": [2, 1, 3], "uv": [0, 0]}
+					]
+				},
+				{
+					"name": "mag",
+					"parent": "main",
+					"pivot": [0, -1, -0.5],
+					"cubes": [
+						{"origin": [-0.5, -3, -1], "size": [1, 6, 2], "uv": [0, 4]}
+					]
+				}
+			]
+		}
+	]
+}

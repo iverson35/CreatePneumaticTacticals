@@ -20,4 +20,27 @@ public final class GunAnimations {
     public static final RawAnimation BOLT = RawAnimation.begin().thenPlay("bolt");
 
     private GunAnimations() {}
+
+    /** does this animation file contain the named animation */
+    public static boolean hasAnimation(net.minecraft.resources.ResourceLocation animationFile, String name) {
+        software.bernie.geckolib.loading.object.BakedAnimations baked =
+                software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(animationFile);
+        return baked != null && baked.getAnimation(name) != null;
+    }
+
+    /**
+     * Keep only the stages whose animation exists in the file; null when
+     * nothing survives. Guns are allowed to omit animations — a missing one
+     * must stay silent instead of spamming "Unable to find animation".
+     */
+    public static RawAnimation filterExisting(RawAnimation anim, net.minecraft.resources.ResourceLocation animationFile) {
+        RawAnimation out = null;
+        for (RawAnimation.Stage stage : anim.getAnimationStages()) {
+            if (!hasAnimation(animationFile, stage.animationName())) continue;
+            out = out == null
+                    ? RawAnimation.begin().then(stage.animationName(), stage.loopType())
+                    : out.then(stage.animationName(), stage.loopType());
+        }
+        return out;
+    }
 }

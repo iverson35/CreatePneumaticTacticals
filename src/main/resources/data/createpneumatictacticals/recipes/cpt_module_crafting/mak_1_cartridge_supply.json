@@ -1,0 +1,9 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "create:copper_sheet"},
+    {"item": "minecraft:glass_bottle"},
+    {"item": "minecraft:iron_nugget"}
+  ],
+  "result": "createpneumatictacticals:mak_1_cartridge_supply"
+}

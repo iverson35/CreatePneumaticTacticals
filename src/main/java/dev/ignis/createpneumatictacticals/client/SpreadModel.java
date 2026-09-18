@@ -51,12 +51,12 @@ public final class SpreadModel {
         double s0 = ext.spread;
         long sinceShot = now() - lastShotMs;
         double bloomNow = bloom * Math.max(0, 1 - sinceShot / (double) BLOOM_DECAY_MS);
-        if (Minecraft.getInstance().options.keyShift.isDown()) {
-            // aiming: non-spread ammo is pinpoint
-            return 0;
-        }
         double raw = s0 * currentPenalty + bloomNow;
-        return Math.max(0, raw / Math.max(0.1, hipfireAcc));
+        double spread = Math.max(0, raw / Math.max(0.1, hipfireAcc));
+        // aiming tightens to pinpoint as the ADS transition completes
+        float p = AimHandler.aimProgress(Minecraft.getInstance().getFrameTime());
+        p = p * p * (3f - 2f * p);
+        return spread * (1.0 - p);
     }
 
     private static double posePenalty(Player player) {

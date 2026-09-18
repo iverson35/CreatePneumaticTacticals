@@ -171,6 +171,11 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                     Map<ModuleType, ModuleDefinition> initial = new EnumMap<>(ModuleType.class);
                     initial.put(ModuleType.RECEIVER, receiverDef);
                     GunNbt.writeModules(newGun, initial);
+                    // "first time" naming: only this auto-creation sets the
+                    // name; later module swaps or anvil renames never touch it
+                    if (receiverDef.gunName != null) {
+                        newGun.setHoverName(net.minecraft.network.chat.Component.translatable(receiverDef.gunName));
+                    }
                     if (receiverDef.fireModes != null && !receiverDef.fireModes.isEmpty()) {
                         GunNbt.setFireMode(newGun, receiverDef.fireModes.get(0));
                     }

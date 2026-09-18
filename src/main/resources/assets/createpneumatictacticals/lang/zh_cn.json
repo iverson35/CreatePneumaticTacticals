@@ -18,11 +18,6 @@
   "tooltip.createpneumatictacticals.pod_content": "内容物：%s",
   "tooltip.createpneumatictacticals.loaded_ammo": "已装填：%s x%d",
   "module.createpneumatictacticals.mak_1_receiver": "MAK-1 机匣",
-  "module.createpneumatictacticals.light_receiver": "轻型机匣",
-  "module.createpneumatictacticals.light_feed": "轻型供弹具",
-  "module.createpneumatictacticals.cartridge_supply": "弹仓供弹具",
-  "module.createpneumatictacticals.light_barrel": "轻型枪管",
-  "module.createpneumatictacticals.medium_barrel": "中型枪管",
   "container.createpneumatictacticals.gun_workbench.stats": "属性",
   "gui.createpneumatictacticals.recipes": "可制作配件",
   "gui.createpneumatictacticals.dyeing": "染色",
@@ -69,5 +64,15 @@
   "gui.createpneumatictacticals.fail.no_pod": "背包中没有匹配的封装弹",
   "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（封装弹+加压气动瓶合成）",
   "gui.createpneumatictacticals.fail.ammo_type_mismatch": "该弹种与机匣类型不兼容",
-  "gun_type.createpneumatictacticals.heavy": "重型"
+  "gun_type.createpneumatictacticals.heavy": "重型",
+  "fire_mode.createpneumatictacticals.semi": "半自动",
+  "fire_mode.createpneumatictacticals.auto": "全自动",
+  "fire_mode.createpneumatictacticals.burst": "三连发",
+  "gui.createpneumatictacticals.hud.no_ammo": "未装弹",
+  "gui.createpneumatictacticals.hud.air": "气压 %d%%",
+  "gun.createpneumatictacticals.mak_1": "MAK-1 突击步枪",
+  "module.createpneumatictacticals.mak_1_ammo_20": "MAK-1 20发弹匣",
+  "module.createpneumatictacticals.mak_1_barrel_short": "MAK-1 短枪管",
+  "module.createpneumatictacticals.mak_1_cartridge_supply": "MAK-1 整装气瓶",
+  "module.createpneumatictacticals.mak_1_tactical_handguard": "MAK-1 战术护木"
 }

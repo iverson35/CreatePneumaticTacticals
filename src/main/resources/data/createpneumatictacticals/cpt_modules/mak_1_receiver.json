@@ -6,8 +6,12 @@
   },
   "gun_type": "medium",
   "burst_count": 3,
-  "fire_modes": ["semi", "auto"],
+  "fire_modes": [
+    "semi",
+    "auto"
+  ],
   "fire_sound": "minecraft:entity.goat.horn_break",
   "base_recoil_pitch": 1.2,
-  "base_recoil_yaw": 0.3
+  "base_recoil_yaw": 0.3,
+  "gun_name": "gun.createpneumatictacticals.mak_1"
 }

@@ -2,8 +2,8 @@
   "type": "createpneumatictacticals:cpt_module_crafting",
   "ingredients": [
     {"item": "create:iron_sheet"},
-    {"item": "create:iron_sheet"},
+    {"item": "minecraft:iron_nugget"},
     {"item": "minecraft:iron_nugget"}
   ],
-  "result": "createpneumatictacticals:medium_barrel"
+  "result": "createpneumatictacticals:mak_1_ammo_20"
 }

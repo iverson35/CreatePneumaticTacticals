@@ -48,6 +48,14 @@ public class GeoGunItem extends GunItem implements GeoItem {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
         registrar.add(new AnimationController<>(this, "main", 5, state -> {
+            // no idle authored -> stay silent instead of spamming the log
+            net.minecraft.world.item.ItemStack stack =
+                    state.getData(software.bernie.geckolib.constant.DataTickets.ITEMSTACK);
+            if (stack != null && !dev.ignis.createpneumatictacticals.client.render.GunAnimations
+                    .hasAnimation(dev.ignis.createpneumatictacticals.client.render.GunAssets
+                            .forStack(stack).animation(), "idle")) {
+                return software.bernie.geckolib.core.object.PlayState.STOP;
+            }
             state.setAndContinue(GunAnimations.IDLE);
             return PlayState.CONTINUE;
         }));

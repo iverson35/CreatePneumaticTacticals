@@ -24,11 +24,31 @@ public class Config {
             .comment("Show hitmarker on successful hits")
             .define("hitmarkerEnabled", true);
 
+    public static final ForgeConfigSpec.BooleanValue GUN_HUD_ENABLED = CLIENT_BUILDER
+            .comment("Show the gun ammo widget while holding a gun")
+            .define("gunHudEnabled", true);
+
+    public static final ForgeConfigSpec.BooleanValue GUN_CROSSHAIR_ENABLED = CLIENT_BUILDER
+            .comment("Show the dynamic gun crosshair while holding a gun")
+            .define("gunCrosshairEnabled", true);
+
+    public static final ForgeConfigSpec.IntValue GUN_HUD_OFFSET_X = CLIENT_BUILDER
+            .comment("Horizontal offset of the gun ammo widget (from the right edge)")
+            .defineInRange("gunHudOffsetX", 0, -2000, 2000);
+
+    public static final ForgeConfigSpec.IntValue GUN_HUD_OFFSET_Y = CLIENT_BUILDER
+            .comment("Vertical offset of the gun ammo widget (from the bottom edge)")
+            .defineInRange("gunHudOffsetY", 0, -2000, 2000);
+
     static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean recoilViewReset;
     public static int readyDelayMs;
     public static boolean hitmarkerEnabled;
+    public static boolean gunHudEnabled;
+    public static boolean gunCrosshairEnabled;
+    public static int gunHudOffsetX;
+    public static int gunHudOffsetY;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -36,6 +56,10 @@ public class Config {
             recoilViewReset = RECOIL_VIEW_RESET.get();
             readyDelayMs = READY_DELAY_MS.get();
             hitmarkerEnabled = HITMARKER_ENABLED.get();
+            gunHudEnabled = GUN_HUD_ENABLED.get();
+            gunCrosshairEnabled = GUN_CROSSHAIR_ENABLED.get();
+            gunHudOffsetX = GUN_HUD_OFFSET_X.get();
+            gunHudOffsetY = GUN_HUD_OFFSET_Y.get();
         }
     }
 }

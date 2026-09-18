@@ -1,8 +1,0 @@
-{
-  "gun_type": "light",
-  "fire_rate": 300,
-  "spread": 1.0,
-  "headshot_multiplier": 1.5,
-  "effective_range": 40,
-  "damage_falloff_rate": 0.05
-}

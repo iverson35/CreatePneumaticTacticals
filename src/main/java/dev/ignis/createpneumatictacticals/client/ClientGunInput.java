@@ -85,6 +85,21 @@ public final class ClientGunInput {
             startReload(player, gun, stats);
         }
 
+        // --- auto reload: an empty gun tries to reload on its own (silent when
+        // no ammo is selected or no pods are available — no actionbar spam) ---
+        if (!reloading && stats.isComplete() && stats.feed != null
+                && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
+                && GunNbt.getAmmoCount(gun) <= 0) {
+            String autoAmmoId = GunNbt.getAmmo(gun);
+            if (autoAmmoId != null && !autoAmmoId.isEmpty()) {
+                boolean cartridge = stats.supply != null && stats.supply.supplyType
+                        == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
+                if (player.isCreative() || countMatchingPods(player, cartridge, autoAmmoId) > 0) {
+                    startReload(player, gun, stats);
+                }
+            }
+        }
+
         // --- state cycling ---
         if (ModKeybinds.FIRE_MODE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.NEXT_FIRE_MODE));
@@ -186,7 +201,7 @@ public final class ClientGunInput {
     }
 
     /** Inventory pods loadable into this gun (plain, or pressurized for cartridge supply). */
-    private static int countMatchingPods(Player player, boolean cartridge, String ammoId) {
+    public static int countMatchingPods(Player player, boolean cartridge, String ammoId) {
         net.minecraft.world.item.Item required = cartridge
                 ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
                 : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
@@ -211,9 +226,11 @@ public final class ClientGunInput {
     /**
      * Interruption semantics: magazine reload fails outright (no packet = no
      * ammo); round reload applies per-batch — each finished batch sends its own
-     * packet, an interruption only loses the in-flight batch. Hold R to keep
-     * loading round-by-round. The gun stack reference doubles as the
-     * "same gun" check: switching slots / dropping / stowing replaces it.
+     * packet, an interruption only loses the in-flight batch. A single R press
+     * keeps loading round-by-round until the magazine is full; firing,
+     * switching slots or opening a screen interrupts it. The gun stack reference
+     * doubles as the "same gun" check: switching slots / dropping / stowing
+     * replaces it.
      */
     private static void tickReload(Player player, ItemStack gun, GunStats stats) {
         if (!reloading) return;
@@ -224,8 +241,7 @@ public final class ClientGunInput {
         if (System.currentTimeMillis() < reloadEndMs) return;
         // batch finished -> apply immediately
         CptNetwork.CHANNEL.sendToServer(new ReloadResultPacket(true, reloadBatch));
-        if (reloadRoundMode && ModKeybinds.RELOAD.isDown()
-                && GunNbt.getAmmoCount(gun) < stats.feed.clipSize) {
+        if (reloadRoundMode && GunNbt.getAmmoCount(gun) < stats.feed.clipSize) {
             // next batch: no bolt cycle (chamber already loaded)
             reloadEndMs = System.currentTimeMillis() + dev.ignis.createpneumatictacticals.client.render
                     .GunAnimTiming.reloadBatchMs(gun, true, false, stats.reloadSpeed);

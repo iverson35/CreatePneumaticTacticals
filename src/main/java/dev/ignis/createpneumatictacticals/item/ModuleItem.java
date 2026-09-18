@@ -54,6 +54,23 @@ public class ModuleItem extends Item implements GeoItem {
         return ResourceLocation.tryParse(tag.getString(TAG_MODULE_ID));
     }
 
+    /**
+     * Obsolete-module cleanup: a module whose definition no longer exists
+     * (datapack entry removed) vanishes from inventories. inventoryTick runs
+     * per stack; the cost is one HashMap lookup in ModuleManager — no scans.
+     * Guns drop dead ids on read in GunNbt.readModules, so installed modules
+     * need no handling here.
+     */
+    @Override
+    public void inventoryTick(ItemStack stack, Level level, net.minecraft.world.entity.Entity entity,
+                              int slot, boolean selected) {
+        if (level.isClientSide) return;
+        ResourceLocation id = getModuleId(stack);
+        if (id != null && ModuleManager.get(id) == null) {
+            stack.setCount(0);
+        }
+    }
+
     public static void setModuleId(ItemStack stack, @Nullable ResourceLocation id) {
         if (id == null) {
             stack.removeTagKey(TAG_MODULE_ID);

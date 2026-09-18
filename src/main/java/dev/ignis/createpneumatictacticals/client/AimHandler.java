@@ -41,7 +41,7 @@ public final class AimHandler {
 
     private static float aimProgress = 0f;
     private static float prevAimProgress = 0f;
-
+    private static boolean lastAiming = false;
     private AimHandler() {}
 
     /** True while holding a gun and holding right mouse. */
@@ -83,9 +83,15 @@ public final class AimHandler {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        boolean aiming = isAiming();
+        if (aiming != lastAiming) {
+            lastAiming = aiming;
+            dev.ignis.createpneumatictacticals.network.CptNetwork.CHANNEL.sendToServer(
+                    new dev.ignis.createpneumatictacticals.network.AimStatePacket(aiming));
+        }
         prevAimProgress = aimProgress;
         float step = 1f / (AIM_TIME_SECONDS * 20f);
-        aimProgress = Mth.clamp(aimProgress + (isAiming() ? step : -step), 0f, 1f);
+        aimProgress = Mth.clamp(aimProgress + (aiming ? step : -step), 0f, 1f);
     }
 
     @SubscribeEvent

@@ -33,8 +33,68 @@ public final class GunFireHandler {
 
     /** ms timestamp of last shot per player; server-side fire rate validation */
     private static final Map<String, Long> LAST_SHOT = new java.util.concurrent.ConcurrentHashMap<>();
+    /** aim state mirrored from the client (AimStatePacket) for spread suppression */
+    private static final Map<String, Boolean> AIMING = new java.util.concurrent.ConcurrentHashMap<>();
+    /** accumulated hipfire bloom in degrees per player (mirrors client SpreadModel) */
+    private static final Map<String, Double> BLOOM = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final java.util.Random RANDOM = new java.util.Random();
+    /** bloom fully decays after this many ticks without shooting (client: 400ms) */
+    private static final long BLOOM_DECAY_TICKS = 8;
 
     private GunFireHandler() {}
+
+    public static void setAiming(ServerPlayer player, boolean aiming) {
+        AIMING.put(player.getStringUUID(), aiming);
+    }
+
+    /**
+     * Server-authoritative hipfire spread in degrees (mirrors the client
+     * SpreadModel; aiming = pinpoint, instantaneous instead of interpolated).
+     */
+    private static double spreadDegrees(ServerPlayer player, AmmoExtension ext, GunStats stats) {
+        if (AIMING.getOrDefault(player.getStringUUID(), false)) return 0;
+        String key = player.getStringUUID();
+        long now = player.level().getGameTime();
+        double bloom = BLOOM.getOrDefault(key, 0.0);
+        Long last = LAST_SHOT.get(key);
+        if (last != null) {
+            bloom *= Math.max(0, 1 - (now - last) / (double) BLOOM_DECAY_TICKS);
+        }
+        double raw = ext.spread * posePenalty(player) + bloom;
+        return Math.max(0, raw / Math.max(0.1, stats.hipfireAccuracyMultiplier));
+    }
+
+    private static double posePenalty(ServerPlayer player) {
+        if (player.isSprinting() || player.isFallFlying()) return 3.0;
+        if (!player.onGround()) return 3.0;
+        if (player.isCrouching()) return 0.8;
+        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 1.6;
+        return 1.0;
+    }
+
+    private static void addBloom(ServerPlayer player, AmmoExtension ext) {
+        String key = player.getStringUUID();
+        BLOOM.put(key, Math.min(2.5 * ext.spread,
+                BLOOM.getOrDefault(key, 0.0) + 0.15 * ext.spread));
+    }
+
+    /**
+     * Rotate {@code dir} by a random angle within a cone of {@code spreadDeg}.
+     * The orthonormal combination preserves magnitude — do NOT normalize the
+     * result, that would reset the projectile speed to 1 block/tick.
+     */
+    private static Vec3 applySpread(Vec3 dir, double spreadDeg) {
+        if (spreadDeg <= 0) return dir;
+        double angle = Math.toRadians(spreadDeg) * Math.sqrt(RANDOM.nextDouble());
+        double phi = RANDOM.nextDouble() * Math.PI * 2;
+        Vec3 up = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 u = dir.cross(up).normalize();
+        Vec3 v = dir.cross(u).normalize();
+        return dir.scale(Math.cos(angle))
+                .add(u.scale(dir.length() * Math.sin(angle) * Math.cos(phi)))
+                .add(v.scale(dir.length() * Math.sin(angle) * Math.sin(phi)));
+    }
 
     public static void onFireRequest(ServerPlayer player) {
         ItemStack gun = player.getMainHandItem();
@@ -104,10 +164,14 @@ public final class GunFireHandler {
         Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
         if (typeOpt.isEmpty()) return;
         PotatoCannonProjectileType type = typeOpt.get();
+        double spreadDeg = spreadDegrees(player, ext, stats);
 
-        Vec3 barrelPos = player.getEyePosition().add(player.getLookAngle().scale(0.8));
-        Vec3 motion = player.getLookAngle().scale(2 * type.velocityMultiplier() * stats.bulletSpeed);
-
+        // spawn from the eye line, 1 block ahead: the potato cannon's cosmetic
+        // muzzle offset (getGunBarrelVec) makes close-range shots miss the
+        // crosshair, so guns fire straight from the view axis
+        Vec3 barrelPos = player.getEyePosition().add(player.getLookAngle());
+        Vec3 motion = player.getLookAngle()
+                .scale(2 * type.velocityMultiplier() * stats.bulletSpeed);
         for (int i = 0; i < Math.max(1, type.split()); i++) {
             PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(player.level());
             if (projectile == null) return;
@@ -118,23 +182,33 @@ public final class GunFireHandler {
             contentStack.setTag(null);
             projectile.setItem(contentStack);
             projectile.setPos(barrelPos.x, barrelPos.y - 0.1, barrelPos.z);
-            Vec3 splitMotion = motion;
+            Vec3 splitMotion = applySpread(motion, spreadDeg);
             if (type.split() > 1) {
-                double ang = (Math.PI * 2 / type.split()) * i;
-                splitMotion = motion.add(new Vec3(Math.cos(ang), Math.sin(ang), 0).scale(0.1));
+                // Create's spray (PotatoCannonItem.use): per-pellet deterministic
+                // angle + jitter, a 0.1 offset rotated into the motion's
+                // perpendicular plane. Reimplemented here because catnip's
+                // VecHelper is not on the compile classpath.
+                double ang = Math.toRadians((360.0 / type.split()) * i
+                        + 40 * (player.getRandom().nextFloat() - 0.5f));
+                Vec3 upAxis = Math.abs(motion.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+                Vec3 u = motion.cross(upAxis).normalize();
+                Vec3 w = motion.cross(u).normalize();
+                splitMotion = splitMotion.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
             }
             projectile.setDeltaMovement(splitMotion);
+            // mark gun-fired projectiles so the hit mixin can send hitmarkers
+            projectile.getPersistentData().putBoolean("cpt_gunshot", true);
             projectile.setOwner(player);
             player.level().addFreshEntity(projectile);
         }
 
-        // --- consume ---
-        if (!player.isCreative()) {
-            if (backpack) {
-                pod.shrink(1);
-            } else {
-                GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
-            }
+        // --- consume: clip always decrements (creative included); backpack
+        // pod shrink and reload-time pod consumption stay creative-free ---
+        addBloom(player, ext);
+        if (backpack) {
+            if (!player.isCreative()) pod.shrink(1);
+        } else {
+            GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
         }
 
         // --- sound from receiver definition ---

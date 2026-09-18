@@ -18,6 +18,16 @@
 						{"origin": [-1, 0, -4], "size": [2, 2, 8], "uv": [0, 0]}
 					]
 				}
+				,
+				{
+					"name": "ads_camera",
+					"pivot": [0, 3.5, 0]
+				},
+				{
+					"name": "tactical_camera",
+					"pivot": [1.5, 2.5, 0],
+					"rotation": [0, 0, 45]
+				}
 			]
 		}
 	]

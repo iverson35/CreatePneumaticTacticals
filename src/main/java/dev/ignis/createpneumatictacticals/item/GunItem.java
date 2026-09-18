@@ -52,7 +52,7 @@ public class GunItem extends Item {
      * Display name of the selected ammo TYPE: the display name of its first
      * registered content item (e.g. "Carrot"), not the raw registry key.
      */
-    private static Component ammoDisplayName(ItemStack gun, @Nullable Level level, String ammoId) {
+    public static Component ammoDisplayName(ItemStack gun, @Nullable Level level, String ammoId) {
         if (level != null) {
             var type = level.registryAccess()
                     .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)

@@ -34,6 +34,8 @@ public final class ModuleDefinition {
     @Nullable public final GunType gunType;
     @Nullable public final List<FireMode> fireModes;
     @Nullable public final String fireSound;
+    /** receiver-only: lang key for the auto-created gun's display name */
+    @Nullable public final String gunName;
     public final double baseRecoilPitch, baseRecoilYaw;
     /** feed-only fields */
     @Nullable public final FeedType feedType;
@@ -62,6 +64,7 @@ public final class ModuleDefinition {
         this.gunType = b.gunType;
         this.fireModes = b.fireModes == null ? null : List.copyOf(b.fireModes);
         this.fireSound = b.fireSound;
+        this.gunName = b.gunName;
         this.baseRecoilPitch = b.baseRecoilPitch;
         this.baseRecoilYaw = b.baseRecoilYaw;
         this.feedType = b.feedType;
@@ -128,6 +131,7 @@ public final class ModuleDefinition {
             if (modes.isEmpty()) throw new IllegalArgumentException("empty fire_modes in " + id);
             b.fireModes = modes;
             b.fireSound = GsonHelper.getAsString(json, "fire_sound", null);
+            b.gunName = GsonHelper.getAsString(json, "gun_name", null);
             b.baseRecoilPitch = GsonHelper.getAsDouble(json, "base_recoil_pitch", 0);
             b.baseRecoilYaw = GsonHelper.getAsDouble(json, "base_recoil_yaw", 0);
         }
@@ -184,6 +188,7 @@ public final class ModuleDefinition {
         @Nullable private List<FireMode> fireModes;
         @Nullable private String fireSound;
         private double baseRecoilPitch, baseRecoilYaw;
+        @Nullable private String gunName;
         @Nullable private FeedType feedType;
         private int loadAmount, clipSize;
         @Nullable private SupplyType supplyType;

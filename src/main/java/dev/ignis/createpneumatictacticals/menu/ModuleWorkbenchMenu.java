@@ -51,7 +51,7 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         this.access = ContainerLevelAccess.create(be.getLevel(), be.getBlockPos());
 
         // dye slot: module items only
-        this.addSlot(new Slot(be.getDyeContainer(), 0, 80, 44) {
+        this.addSlot(new Slot(be.getDyeContainer(), 0, 138, 20) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return stack.getItem() instanceof ModuleItem;

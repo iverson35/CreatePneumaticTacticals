@@ -27,4 +27,9 @@ public final class MenuScreenBinding {
             MenuScreens.register(CptMenuTypes.MODULE_WORKBENCH.get(), ModuleWorkbenchScreen::new);
         });
     }
+
+    @SubscribeEvent
+    public static void onRegisterOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+        GunHudOverlay.register(event);
+    }
 }

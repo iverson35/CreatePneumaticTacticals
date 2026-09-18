@@ -68,12 +68,19 @@ public final class GunAnimationDriver {
 
     private static void triggerReceiver(ItemStack gun, RawAnimation anim) {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
-        triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(GeoItem.getId(gun)), anim);
+        RawAnimation filtered = GunAnimations.filterExisting(anim,
+                dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation());
+        if (filtered == null) return; // receiver omits this animation: silent
+        triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(GeoItem.getId(gun)), filtered);
     }
 
     private static void triggerModule(net.minecraft.resources.ResourceLocation moduleId, RawAnimation anim) {
+        RawAnimation filtered = GunAnimations.filterExisting(anim,
+                new net.minecraft.resources.ResourceLocation(moduleId.getNamespace(),
+                        "animations/gun/" + moduleId.getPath() + ".animation.json"));
+        if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
-        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(0), anim);
+        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(0), filtered);
     }
 
     private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim) {

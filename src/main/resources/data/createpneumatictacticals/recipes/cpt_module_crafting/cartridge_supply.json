@@ -1,8 +1,0 @@
-{
-  "type": "createpneumatictacticals:cpt_module_crafting",
-  "ingredients": [
-    {"item": "create:iron_sheet"},
-    {"item": "create:andesite_alloy"}
-  ],
-  "result": "createpneumatictacticals:cartridge_supply"
-}

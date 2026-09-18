@@ -22,21 +22,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Accessory workbench GUI. Left half: scrollable recipe list; right half:
- * dyeing (region 1/2/3 selectors + 16-color swatch grid + confirm).
+ * Accessory workbench GUI. Layout (256x186):
+ * <pre>
+ *   y4    window title
+ *   y16-92   left: recipe list (x4-130) | right: dye panel (x134-252)
+ *   y94   inventory label
+ *   y103+  player inventory (x8-160)    | right-bottom: craft/dye buttons (x166-250)
+ * </pre>
+ * The dye module slot lives at the top of the dye panel (menu coordinate
+ * 138,20 — keep ModuleWorkbenchMenu in sync).
  */
 @OnlyIn(Dist.CLIENT)
 public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkbenchMenu> {
 
-    private static final ResourceLocation BG =
-            new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/module_workbench.png");
-
     private static final int COLOR_SWATCH_SIZE = 10;
-    private static final int COLOR_SWATCH_GAP = 2;
 
     /** rows visible in the recipe list */
     private static final int LIST_ROWS = 4;
-    private static final int LIST_ROW_HEIGHT = 20;
+    private static final int LIST_ROW_HEIGHT = 17;
+    private static final int LIST_TOP = 24;
+
+    // recipe list (relative coords)
+    private static final int LIST_X = 6, LIST_W = 122;
+    // dye panel
+    private static final int REGION_X = 162, REGION_BOX_X = 236, REGION_TOP = 20, REGION_STEP = 14;
+    private static final int GRID_X = 134, GRID_Y = 62;
+    // right-bottom action area
+    private static final int BTN_X = 166, BTN_W = 84, CRAFT_Y = 108, DYE_Y = 130, STATUS_Y = 154;
 
     private final List<ModuleCraftingRecipe> recipes = new ArrayList<>();
     private int selectedRecipe = -1;
@@ -46,29 +58,31 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         super(menu, playerInv, title);
         this.imageWidth = 256;
         this.imageHeight = 186;
+        // inventory slots occupy y103+; the label sits just above them, clear of the panels
+        this.inventoryLabelX = 8;
+        this.inventoryLabelY = 94;
     }
 
     @Override
     protected void init() {
         super.init();
         refreshRecipes();
-        // craft button
         addRenderableWidget(Button.builder(Component.translatable("gui.createpneumatictacticals.craft"),
                         b -> craftSelected())
-                .bounds(this.leftPos + 10, this.topPos + 108, 60, 18)
+                .bounds(this.leftPos + BTN_X, this.topPos + CRAFT_Y, BTN_W, 18)
                 .build());
-        // dye confirm button
         addRenderableWidget(Button.builder(Component.translatable("gui.createpneumatictacticals.dye"),
                         b -> dyeConfirm())
-                .bounds(this.leftPos + 134, this.topPos + 148, 60, 18)
+                .bounds(this.leftPos + BTN_X, this.topPos + DYE_Y, BTN_W, 18)
                 .build());
+        // scroll arrows in the recipe panel header
         addRenderableWidget(Button.builder(Component.literal("<"),
                         b -> { scrollOffset = Math.max(0, scrollOffset - 1); })
-                .bounds(this.leftPos + 8, this.topPos + 18, 12, 12)
+                .bounds(this.leftPos + 104, this.topPos + 17, 12, 12)
                 .build());
         addRenderableWidget(Button.builder(Component.literal(">"),
                         b -> { scrollOffset = Math.min(maxScroll(), scrollOffset + 1); })
-                .bounds(this.leftPos + 118, this.topPos + 18, 12, 12)
+                .bounds(this.leftPos + 117, this.topPos + 17, 12, 12)
                 .build());
     }
 
@@ -95,67 +109,64 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        // panel background (flat, no texture dependency for now)
         gfx.fill(this.leftPos, this.topPos, this.leftPos + this.imageWidth,
                 this.topPos + this.imageHeight, 0xFF2A2A2E);
         gfx.fill(this.leftPos + 1, this.topPos + 1, this.leftPos + this.imageWidth - 1,
                 this.topPos + this.imageHeight - 1, 0xFF3A3A40);
         // left panel (recipes)
-        gfx.fill(this.leftPos + 4, this.topPos + 14, this.leftPos + 130, this.topPos + 106, 0xFF232326);
+        gfx.fill(this.leftPos + 4, this.topPos + 16, this.leftPos + 130, this.topPos + 92, 0xFF232326);
         // right panel (dye)
-        gfx.fill(this.leftPos + 134, this.topPos + 14, this.leftPos + 252, this.topPos + 144, 0xFF232326);
+        gfx.fill(this.leftPos + 134, this.topPos + 16, this.leftPos + 252, this.topPos + 92, 0xFF232326);
     }
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
         gfx.drawString(this.font, this.title, 6, 4, 0xFFFFFF, false);
+        super.renderLabels(gfx, mouseX, mouseY); // inventory label
 
         // --- recipe list ---
         gfx.drawString(this.font,
-                Component.translatable("gui.createpneumatictacticals.recipes"), 8, 7, 0xFFD080, false);
+                Component.translatable("gui.createpneumatictacticals.recipes"), 8, 19, 0xFFD080, false);
         for (int row = 0; row < LIST_ROWS; row++) {
             int index = scrollOffset + row;
             if (index >= recipes.size()) break;
             ModuleCraftingRecipe recipe = recipes.get(index);
-            int y = 30 + row * LIST_ROW_HEIGHT;
+            int y = LIST_TOP + row * LIST_ROW_HEIGHT;
             boolean selected = index == selectedRecipe;
             if (selected) {
-                gfx.fill(6, y - 3, 128, y + 15, 0x805A5A8A);
+                gfx.fill(LIST_X, y - 3, LIST_X + LIST_W, y + 12, 0x805A5A8A);
             }
-            // highlight affordable recipes
             boolean canCraft = this.minecraft != null && this.minecraft.player != null
                     && this.menu.canCraft(this.minecraft.player, recipe);
             int textColor = canCraft ? 0x80FF80 : 0x909090;
             String label = moduleDisplayName(recipe);
-            gfx.drawString(this.font, trim(label, 17), 24, y, textColor, false);
+            gfx.drawString(this.font, trim(label, 15), 10, y, textColor, false);
             ItemStack result = recipe.resultStack();
-            gfx.renderItem(result, 108, y - 2);
+            gfx.renderItem(result, 108, y - 3);
         }
 
         // --- dye panel ---
         gfx.drawString(this.font,
-                Component.translatable("gui.createpneumatictacticals.dyeing"), 134, 7, 0xFFD080, false);
+                Component.translatable("gui.createpneumatictacticals.dyeing"), 138, 19, 0xFFD080, false);
         ModuleWorkbenchBlockEntity be = this.menu.getBlockEntity();
-        ItemStack module = be.getDyeModule();
-        gfx.renderItem(module, 134, 22);
-        ModuleDefinition def = definitionOf(module);
-        // region rows
+        ModuleDefinition def = definitionOf(be.getDyeModule());
+        // region rows (the module slot itself is drawn by the container at 138,20)
         for (int r = 0; r < 3; r++) {
-            int y = 22 + r * 14;
+            int y = REGION_TOP + r * REGION_STEP;
             gfx.drawString(this.font,
-                    Component.translatable("gui.createpneumatictacticals.region", r + 1), 158, y + 2, 0xE0E0E0, false);
+                    Component.translatable("gui.createpneumatictacticals.region", r + 1),
+                    REGION_X, y + 3, 0xE0E0E0, false);
             int cur = currentColor(be, def, r);
-            gfx.fill(236, y, 246, y + 10, 0xFF000000 | cur);
+            gfx.fill(REGION_BOX_X, y, REGION_BOX_X + 10, y + 10, 0xFF000000 | cur);
             if (be.getRegion() == r) {
-                gfx.renderOutline(235, y - 1, 12, 12, 0xFFFFFFFF);
+                gfx.renderOutline(REGION_BOX_X - 1, y - 1, 12, 12, 0xFFFFFFFF);
             }
         }
         // 16-color swatch grid
-        int gridX = 134, gridY = 68;
         for (int i = 0; i < dev.ignis.createpneumatictacticals.menu.DyePalette.SIZE; i++) {
             int col = i % 8, row = i / 8;
-            int x = gridX + col * (COLOR_SWATCH_SIZE + 2);
-            int y = gridY + row * (COLOR_SWATCH_SIZE + 2);
+            int x = GRID_X + col * (COLOR_SWATCH_SIZE + 2);
+            int y = GRID_Y + row * (COLOR_SWATCH_SIZE + 2);
             gfx.fill(x, y, x + COLOR_SWATCH_SIZE, y + COLOR_SWATCH_SIZE,
                     dev.ignis.createpneumatictacticals.menu.DyePalette.argbOf(i));
             if (be.getChosenColor() == i) {
@@ -163,10 +174,10 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                         COLOR_SWATCH_SIZE + 2, COLOR_SWATCH_SIZE + 2, 0xFFFFFFFF);
             }
         }
-        // status line
+        // status line in the action area
         String status = dyeStatus(be);
         if (!status.isEmpty()) {
-            gfx.drawString(this.font, status, 134, 96, 0xFF6060, false);
+            gfx.drawString(this.font, trim(status, 20), BTN_X, STATUS_Y, 0xFF6060, false);
         }
     }
 
@@ -221,7 +232,6 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
 
     /** small helper mirroring GunNbt color schema */
     private static final class GunNbtColorAccess {
-        @SuppressWarnings("unused")
         static int[] getColors(ItemStack stack, ResourceLocation moduleId) {
             if (moduleId == null) return null;
             net.minecraft.nbt.CompoundTag root = stack.getTag();
@@ -248,9 +258,9 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         for (int row = 0; row < LIST_ROWS; row++) {
             int index = scrollOffset + row;
             if (index >= recipes.size()) break;
-            int y = 30 + row * LIST_ROW_HEIGHT;
-            if (mouseX >= this.leftPos + 6 && mouseX < this.leftPos + 128
-                    && mouseY >= this.topPos + y - 3 && mouseY < this.topPos + y + 17) {
+            int y = LIST_TOP + row * LIST_ROW_HEIGHT;
+            if (mouseX >= this.leftPos + LIST_X && mouseX < this.leftPos + LIST_X + LIST_W
+                    && mouseY >= this.topPos + y - 3 && mouseY < this.topPos + y + 12) {
                 selectedRecipe = index;
                 return true;
             }
@@ -259,8 +269,8 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         ModuleWorkbenchBlockEntity be = this.menu.getBlockEntity();
         if (be.hasModule()) {
             for (int r = 0; r < 3; r++) {
-                int y = 22 + r * 14;
-                if (mouseX >= this.leftPos + 236 && mouseX < this.leftPos + 246
+                int y = REGION_TOP + r * REGION_STEP;
+                if (mouseX >= this.leftPos + REGION_BOX_X && mouseX < this.leftPos + REGION_BOX_X + 10
                         && mouseY >= this.topPos + y && mouseY < this.topPos + y + 10) {
                     CptNetwork.CHANNEL.sendToServer(new WorkbenchActionPacket(
                             WorkbenchActionPacket.Action.SET_REGION, null, r));
@@ -269,11 +279,10 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                 }
             }
             // color grid
-            int gridX = 134, gridY = 68;
             for (int i = 0; i < dev.ignis.createpneumatictacticals.menu.DyePalette.SIZE; i++) {
                 int col = i % 8, row = i / 8;
-                int x = gridX + col * (COLOR_SWATCH_SIZE + 2);
-                int y = gridY + row * (COLOR_SWATCH_SIZE + 2);
+                int x = GRID_X + col * (COLOR_SWATCH_SIZE + 2);
+                int y = GRID_Y + row * (COLOR_SWATCH_SIZE + 2);
                 if (mouseX >= this.leftPos + x && mouseX < this.leftPos + x + COLOR_SWATCH_SIZE
                         && mouseY >= this.topPos + y && mouseY < this.topPos + y + COLOR_SWATCH_SIZE) {
                     CptNetwork.CHANNEL.sendToServer(new WorkbenchActionPacket(

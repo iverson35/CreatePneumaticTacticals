@@ -1,9 +1,0 @@
-{
-  "name": "createpneumatictacticals:medium_barrel",
-  "module_type": "barrel",
-  "gun_type": "medium",
-  "gun_properties": {
-    "bullet_speed": 0.3,
-    "recoil_multiplier": -0.05
-  }
-}

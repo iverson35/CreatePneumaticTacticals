@@ -27,8 +27,14 @@ import java.util.Map;
 @Mod.EventBusSubscriber
 public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final String FOLDER = "cpt_ammo";
-
+    /**
+     * Reads Create's own potato_cannon_projectile_types datapack folder (the
+     * EnhancedPotatoCannon approach): extension fields are optional extra keys
+     * on those files, keyed by the type id itself. Our own new ammo types are
+     * plain new files in the same folder under our namespace — Create's
+     * datapack registry picks them up too.
+     */
+    public static final String FOLDER = "create/potato_projectile/type";
     public AmmoExtensionLoader() {
         super(new com.google.gson.Gson(), FOLDER);
     }
