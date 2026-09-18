@@ -76,7 +76,7 @@ public final class AimHandler {
         Player player = mc.player;
         if (player == null) return 1.0;
         ItemStack gun = player.getMainHandItem();
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
         return "tactical".equals(GunNbt.getAimStance(gun)) ? stats.tacticalAimZoom : stats.aimZoom;
     }
 

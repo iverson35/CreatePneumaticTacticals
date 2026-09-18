@@ -20,7 +20,7 @@ public final class GunReloadHandler {
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
         if (!stats.isComplete() || stats.feed == null) return;
 
         if (!completed) return; // aborted: nothing to validate
@@ -57,7 +57,7 @@ public final class GunReloadHandler {
         String ammoId = GunNbt.getAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) return 0;
         if (player.isCreative()) return n;
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
         boolean cartridge = stats.supply != null && stats.supply.supplyType
                 == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
         net.minecraft.world.item.Item requiredItem = cartridge

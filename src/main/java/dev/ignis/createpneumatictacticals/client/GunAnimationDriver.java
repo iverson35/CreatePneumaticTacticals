@@ -44,7 +44,7 @@ public final class GunAnimationDriver {
         if (player == null) return;
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof GeoGunItem)) return;
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
         if (stats.feed == null) return;
         boolean round = stats.feed.feedType == FeedType.ROUND;
         // empty magazine appends the bolt cycle (timing mirrors GunAnimTiming)

@@ -100,7 +100,7 @@ public final class GunFireHandler {
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
         if (!stats.isComplete()) return;
 
         ModuleDefinition receiver = stats.receiver;

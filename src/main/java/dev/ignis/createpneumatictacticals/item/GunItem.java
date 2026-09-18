@@ -30,13 +30,12 @@ public class GunItem extends Item {
     }
 
     public GunStats stats(ItemStack stack) {
-        return GunStats.of(GunNbt.readModules(stack));
+        return GunStats.ofGun(stack);
     }
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        Map<ModuleType, ModuleDefinition> modules = GunNbt.readModules(stack);
-        GunStats stats = GunStats.of(modules);
+        GunStats stats = GunStats.ofGun(stack);
         if (!stats.isComplete()) {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.incomplete"));
         }

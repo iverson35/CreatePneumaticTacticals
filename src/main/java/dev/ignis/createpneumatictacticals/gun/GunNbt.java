@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.gun;
 
 import dev.ignis.createpneumatictacticals.module.FireMode;
+import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
@@ -17,10 +18,9 @@ import java.util.Map;
 
 /**
  * NBT schema for a gun ItemStack:
- *   Modules: ListTag of module definition ids (one per installed slot; handguard
- *            attachments may repeat so the list is ordered by slot convention:
- *            receiver, feed, supply, barrel, muzzle, handguard, handguard_attachment(×N),
- *            sight, tactical_sight, stock)
+ *   Modules: CompoundTag slotKey -> module definition id. Single-slot types
+ *            use their type name ("receiver", "feed", ...); handguard
+ *            attachments use HandguardPosition.slotKey() ("hg_top", ...).
  *   Ammo: current potato projectile type id string (empty = none selected)
  *   AmmoCount: int rounds in magazine
  *   FireMode: string
@@ -44,25 +44,50 @@ public final class GunNbt {
 
     // --- modules ---
 
+    /** single-slot modules only; handguard attachments via {@link #readHandguardAttachments} */
     public static Map<ModuleType, ModuleDefinition> readModules(ItemStack stack) {
         Map<ModuleType, ModuleDefinition> out = new EnumMap<>(ModuleType.class);
-        CompoundTag root = root(stack);
-        if (!root.contains(KEY_MODULES, Tag.TAG_LIST)) return out;
-        for (Tag t : root.getList(KEY_MODULES, Tag.TAG_STRING)) {
-            ModuleDefinition def = ModuleManager.get(ResourceLocation.tryParse(t.getAsString()));
-            if (def != null && !out.containsKey(def.type)) {
+        CompoundTag modules = modulesTag(stack);
+        for (String key : modules.getAllKeys()) {
+            if (key.startsWith("hg_")) continue;
+            ModuleDefinition def = ModuleManager.get(ResourceLocation.tryParse(modules.getString(key)));
+            if (def != null && def.type != ModuleType.HANDGUARD_ATTACHMENT) {
                 out.put(def.type, def);
             }
         }
         return out;
     }
 
-    public static void writeModules(ItemStack stack, Map<ModuleType, ModuleDefinition> modules) {
-        ListTag list = new ListTag();
-        for (Map.Entry<ModuleType, ModuleDefinition> e : modules.entrySet()) {
-            list.add(StringTag.valueOf(e.getValue().id.toString()));
+    /** position-bound handguard attachments */
+    public static Map<HandguardPosition, ModuleDefinition> readHandguardAttachments(ItemStack stack) {
+        Map<HandguardPosition, ModuleDefinition> out = new EnumMap<>(HandguardPosition.class);
+        CompoundTag modules = modulesTag(stack);
+        for (HandguardPosition pos : HandguardPosition.values()) {
+            if (!modules.contains(pos.slotKey())) continue;
+            ModuleDefinition def = ModuleManager.get(ResourceLocation.tryParse(modules.getString(pos.slotKey())));
+            if (def != null && def.type == ModuleType.HANDGUARD_ATTACHMENT) {
+                out.put(pos, def);
+            }
         }
-        root(stack).put(KEY_MODULES, list);
+        return out;
+    }
+
+    public static void writeModules(ItemStack stack, Map<ModuleType, ModuleDefinition> modules,
+                                    Map<HandguardPosition, ModuleDefinition> hgAttachments) {
+        CompoundTag tag = new CompoundTag();
+        for (Map.Entry<ModuleType, ModuleDefinition> e : modules.entrySet()) {
+            if (e.getKey() == ModuleType.HANDGUARD_ATTACHMENT) continue;
+            tag.putString(e.getKey().getSerializedName(), e.getValue().id.toString());
+        }
+        for (Map.Entry<HandguardPosition, ModuleDefinition> e : hgAttachments.entrySet()) {
+            tag.putString(e.getKey().slotKey(), e.getValue().id.toString());
+        }
+        root(stack).put(KEY_MODULES, tag);
+    }
+
+    private static CompoundTag modulesTag(ItemStack stack) {
+        CompoundTag root = root(stack);
+        return root.contains(KEY_MODULES, Tag.TAG_COMPOUND) ? root.getCompound(KEY_MODULES) : new CompoundTag();
     }
 
     // --- ammo ---
@@ -149,6 +174,27 @@ public final class GunNbt {
                 && receiver.gunType != barrel.gunType) {
             return "gun_type_mismatch";
         }
+        return checkAffectedRules(installed, candidate);
+    }
+
+    /**
+     * Validates a handguard attachment for a specific position: the handguard
+     * must be installed and expose the position, the attachment must support it.
+     * @return null if legal, otherwise a human-readable reason (lang key suffix).
+     */
+    @Nullable
+    public static String validateHandguardAttachment(Map<ModuleType, ModuleDefinition> installed,
+                                                     HandguardPosition pos, ModuleDefinition candidate) {
+        if (candidate.type != ModuleType.HANDGUARD_ATTACHMENT) return "wrong_type";
+        ModuleDefinition handguard = installed.get(ModuleType.HANDGUARD);
+        if (handguard == null || !handguard.attachmentPoints.contains(pos)) return "no_mount_point";
+        if (!candidate.positions.contains(pos)) return "wrong_position";
+        return checkAffectedRules(installed, candidate);
+    }
+
+    /** module_affected rules of all installed modules vs the candidate */
+    @Nullable
+    private static String checkAffectedRules(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
         for (ModuleDefinition existing : installed.values()) {
             if (existing.id.equals(candidate.id)) continue;
             for (ModuleDefinition.Affected rule : existing.affected) {
@@ -167,6 +213,33 @@ public final class GunNbt {
                         return "required_nonempty";
                     }
                 }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Reverse direction: the candidate's own module_affected rules vs the
+     * already-installed modules. NOT_EMPTY is a completion constraint, not an
+     * insertion constraint — skipped here. Note: only single-slot modules are
+     * visible to the reverse check (readModules view); rules targeting
+     * handguard_attachment see no installed instances.
+     */
+    @Nullable
+    private static String checkCandidateRules(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
+        for (ModuleDefinition.Affected rule : candidate.affected) {
+            ModuleDefinition existing = installed.get(rule.type());
+            switch (rule.mode()) {
+                case EXCLUDE -> {
+                    if (existing != null && rule.value().contains(existing.id)) return "excludes_installed";
+                }
+                case INCLUDE -> {
+                    if (existing != null && !rule.value().contains(existing.id)) return "requires_other";
+                }
+                case KEEP_EMPTY -> {
+                    if (existing != null) return "requires_empty";
+                }
+                case NOT_EMPTY -> { /* completion-time only */ }
             }
         }
         return null;

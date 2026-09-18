@@ -70,7 +70,7 @@ public final class ClientGunInput {
             return;
         }
 
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
 
         // --- fire ---
         if (mc.options.keyAttack.isDown()) {

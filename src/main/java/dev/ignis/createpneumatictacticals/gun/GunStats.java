@@ -28,9 +28,21 @@ public final class GunStats {
     @Nullable public ModuleDefinition supply;
     @Nullable public ModuleDefinition barrel;
 
+    /** aggregates singles + position-bound handguard attachments from the gun stack */
+    public static GunStats ofGun(net.minecraft.world.item.ItemStack stack) {
+        return of(GunNbt.readModules(stack), GunNbt.readHandguardAttachments(stack).values());
+    }
+
     public static GunStats of(Map<ModuleType, ModuleDefinition> installed) {
+        return of(installed, java.util.List.of());
+    }
+
+    public static GunStats of(Map<ModuleType, ModuleDefinition> installed,
+                              java.util.Collection<ModuleDefinition> extras) {
         GunStats s = new GunStats();
-        for (ModuleDefinition def : installed.values()) {
+        java.util.List<ModuleDefinition> all = new java.util.ArrayList<>(installed.values());
+        all.addAll(extras);
+        for (ModuleDefinition def : all) {
             s.reloadSpeed += def.reloadSpeed;
             s.damageMultiplier += def.damageMultiplier;
             s.fireRateMultiplier += def.fireRateMultiplier;

@@ -73,7 +73,7 @@ public final class GunHudOverlay implements IGuiOverlay {
         if (player == null || mc.options.hideGui) return;
         ItemStack gun = heldGun();
         if (gun == null) return;
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
 
         if (Config.gunCrosshairEnabled && mc.screen == null) {
             renderCrosshair(g, player, gun, stats, width, height);

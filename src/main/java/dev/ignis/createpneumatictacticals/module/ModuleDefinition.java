@@ -48,6 +48,10 @@ public final class ModuleDefinition {
     /** appearance */
     @Nullable public final String maskPath;
     @Nullable public final int[] defaultColors;
+    /** handguard: exposed attachment points; empty = no attachment slots */
+    public final List<HandguardPosition> attachmentPoints;
+    /** handguard_attachment: positions this attachment can mount to */
+    public final List<HandguardPosition> positions;
 
     private ModuleDefinition(Builder b) {
         this.id = b.id;
@@ -77,6 +81,8 @@ public final class ModuleDefinition {
         this.tacticalAimZoom = b.tacticalAimZoom;
         this.maskPath = b.maskPath;
         this.defaultColors = b.defaultColors;
+        this.attachmentPoints = List.copyOf(b.attachmentPoints);
+        this.positions = List.copyOf(b.positions);
     }
 
     public static Builder builder(ResourceLocation id, ModuleType type) {
@@ -156,6 +162,15 @@ public final class ModuleDefinition {
         if (type == ModuleType.TACTICAL_SIGHT) {
             b.tacticalAimZoom = GsonHelper.getAsDouble(json, "tactical_aim_zoom", 1.25);
         }
+        // handguard: exposed attachment points
+        if (type == ModuleType.HANDGUARD) {
+            b.attachmentPoints = parsePositions(json, "attachment_points", id);
+        }
+        // handguard attachment: mountable positions
+        if (type == ModuleType.HANDGUARD_ATTACHMENT) {
+            b.positions = parsePositions(json, "positions", id);
+            if (b.positions.isEmpty()) throw new IllegalArgumentException("handguard_attachment requires positions: " + id);
+        }
         // appearance
         if (json.has("appearance")) {
             JsonObject appearance = json.getAsJsonObject("appearance");
@@ -177,6 +192,17 @@ public final class ModuleDefinition {
         return (int) Long.parseLong(h.length() == 6 ? "ff" + h : h, 16);
     }
 
+    private static List<HandguardPosition> parsePositions(JsonObject json, String key, ResourceLocation id) {
+        List<HandguardPosition> out = new ArrayList<>();
+        if (!json.has(key)) return out;
+        for (JsonElement el : json.getAsJsonArray(key)) {
+            HandguardPosition p = HandguardPosition.byName(el.getAsString());
+            if (p == null) throw new IllegalArgumentException("bad " + key + " entry in " + id + ": " + el.getAsString());
+            if (!out.contains(p)) out.add(p);
+        }
+        return out;
+    }
+
     public static final class Builder {
         private final ResourceLocation id;
         private final ModuleType type;
@@ -196,6 +222,8 @@ public final class ModuleDefinition {
         private double aimZoom = 1.25, tacticalAimZoom = 1.25;
         @Nullable private String maskPath;
         @Nullable private int[] defaultColors;
+        private List<HandguardPosition> attachmentPoints = Collections.emptyList();
+        private List<HandguardPosition> positions = Collections.emptyList();
 
         private Builder(ResourceLocation id, ModuleType type) {
             this.id = id;

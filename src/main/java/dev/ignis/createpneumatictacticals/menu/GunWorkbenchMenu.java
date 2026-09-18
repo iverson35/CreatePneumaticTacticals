@@ -3,6 +3,7 @@ package dev.ignis.createpneumatictacticals.menu;
 import dev.ignis.createpneumatictacticals.item.GunItem;
 import dev.ignis.createpneumatictacticals.item.ModItems;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
+import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
@@ -50,6 +51,18 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             ModuleType.SIGHT, ModuleType.TACTICAL_SIGHT, ModuleType.STOCK
     };
 
+    /** module slot indices 6..9 are handguard attachments bound to fixed positions */
+    private static final HandguardPosition[] HG_SLOT_POSITIONS = {
+            HandguardPosition.TOP, HandguardPosition.BOTTOM,
+            HandguardPosition.LEFT, HandguardPosition.RIGHT
+    };
+
+    @Nullable
+    private static HandguardPosition hgPositionOf(int moduleSlotIndex) {
+        return moduleSlotIndex >= 6 && moduleSlotIndex <= 9
+                ? HG_SLOT_POSITIONS[moduleSlotIndex - 6] : null;
+    }
+
     /** screen-space x/y per module slot (matches GunWorkbenchScreen layout) */
     private static final int[][] MODULE_SLOT_POS = {
             {56, 16}, {78, 16}, {100, 16}, {122, 16},
@@ -79,7 +92,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         this.addSlot(new GunSlot(this.container, SLOT_GUN, 18, 30));
         for (int i = 0; i < MODULE_COUNT; i++) {
             this.addSlot(new ModuleSlot(this.container, SLOT_GUN + 1 + i,
-                    MODULE_SLOT_POS[i][0], MODULE_SLOT_POS[i][1], SLOT_TYPES[i]));
+                    MODULE_SLOT_POS[i][0], MODULE_SLOT_POS[i][1], SLOT_TYPES[i], i));
         }
         // player inventory
         for (int row = 0; row < 3; row++) {
@@ -112,20 +125,24 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         return null;
     }
 
-    /** Dependency of a slot type is currently satisfied (slot-based, mirrors NBT after sync). */
-    private boolean depsSatisfied(ModuleType type) {
+    /** Dependency of a module slot is currently satisfied (slot-based, mirrors NBT after sync). */
+    private boolean depsSatisfied(int moduleSlotIndex) {
+        ModuleType type = SLOT_TYPES[moduleSlotIndex];
         return switch (type) {
             case RECEIVER -> true;
             case FEED, SUPPLY, BARREL, HANDGUARD, SIGHT, TACTICAL_SIGHT, STOCK ->
                     !this.container.getItem(SLOT_GUN + 1).isEmpty();
             case MUZZLE -> !this.container.getItem(SLOT_GUN + 4).isEmpty();
-            case HANDGUARD_ATTACHMENT -> !this.container.getItem(SLOT_GUN + 6).isEmpty();
+            case HANDGUARD_ATTACHMENT -> {
+                ModuleDefinition handguard = definitionOf(this.container.getItem(SLOT_GUN + 6));
+                yield handguard != null && handguard.attachmentPoints.contains(hgPositionOf(moduleSlotIndex));
+            }
         };
     }
 
     /** Full legality check for placing a candidate module into a module slot. */
-    private boolean isValidModule(ModuleType type, ItemStack stack) {
-        return rejectReason(type, stack) == null;
+    private boolean isValidModule(int moduleSlotIndex, ItemStack stack) {
+        return rejectReason(moduleSlotIndex, stack) == null;
     }
 
     /**
@@ -133,11 +150,17 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
      * (gui.createpneumatictacticals.reject.<reason>); null if it can.
      */
     @Nullable
-    public String rejectReason(ModuleType type, ItemStack stack) {
-        if (!this.depsSatisfied(type)) return "missing_dependency";
+    public String rejectReason(int moduleSlotIndex, ItemStack stack) {
+        ModuleType type = SLOT_TYPES[moduleSlotIndex];
+        if (!this.depsSatisfied(moduleSlotIndex)) return "missing_dependency";
         ModuleDefinition def = definitionOf(stack);
         if (def == null || def.type != type) return "wrong_type";
-        return GunNbt.validate(GunNbt.readModules(this.container.getItem(SLOT_GUN)), def);
+        Map<ModuleType, ModuleDefinition> installed = GunNbt.readModules(this.container.getItem(SLOT_GUN));
+        HandguardPosition pos = hgPositionOf(moduleSlotIndex);
+        if (pos != null) {
+            return GunNbt.validateHandguardAttachment(installed, pos, def);
+        }
+        return GunNbt.validate(installed, def);
     }
 
     // --- click handling: keep gun NBT in sync with module slots ---
@@ -170,7 +193,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                     ItemStack newGun = ModItems.GUN.get().getDefaultInstance();
                     Map<ModuleType, ModuleDefinition> initial = new EnumMap<>(ModuleType.class);
                     initial.put(ModuleType.RECEIVER, receiverDef);
-                    GunNbt.writeModules(newGun, initial);
+                    GunNbt.writeModules(newGun, initial, new EnumMap<>(HandguardPosition.class));
                     // "first time" naming: only this auto-creation sets the
                     // name; later module swaps or anvil renames never touch it
                     if (receiverDef.gunName != null) {
@@ -196,6 +219,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         // slot must NOT re-materialize it from the still-stale NBT)
         if (!this.modulesLoaded) {
             Map<ModuleType, ModuleDefinition> nbt = GunNbt.readModules(gun);
+            Map<HandguardPosition, ModuleDefinition> nbtHg = GunNbt.readHandguardAttachments(gun);
             for (int i = 0; i < MODULE_COUNT; i++) {
                 int idx = SLOT_GUN + 1 + i;
                 ModuleType type = SLOT_TYPES[i];
@@ -203,7 +227,8 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                 ModuleDefinition slotDef = slotStack.isEmpty() ? null : definitionOf(slotStack);
                 if (slotDef == null || slotDef.type != type) {
                     if (!slotStack.isEmpty()) this.eject(idx, player);
-                    ModuleDefinition nbtDef = nbt.get(type);
+                    HandguardPosition pos = hgPositionOf(i);
+                    ModuleDefinition nbtDef = pos != null ? nbtHg.get(pos) : nbt.get(type);
                     if (nbtDef != null) {
                         this.container.setItem(idx, ModuleItem.of(nbtDef.id));
                     }
@@ -215,22 +240,27 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         // eject modules whose dependency was removed (e.g. receiver taken out)
         for (int i = 0; i < MODULE_COUNT; i++) {
             int idx = SLOT_GUN + 1 + i;
-            if (!this.container.getItem(idx).isEmpty() && !this.depsSatisfied(SLOT_TYPES[i])) {
+            if (!this.container.getItem(idx).isEmpty() && !this.depsSatisfied(i)) {
                 this.eject(idx, player);
             }
         }
 
-        // rebuild NBT from slots (handguard attachments dedupe to the last filled slot)
+        // rebuild NBT from slots; handguard attachments are position-bound
         Map<ModuleType, ModuleDefinition> installed = new EnumMap<>(ModuleType.class);
+        Map<HandguardPosition, ModuleDefinition> hgAttachments = new EnumMap<>(HandguardPosition.class);
         for (int i = 0; i < MODULE_COUNT; i++) {
             ItemStack slotStack = this.container.getItem(SLOT_GUN + 1 + i);
             if (slotStack.isEmpty()) continue;
             ModuleDefinition def = definitionOf(slotStack);
-            if (def != null && def.type == SLOT_TYPES[i]) {
+            if (def == null || def.type != SLOT_TYPES[i]) continue;
+            HandguardPosition pos = hgPositionOf(i);
+            if (pos != null) {
+                hgAttachments.put(pos, def);
+            } else {
                 installed.put(SLOT_TYPES[i], def);
             }
         }
-        GunNbt.writeModules(gun, installed);
+        GunNbt.writeModules(gun, installed, hgAttachments);
         this.container.setChanged();
     }
 
@@ -306,7 +336,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                     for (int i = 0; i < MODULE_COUNT; i++) {
                         if (SLOT_TYPES[i] != def.type) continue;
                         int target = SLOT_GUN + 1 + i;
-                        if (!this.isValidModule(SLOT_TYPES[i], stack)) continue;
+                        if (!this.isValidModule(i, stack)) continue;
                         int before = stack.getCount();
                         this.moveItemStackTo(stack, target, target + 1, false);
                         if (stack.getCount() < before) {
@@ -357,20 +387,23 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     /** A module slot; inactive (hidden) while its dependency is not installed. */
     public class ModuleSlot extends Slot {
         public final ModuleType type;
+        /** 0-based index into SLOT_TYPES (6..9 = position-bound handguard attachments) */
+        public final int moduleIndex;
 
-        ModuleSlot(SimpleContainer container, int index, int x, int y, ModuleType type) {
+        ModuleSlot(SimpleContainer container, int index, int x, int y, ModuleType type, int moduleIndex) {
             super(container, index, x, y);
             this.type = type;
+            this.moduleIndex = moduleIndex;
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return GunWorkbenchMenu.this.isValidModule(this.type, stack);
+            return GunWorkbenchMenu.this.isValidModule(this.moduleIndex, stack);
         }
 
         @Override
         public boolean isActive() {
-            return GunWorkbenchMenu.this.depsSatisfied(this.type);
+            return GunWorkbenchMenu.this.depsSatisfied(this.moduleIndex);
         }
 
         @Override

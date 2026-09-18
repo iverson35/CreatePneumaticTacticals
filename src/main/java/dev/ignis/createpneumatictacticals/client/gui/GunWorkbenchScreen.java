@@ -48,7 +48,7 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
         // reject reason when carrying a module over a module slot
         ItemStack carried = this.menu.getCarried();
         if (!carried.isEmpty() && this.hoveredSlot instanceof GunWorkbenchMenu.ModuleSlot moduleSlot) {
-            String reason = this.menu.rejectReason(moduleSlot.type, carried);
+            String reason = this.menu.rejectReason(moduleSlot.moduleIndex, carried);
             if (reason != null) {
                 graphics.drawString(this.font, Component.translatable(
                                 "gui." + CreatePneumaticTacticals.MODID + ".reject." + reason),
@@ -124,7 +124,7 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
     private void renderStatsPanel(GuiGraphics graphics, int mouseX, int mouseY) {
         ItemStack gun = this.menu.getGunStack();
         if (!(gun.getItem() instanceof GunItem)) return;
-        GunStats stats = GunStats.of(GunNbt.readModules(gun));
+        GunStats stats = GunStats.ofGun(gun);
 
         int x = this.leftPos + 190;
         int y = this.topPos + 24;
