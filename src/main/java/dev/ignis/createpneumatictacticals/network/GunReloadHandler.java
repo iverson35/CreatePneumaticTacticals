@@ -25,21 +25,26 @@ public final class GunReloadHandler {
 
         if (!completed) return; // aborted: nothing to validate
 
-        if (stats.feed.feedType == FeedType.ROUND) {
-            // clamp to clip size and inventory availability
+        if (stats.feed.feedType == FeedType.ROUND || stats.feed.feedType == FeedType.MAGAZINE) {
             int current = GunNbt.getAmmoCount(gun);
             int max = stats.feed.clipSize;
-            int wanted = Math.min(Math.max(0, ammoLoaded), max - current);
+            int wanted = stats.feed.feedType == FeedType.ROUND
+                    ? Math.min(Math.max(0, ammoLoaded), max - current)
+                    : max - current;
             int loaded = consumePods(player, gun, wanted);
-            GunNbt.setAmmoCount(gun, current + loaded);
-        } else if (stats.feed.feedType == FeedType.MAGAZINE) {
-            int max = stats.feed.clipSize;
-            int current = GunNbt.getAmmoCount(gun);
-            int wanted = max - current;
-            int loaded = consumePods(player, gun, wanted);
+            if (loaded == 0 && wanted > 0 && !player.isCreative()) {
+                boolean cartridge = stats.supply != null && stats.supply.supplyType
+                        == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
+                feedback(player, cartridge ? "no_pressurized_pod" : "no_pod");
+            }
             GunNbt.setAmmoCount(gun, current + loaded);
         }
         // BACKPACK feed: no magazine state; nothing to do.
+    }
+
+    private static void feedback(ServerPlayer player, String key) {
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "gui.createpneumatictacticals.fail." + key), true);
     }
 
     /**

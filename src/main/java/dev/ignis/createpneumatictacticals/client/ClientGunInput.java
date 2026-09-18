@@ -82,7 +82,7 @@ public final class ClientGunInput {
         // --- reload state machine ---
         tickReload(player, gun, stats);
         if (ModKeybinds.RELOAD.consumeClick()) {
-            startReload(gun, stats);
+            startReload(player, gun, stats);
         }
 
         // --- state cycling ---
@@ -146,7 +146,7 @@ public final class ClientGunInput {
      */
     private static void feedback(Player player, String key, net.minecraft.client.KeyMapping... hints) {
         net.minecraft.network.chat.MutableComponent c = net.minecraft.network.chat.Component.translatable(
-                "gui." + CreatePneumaticTacticals.MODID + ".fire_fail." + key);
+                "gui." + CreatePneumaticTacticals.MODID + ".fail." + key);
         if (hints.length > 0) {
             c.append(" (");
             for (int i = 0; i < hints.length; i++) {
@@ -158,10 +158,21 @@ public final class ClientGunInput {
         player.displayClientMessage(c, true);
     }
 
-    private static void startReload(ItemStack gun, GunStats stats) {
+    private static void startReload(Player player, ItemStack gun, GunStats stats) {
         if (reloading || !stats.isComplete() || stats.feed == null
                 || stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK) return;
         if (GunNbt.getAmmoCount(gun) >= stats.feed.clipSize) return; // already full
+        String ammoId = GunNbt.getAmmo(gun);
+        if (ammoId == null || ammoId.isEmpty()) {
+            feedback(player, "no_ammo_selected", ModKeybinds.CYCLE_AMMO);
+            return;
+        }
+        boolean cartridge = stats.supply != null && stats.supply.supplyType
+                == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
+        if (!player.isCreative() && countMatchingPods(player, cartridge, ammoId) <= 0) {
+            feedback(player, cartridge ? "no_pressurized_pod" : "no_pod");
+            return;
+        }
         reloadRoundMode = stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.ROUND;
         // duration = receiver animation length (+ bolt when empty) / reload speed
         boolean empty = GunNbt.getAmmoCount(gun) <= 0;
@@ -172,6 +183,29 @@ public final class ClientGunInput {
         reloadingGun = gun;
         reloading = true;
         GunAnimationDriver.onReloadStart();
+    }
+
+    /** Inventory pods loadable into this gun (plain, or pressurized for cartridge supply). */
+    private static int countMatchingPods(Player player, boolean cartridge, String ammoId) {
+        net.minecraft.world.item.Item required = cartridge
+                ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
+                : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
+        int n = 0;
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.getItem() != required) continue;
+            var content = dev.ignis.createpneumatictacticals.item.PodItem.contentId(stack);
+            if (content == null) continue;
+            net.minecraft.world.item.Item item =
+                    net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(content);
+            if (item == null || item == net.minecraft.world.item.Items.AIR) continue;
+            var typeRef = com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType
+                    .getTypeForItem(player.level().registryAccess(), item);
+            if (typeRef.isPresent()
+                    && typeRef.get().unwrapKey().orElseThrow().location().toString().equals(ammoId)) {
+                n += stack.getCount();
+            }
+        }
+        return n;
     }
 
     /**

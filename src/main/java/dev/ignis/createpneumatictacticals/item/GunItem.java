@@ -43,14 +43,47 @@ public class GunItem extends Item {
         String ammoId = GunNbt.getAmmo(stack);
         if (ammoId != null && !ammoId.isEmpty()) {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.loaded_ammo",
-                    Component.translatable(ammoId), GunNbt.getAmmoCount(stack)));
+                    ammoDisplayName(stack, level, ammoId), GunNbt.getAmmoCount(stack)));
         }
         super.appendHoverText(stack, level, tooltip, flag);
+    }
+
+    /**
+     * Display name of the selected ammo TYPE: the display name of its first
+     * registered content item (e.g. "Carrot"), not the raw registry key.
+     */
+    private static Component ammoDisplayName(ItemStack gun, @Nullable Level level, String ammoId) {
+        if (level != null) {
+            var type = level.registryAccess()
+                    .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
+                    .get(ResourceLocation.tryParse(ammoId));
+            if (type != null) {
+                var itemName = type.items().stream().findFirst()
+                        .map(h -> h.value().getDescription());
+                if (itemName.isPresent()) return itemName.get();
+            }
+        }
+        return Component.literal(ammoId);
     }
 
     @Override
     public boolean isFoil(ItemStack stack) {
         return false;
+    }
+
+    /**
+     * NBT sync (ammo count, air pressure, ...) must NOT replay the equip
+     * animation — that is the visible "gun dips on every shot/aim" artifact.
+     * Re-equip only when the item actually changes or the slot changed.
+     */
+    @Override
+    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
+        return slotChanged || oldStack.getItem() != newStack.getItem();
+    }
+
+    @Override
+    public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack) {
+        return oldStack.getItem() != newStack.getItem();
     }
 
     // --- left click is FIRE, not attack: suppress all vanilla attack paths ---

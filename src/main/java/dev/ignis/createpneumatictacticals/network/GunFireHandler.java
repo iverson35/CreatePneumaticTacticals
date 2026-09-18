@@ -166,7 +166,7 @@ public final class GunFireHandler {
 
     private static void feedback(ServerPlayer player, String key) {
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "gui." + CreatePneumaticTacticals.MODID + ".fire_fail." + key), true);
+                "gui." + CreatePneumaticTacticals.MODID + ".fail." + key), true);
     }
 
     private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, ItemStack contentStack) {

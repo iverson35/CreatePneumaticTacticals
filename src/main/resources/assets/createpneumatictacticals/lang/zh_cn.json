@@ -62,11 +62,12 @@
   "module_type.createpneumatictacticals.sight": "瞄具",
   "module_type.createpneumatictacticals.tactical_sight": "侧瞄",
   "module_type.createpneumatictacticals.stock": "后托",
-  "gui.createpneumatictacticals.fire_fail.incomplete": "枪械未完成组装（需要机匣/供弹/供气/枪管）",
-  "gui.createpneumatictacticals.fire_fail.no_ammo_selected": "未选择弹种",
-  "gui.createpneumatictacticals.fire_fail.magazine_empty": "弹匣已空",
-  "gui.createpneumatictacticals.fire_fail.no_air": "气压不足",
-  "gui.createpneumatictacticals.fire_fail.no_pod": "背包中没有匹配的封装弹",
-  "gui.createpneumatictacticals.fire_fail.ammo_type_mismatch": "该弹种与机匣类型不兼容",
+  "gui.createpneumatictacticals.fail.incomplete": "枪械未完成组装（需要机匣/供弹/供气/枪管）",
+  "gui.createpneumatictacticals.fail.no_ammo_selected": "未选择弹种",
+  "gui.createpneumatictacticals.fail.magazine_empty": "弹匣已空",
+  "gui.createpneumatictacticals.fail.no_air": "气压不足",
+  "gui.createpneumatictacticals.fail.no_pod": "背包中没有匹配的封装弹",
+  "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（封装弹+加压气动瓶合成）",
+  "gui.createpneumatictacticals.fail.ammo_type_mismatch": "该弹种与机匣类型不兼容",
   "gun_type.createpneumatictacticals.heavy": "重型"
 }
