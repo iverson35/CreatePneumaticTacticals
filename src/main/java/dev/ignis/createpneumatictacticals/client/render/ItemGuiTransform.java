@@ -39,7 +39,7 @@ public final class ItemGuiTransform {
         }
         if (b == null) return; // empty model: nothing to fit
 
-        Quaternionf rot = Axis.YP.rotationDegrees(165).mul(Axis.XP.rotationDegrees(30));
+        Quaternionf rot = Axis.YP.rotationDegrees(75).mul(Axis.XP.rotationDegrees(20));
         // projected half-extent of the rotated bounding box on screen axes
         float spanX = 0, spanY = 0;
         for (int i = 0; i < 8; i++) {
