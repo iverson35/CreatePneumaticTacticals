@@ -69,5 +69,14 @@
   "fire_mode.createpneumatictacticals.auto": "Auto",
   "fire_mode.createpneumatictacticals.burst": "Burst",
   "gui.createpneumatictacticals.hud.no_ammo": "No ammo",
-  "gui.createpneumatictacticals.hud.air": "Air %d%%"
+  "gui.createpneumatictacticals.hud.air": "Air %d%%",
+  "gui.createpneumatictacticals.reject.no_mount_point": "Handguard lacks this mount point",
+  "gui.createpneumatictacticals.reject.wrong_position": "Attachment doesn't support this position",
+  "gui.createpneumatictacticals.reject.excludes_installed": "This module rejects an installed module",
+  "gui.createpneumatictacticals.reject.requires_other": "This module requires a different installed module",
+  "gui.createpneumatictacticals.reject.requires_empty": "This module requires a slot to stay empty",
+  "hg_pos.createpneumatictacticals.top": " (top)",
+  "hg_pos.createpneumatictacticals.bottom": " (bottom)",
+  "hg_pos.createpneumatictacticals.left": " (left)",
+  "hg_pos.createpneumatictacticals.right": " (right)"
 }

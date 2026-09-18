@@ -68,5 +68,14 @@
   "fire_mode.createpneumatictacticals.auto": "全自动",
   "fire_mode.createpneumatictacticals.burst": "三连发",
   "gui.createpneumatictacticals.hud.no_ammo": "未装弹",
-  "gui.createpneumatictacticals.hud.air": "气压 %d%%"
+  "gui.createpneumatictacticals.hud.air": "气压 %d%%",
+  "gui.createpneumatictacticals.reject.no_mount_point": "护木没有对应的安装位",
+  "gui.createpneumatictacticals.reject.wrong_position": "该配件不支持此安装位置",
+  "gui.createpneumatictacticals.reject.excludes_installed": "该模块排斥已装模块",
+  "gui.createpneumatictacticals.reject.requires_other": "该模块要求换装其他模块",
+  "gui.createpneumatictacticals.reject.requires_empty": "该模块要求对应槽位留空",
+  "hg_pos.createpneumatictacticals.top": "(上)",
+  "hg_pos.createpneumatictacticals.bottom": "(下)",
+  "hg_pos.createpneumatictacticals.left": "(左)",
+  "hg_pos.createpneumatictacticals.right": "(右)"
 }

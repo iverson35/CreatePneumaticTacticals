@@ -1,0 +1,11 @@
+{
+  "name": "createpneumatictacticals:mak_1_grip",
+  "module_type": "handguard_attachment",
+  "positions": [
+    "bottom"
+  ],
+  "gun_properties": {
+    "recoil_multiplier": -0.15,
+    "hipfire_accuracy_multiplier": 0.1
+  }
+}

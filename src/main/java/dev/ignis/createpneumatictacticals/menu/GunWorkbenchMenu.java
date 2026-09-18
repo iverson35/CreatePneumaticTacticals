@@ -390,6 +390,12 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         /** 0-based index into SLOT_TYPES (6..9 = position-bound handguard attachments) */
         public final int moduleIndex;
 
+        /** position for handguard-attachment slots, null otherwise */
+        @Nullable
+        public HandguardPosition hgPosition() {
+            return hgPositionOf(this.moduleIndex);
+        }
+
         ModuleSlot(SimpleContainer container, int index, int x, int y, ModuleType type, int moduleIndex) {
             super(container, index, x, y);
             this.type = type;

@@ -3,5 +3,10 @@
   "module_type": "handguard",
   "gun_properties": {
     "ergonomics": 0.05
-  }
+  },
+  "attachment_points": [
+    "top",
+    "bottom",
+    "left"
+  ]
 }

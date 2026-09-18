@@ -93,6 +93,10 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
             if (!(slot instanceof GunWorkbenchMenu.ModuleSlot moduleSlot)) continue;
             Component label = Component.translatable(
                     "module_type." + CreatePneumaticTacticals.MODID + "." + moduleSlot.type.getSerializedName());
+            if (moduleSlot.hgPosition() != null) {
+                label = label.copy().append(Component.translatable(
+                        "hg_pos." + CreatePneumaticTacticals.MODID + "." + moduleSlot.hgPosition().getSerializedName()));
+            }
             float scale = 2.0f; // inverse of pose scale: coords in scaled space
             int w = this.font.width(label);
             int x = (int) ((this.leftPos + slot.x + 9) * scale - w / 2.0f);

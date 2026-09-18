@@ -19,6 +19,12 @@ public final class GunGeoModel extends GeoModel<dev.ignis.createpneumatictactica
         this.currentAssets = stack == null ? null : GunAssets.forStack(stack);
     }
 
+    /** the stack currently being rendered (set per pass by the renderer) */
+    @org.jetbrains.annotations.Nullable
+    public ItemStack currentStack() {
+        return currentStack;
+    }
+
     @Override
     public ResourceLocation getModelResource(dev.ignis.createpneumatictacticals.item.GeoGunItem animatable) {
         return currentAssets != null ? currentAssets.model()

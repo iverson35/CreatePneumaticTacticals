@@ -6,7 +6,10 @@ import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
 import dev.ignis.createpneumatictacticals.module.FeedType;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
+import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.animatable.GeoItem;
@@ -15,13 +18,16 @@ import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.RawAnimation;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
- * Drives the "anim" controller of the held gun AND its installed modules.
- * Reload is a cross-model animation: the receiver animates its own bones
- * (charge handle) while the feed module animates its own bones (magazine
- * eject / per-round loading) — both trigger the same animation name from
- * their respective animation jsons. fire/bolt are receiver-only (charge
- * handle lives on the receiver).
+ * Drives the "anim" controller of the held gun AND every installed module.
+ * Animations broadcast (plan_v3): fire/reload/bolt are triggered on the
+ * receiver and on each module's own animation json under the same animation
+ * name — modules that don't define it stay silent (filterExisting). E.g.
+ * reload cycles the receiver's charge handle while the feed module ejects
+ * its magazine; fire can move a bolt on any part that ships one.
  */
 public final class GunAnimationDriver {
 
@@ -29,15 +35,15 @@ public final class GunAnimationDriver {
 
     private GunAnimationDriver() {}
 
-    /** fire animation (charge handle cycle), receiver-only */
+    /** fire animation (charge handle / bolt cycle / mag feed) on all parts */
     public static void onFire(ItemStack gun) {
-        triggerReceiver(gun, GunAnimations.FIRE);
+        broadcast(gun, GunAnimations.FIRE);
     }
 
     /**
      * Reload start: picks reload vs reload_round by the installed feed
-     * module's load_type, then triggers the receiver (charge handle) and the
-     * feed module (magazine / per-round) animations simultaneously.
+     * module's load_type; an empty magazine appends the bolt cycle (timing
+     * mirrors GunAnimTiming). Broadcast to the receiver and all modules.
      */
     public static void onReloadStart() {
         Player player = Minecraft.getInstance().player;
@@ -47,7 +53,6 @@ public final class GunAnimationDriver {
         GunStats stats = GunStats.ofGun(gun);
         if (stats.feed == null) return;
         boolean round = stats.feed.feedType == FeedType.ROUND;
-        // empty magazine appends the bolt cycle (timing mirrors GunAnimTiming)
         boolean empty = GunNbt.getAmmoCount(gun) <= 0;
         RawAnimation anim = round ? GunAnimations.RELOAD_ROUND : GunAnimations.RELOAD_MAGAZINE;
         if (empty) {
@@ -55,15 +60,30 @@ public final class GunAnimationDriver {
                     .thenPlay(round ? "reload_round" : "reload")
                     .thenPlay("bolt");
         }
-        triggerReceiver(gun, anim);
-        triggerModule(stats.feed.id, anim);
+        broadcast(gun, anim);
     }
 
-    /** empty-reload bolt cycle, receiver-only */
+    /** empty-reload bolt cycle on all parts */
     public static void onBolt() {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
-        triggerReceiver(player.getMainHandItem(), GunAnimations.BOLT);
+        broadcast(player.getMainHandItem(), GunAnimations.BOLT);
+    }
+
+    /** receiver + every installed module (each plays the animation only if it defines it) */
+    private static void broadcast(ItemStack gun, RawAnimation anim) {
+        triggerReceiver(gun, anim);
+        Set<ResourceLocation> seen = new HashSet<>();
+        for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
+            if (def.type != ModuleType.RECEIVER && seen.add(def.id)) {
+                triggerModule(def.id, anim);
+            }
+        }
+        for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
+            if (seen.add(def.id)) {
+                triggerModule(def.id, anim);
+            }
+        }
     }
 
     private static void triggerReceiver(ItemStack gun, RawAnimation anim) {
@@ -74,10 +94,8 @@ public final class GunAnimationDriver {
         triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(GeoItem.getId(gun)), filtered);
     }
 
-    private static void triggerModule(net.minecraft.resources.ResourceLocation moduleId, RawAnimation anim) {
-        RawAnimation filtered = GunAnimations.filterExisting(anim,
-                new net.minecraft.resources.ResourceLocation(moduleId.getNamespace(),
-                        "animations/gun/" + moduleId.getPath() + ".animation.json"));
+    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim) {
+        RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
         triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(0), filtered);

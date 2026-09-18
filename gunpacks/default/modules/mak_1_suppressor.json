@@ -1,0 +1,7 @@
+{
+  "name": "createpneumatictacticals:mak_1_suppressor",
+  "module_type": "muzzle",
+  "gun_properties": {
+    "recoil_multiplier": -0.2
+  }
+}

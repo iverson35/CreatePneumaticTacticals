@@ -17,6 +17,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
     public GunHandsAwareRenderer(GunGeoModel model) {
         super(model);
         addRenderLayer(new GunHandsLayer(this));
+        addRenderLayer(new GunModulesLayer(this));
     }
 
     @Override
