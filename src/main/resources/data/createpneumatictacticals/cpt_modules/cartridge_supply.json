@@ -1,0 +1,8 @@
+{
+  "name": "createpneumatictacticals:cartridge_supply",
+  "module_type": "supply",
+  "gun_properties": {},
+  "supply_type": "cartridge",
+  "air_capacity": 0,
+  "air_per_shot": 0
+}

@@ -148,6 +148,20 @@ repositories {
             includeGroup 'maven.modrinth'
         }
     }
+    maven {
+        // Curse maven - hosts GeckoLib (official mappings; the Modrinth artifact
+        // ships intermediary names which break fg.deobf)
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+    // Registrate maven (Create's compile-time registry library)
+    maven {
+        name = 'ithundxr mirror'
+        url = 'https://maven.ithundxr.dev/mirror'
+    }
 }
 
 dependencies {
@@ -166,12 +180,17 @@ dependencies {
     // Create: required dependency, present at compile time and in the dev runtime
     implementation fg.deobf("maven.modrinth:create:${create_version}")
 
-    // Armourer's Workshop: optional dependency (mandatory=false in mods.toml);
-    // included in the dev runtime so the integration can be exercised in-game
-    implementation fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
+    // Armourer's Workshop: optional dependency (mandatory=false in mods.toml).
+    // compileOnly: its compat mixins break in the dev runtime (unmapped refmap);
+    // the integration hook (ModuleRenderOverride) does not reference AW classes yet.
+    compileOnly fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
 
-    // GeckoLib: required animation library
-    implementation fg.deobf("maven.modrinth:geckolib:${geckolib_version}")
+    // GeckoLib: required animation library (cursemaven artifact: official mappings;
+    // the Modrinth artifact ships intermediary names which break fg.deobf)
+    implementation fg.deobf("curse.maven:geckolib-388172:7553267")
+
+    // Registrate: compile-time only; at runtime it is provided by Create's jarjar
+    compileOnly fg.deobf("com.tterrag.registrate:Registrate:MC1.20-1.3.3")
     // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository

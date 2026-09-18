@@ -1,0 +1,8 @@
+{
+  "name": "createpneumatictacticals:light_barrel",
+  "module_type": "barrel",
+  "gun_properties": {
+    "bullet_speed": 0.2,
+    "recoil_multiplier": -0.1
+  }
+}

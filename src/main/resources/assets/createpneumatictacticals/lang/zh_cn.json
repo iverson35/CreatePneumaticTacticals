@@ -1,0 +1,23 @@
+{
+  "itemGroup.createpneumatictacticals": "机械动力：气动战术",
+  "item.createpneumatictacticals.gun": "气动枪",
+  "item.createpneumatictacticals.pod": "封装弹",
+  "item.createpneumatictacticals.pod.named": "封装弹 [%s]",
+  "item.createpneumatictacticals.pressurized_pod": "加压封装弹",
+  "item.createpneumatictacticals.air_vial": "气动瓶",
+  "item.createpneumatictacticals.pressurized_air_vial": "加压气动瓶",
+  "item.createpneumatictacticals.module": "模块",
+  "block.createpneumatictacticals.gun_workbench": "气动枪械装配台",
+  "block.createpneumatictacticals.module_workbench": "配件加工台",
+  "key.categories.createpneumatictacticals": "机械动力：气动战术",
+  "key.createpneumatictacticals.reload": "换弹",
+  "key.createpneumatictacticals.fire_mode": "切换开火模式",
+  "key.createpneumatictacticals.aim_stance": "切换瞄准姿态",
+  "key.createpneumatictacticals.cycle_ammo": "轮换弹种",
+  "tooltip.createpneumatictacticals.incomplete": "未完成组装 - 无法射击",
+  "tooltip.createpneumatictacticals.pod_content": "内容物：%s",
+  "tooltip.createpneumatictacticals.loaded_ammo": "已装填：%s x%d",
+  "module.createpneumatictacticals.light_receiver": "轻型机匣",
+  "module.createpneumatictacticals.heavy_receiver": "重型机匣",
+  "module.createpneumatictacticals.light_stock": "轻型后托"
+}

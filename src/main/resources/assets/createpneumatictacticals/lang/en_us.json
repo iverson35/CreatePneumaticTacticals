@@ -1,0 +1,23 @@
+{
+  "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals",
+  "item.createpneumatictacticals.gun": "Air Gun",
+  "item.createpneumatictacticals.pod": "Pod",
+  "item.createpneumatictacticals.pod.named": "Pod [%s]",
+  "item.createpneumatictacticals.pressurized_pod": "Pressurized Pod",
+  "item.createpneumatictacticals.air_vial": "Air Vial",
+  "item.createpneumatictacticals.pressurized_air_vial": "Pressurized Air Vial",
+  "item.createpneumatictacticals.module": "Module",
+  "block.createpneumatictacticals.gun_workbench": "Gun Assembly Bench",
+  "block.createpneumatictacticals.module_workbench": "Module Workbench",
+  "key.categories.createpneumatictacticals": "Create: Pneumatic Tacticals",
+  "key.createpneumatictacticals.reload": "Reload",
+  "key.createpneumatictacticals.fire_mode": "Fire Mode",
+  "key.createpneumatictacticals.aim_stance": "Aim Stance",
+  "key.createpneumatictacticals.cycle_ammo": "Cycle Ammo",
+  "tooltip.createpneumatictacticals.incomplete": "Incomplete assembly - cannot fire",
+  "tooltip.createpneumatictacticals.pod_content": "Content: %s",
+  "tooltip.createpneumatictacticals.loaded_ammo": "Loaded: %s x%d",
+  "module.createpneumatictacticals.light_receiver": "Light Receiver",
+  "module.createpneumatictacticals.heavy_receiver": "Heavy Receiver",
+  "module.createpneumatictacticals.light_stock": "Light Stock"
+}

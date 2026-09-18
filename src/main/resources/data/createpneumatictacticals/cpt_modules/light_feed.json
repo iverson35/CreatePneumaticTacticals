@@ -1,0 +1,7 @@
+{
+  "name": "createpneumatictacticals:light_feed",
+  "module_type": "feed",
+  "gun_properties": {},
+  "load_type": "magazine",
+  "clip_size": 20
+}

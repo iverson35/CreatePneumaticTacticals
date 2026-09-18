@@ -1,0 +1,63 @@
+package dev.ignis.createpneumatictacticals.item;
+
+import dev.ignis.createpneumatictacticals.client.render.GunAnimations;
+import dev.ignis.createpneumatictacticals.client.render.GunGeoModel;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
+import software.bernie.geckolib.util.GeckoLibUtil;
+
+import java.util.function.Consumer;
+
+/**
+ * Gun item with GeckoLib rendering. Per-stack resources resolve from the
+ * installed receiver definition (GunAssets/GunGeoModel). The renderer is a
+ * plain GeoItemRenderer (BlockEntityWithoutLevelRenderer) bound via the
+ * standard Forge IClientItemExtensions.getCustomRenderer hook.
+ */
+public class GeoGunItem extends GunItem implements GeoItem {
+
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
+    public GeoGunItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            private dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer renderer;
+
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    renderer = new dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer(new GunGeoModel());
+                }
+                return renderer;
+            }
+        });
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
+        registrar.add(new AnimationController<>(this, "main", 5, state -> {
+            state.setAndContinue(GunAnimations.IDLE);
+            return PlayState.CONTINUE;
+        }));
+        // one-shot anim controller (fire/reload/bolt), driven by GunAnimationDriver
+        registrar.add(new AnimationController<>(this, dev.ignis.createpneumatictacticals.client.GunAnimationDriver.CONTROLLER, 2,
+                state -> PlayState.STOP));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+}
