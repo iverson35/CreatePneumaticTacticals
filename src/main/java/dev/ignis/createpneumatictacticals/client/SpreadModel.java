@@ -9,7 +9,11 @@ import net.minecraft.world.item.ItemStack;
  * Client-side hipfire spread model (plan_v2 腰射精度模型):
  *   final = (S0 * posePenalty + bloom) / hipfireAccuracy
  *   bloom: +15%*S0 per shot, cap 2.5*S0, linear decay over 0.4s after last shot
- *   state transitions interpolated over 250ms
+ *   pose-penalty transitions interpolated over 250ms
+ *
+ * <p>Fully lazy: every read interpolates from wall-clock timestamps at
+ * render time, so the crosshair gap animates per frame. A per-tick
+ * integration made the gap visibly step at 20&nbsp;Hz.
  */
 public final class SpreadModel {
 
@@ -18,40 +22,34 @@ public final class SpreadModel {
 
     private static double bloom = 0;          // accumulated bloom in degrees
     private static long lastShotMs = 0;
-    private static double currentPenalty = 1.0; // interpolated penalty
-    private static double targetPenalty = 1.0;
+    private static double penaltyFrom = 1.0;  // penalty at transition start
+    private static double penaltyTarget = 1.0;
     private static long lastPenaltyChangeMs = 0;
 
     private SpreadModel() {}
 
-    public static void onShot() {
-        lastShotMs = now();
+    /** pose penalty interpolated to now; retargets when the pose changed */
+    private static double currentPenalty(Player player, long now) {
+        double target = posePenalty(player);
+        if (target != penaltyTarget) {
+            penaltyFrom = penaltyAt(now);
+            penaltyTarget = target;
+            lastPenaltyChangeMs = now;
+        }
+        return penaltyAt(now);
     }
 
-    /** call each client tick to update interpolation/decay */
-    public static void tick(Player player, ItemStack gun) {
-        targetPenalty = posePenalty(player);
-        long now = now();
-        if (targetPenalty != currentPenalty) {
-            long elapsed = now - lastPenaltyChangeMs;
-            double t = Math.min(1.0, elapsed / (double) INTERP_MS);
-            currentPenalty = currentPenalty + (targetPenalty - currentPenalty) * t;
-            if (t >= 1.0) lastPenaltyChangeMs = now;
-            else if (currentPenalty == targetPenalty) lastPenaltyChangeMs = now;
-        }
-        // decay bloom
-        long sinceShot = now - lastShotMs;
-        if (sinceShot > 0) {
-            double decayFrac = Math.min(1.0, sinceShot / (double) BLOOM_DECAY_MS);
-            // handled lazily in currentSpread: bloom stored as last value; decay computed on read
-        }
+    private static double penaltyAt(long now) {
+        double t = Math.min(1.0, (now - lastPenaltyChangeMs) / (double) INTERP_MS);
+        return penaltyFrom + (penaltyTarget - penaltyFrom) * t;
     }
 
     public static double currentSpread(Player player, ItemStack gun, AmmoExtension ext, double hipfireAcc) {
+        long now = now();
         double s0 = ext.spread;
-        long sinceShot = now() - lastShotMs;
+        long sinceShot = now - lastShotMs;
         double bloomNow = bloom * Math.max(0, 1 - sinceShot / (double) BLOOM_DECAY_MS);
-        double raw = s0 * currentPenalty + bloomNow;
+        double raw = s0 * currentPenalty(player, now) + bloomNow;
         double spread = Math.max(0, raw / Math.max(0.1, hipfireAcc));
         // aiming tightens to pinpoint as the ADS transition completes
         float p = AimHandler.aimProgress(Minecraft.getInstance().getFrameTime());

@@ -47,8 +47,9 @@ public final class ModuleAnimatable implements GeoAnimatable {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
-        // one-shot anim controller, mirrored from the gun item ("anim")
-        registrar.add(new AnimationController<>(this, "anim", 2, state -> PlayState.STOP));
+        // one-shot anim controller, mirrored from the gun item ("anim").
+        // CONTINUE (not STOP): STOP cancels forced setAnimation, see GeoGunItem.
+        registrar.add(new AnimationController<>(this, "anim", 2, state -> PlayState.CONTINUE));
     }
 
     @Override

@@ -26,6 +26,11 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                 || context == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
         GunHandsLayer.isFirstPersonPass = firstPerson;
         ((GunGeoModel) getGeoModel()).setStack(stack);
+        if (context == ItemDisplayContext.GUI) {
+            // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display"
+            ItemGuiTransform.apply(poseStack,
+                    getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable)));
+        }
         if (firstPerson) {
             // recoil model kick: gun jumps back toward the camera
             double kick = dev.ignis.createpneumatictacticals.client.RecoilModel.modelKick();

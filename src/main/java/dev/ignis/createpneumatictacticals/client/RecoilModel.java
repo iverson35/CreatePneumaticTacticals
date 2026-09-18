@@ -35,8 +35,10 @@ public final class RecoilModel {
         update();
         recoveryScale = Math.max(0, 1 + recoilRecovery);
         double scale = recoilMult * (aiming ? 0.7 : 1.0);
-        pitchOffset += basePitch * scale;
-        yawOffset += (Math.random() * 2 - 1) * baseYaw * scale;
+        // hipfire camera shake halved — full hipfire view kick was nauseating
+        double viewScale = aiming ? scale : scale * 0.5;
+        pitchOffset += basePitch * viewScale;
+        yawOffset += (Math.random() * 2 - 1) * baseYaw * viewScale;
         springVel += 40 * scale;
         shake += 1.5 * scale;
     }

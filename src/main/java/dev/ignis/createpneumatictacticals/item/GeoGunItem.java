@@ -59,9 +59,12 @@ public class GeoGunItem extends GunItem implements GeoItem {
             state.setAndContinue(GunAnimations.IDLE);
             return PlayState.CONTINUE;
         }));
-        // one-shot anim controller (fire/reload/bolt), driven by GunAnimationDriver
+        // one-shot anim controller (fire/reload/bolt), driven by GunAnimationDriver.
+        // GeckoLib 4: a STOP predicate cancels a forced setAnimation on the very
+        // next process() — must return CONTINUE; the empty-queue guard still
+        // stops the controller once the forced animation finishes.
         registrar.add(new AnimationController<>(this, dev.ignis.createpneumatictacticals.client.GunAnimationDriver.CONTROLLER, 2,
-                state -> PlayState.STOP));
+                state -> PlayState.CONTINUE));
     }
 
     @Override

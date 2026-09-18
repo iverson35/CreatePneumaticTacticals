@@ -18,6 +18,11 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack poseStack,
                              MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         ((ModuleGeoModel) getGeoModel()).setStack(stack);
+        if (context == ItemDisplayContext.GUI) {
+            // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display"
+            ItemGuiTransform.apply(poseStack,
+                    getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable)));
+        }
         super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
     }
 }

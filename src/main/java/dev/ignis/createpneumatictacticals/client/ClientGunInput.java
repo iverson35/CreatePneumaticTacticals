@@ -111,8 +111,6 @@ public final class ClientGunInput {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.CYCLE_AIM_STANCE));
         }
 
-        // --- models tick ---
-        SpreadModel.tick(player, gun);
     }
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
         if (!stats.isComplete()) {
