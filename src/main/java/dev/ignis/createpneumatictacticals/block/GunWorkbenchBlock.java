@@ -16,8 +16,10 @@ import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Pneumatic gun assembly bench. Right-click opens the assembly GUI; all
- * assembly state lives on the gun ItemStack, the BlockEntity is a shell.
+ * Pneumatic gun assembly bench. Right-click opens the assembly GUI; the
+ * block entity persistently holds the staged gun and module items. Breaking
+ * the block drops the gun (staged modules are baked into its NBT — dropping
+ * both would duplicate them), or the orphaned staging when no gun is staged.
  */
 public class GunWorkbenchBlock extends Block implements EntityBlock {
 
@@ -29,6 +31,20 @@ public class GunWorkbenchBlock extends Block implements EntityBlock {
     @Nullable
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new GunWorkbenchBlockEntity(pos, state);
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && !level.isClientSide
+                && level.getBlockEntity(pos) instanceof GunWorkbenchBlockEntity bench) {
+            net.minecraft.world.item.ItemStack gun = bench.getGunSlot().getItem(0);
+            if (!gun.isEmpty()) {
+                // staged modules are baked into the gun's NBT — dropping both
+                // would duplicate them
+                net.minecraft.world.Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), gun);
+            }
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
     }
 
     @Override

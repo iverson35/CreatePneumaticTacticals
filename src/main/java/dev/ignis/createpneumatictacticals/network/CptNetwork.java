@@ -30,6 +30,7 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, AimStatePacket.class, AimStatePacket::encode, AimStatePacket::decode, AimStatePacket::handle);
         // S2C
         CHANNEL.registerMessage(id++, PoseBroadcastPacket.class, PoseBroadcastPacket::encode, PoseBroadcastPacket::decode, PoseBroadcastPacket::handle);
+        CHANNEL.registerMessage(id++, PoseUpdatePacket.class, PoseUpdatePacket::encode, PoseUpdatePacket::decode, PoseUpdatePacket::handle);
         CHANNEL.registerMessage(id++, HitConfirmPacket.class, HitConfirmPacket::encode, HitConfirmPacket::decode, HitConfirmPacket::handle);
     }
 }

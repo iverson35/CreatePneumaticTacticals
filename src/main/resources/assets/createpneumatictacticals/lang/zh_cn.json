@@ -26,12 +26,14 @@
   "gui.createpneumatictacticals.pick_color": "点击选择颜色",
   "gui.createpneumatictacticals.craft": "制作",
   "gui.createpneumatictacticals.dye": "确认染色",
+  "gui.createpneumatictacticals.tab_craft": "制作",
+  "gui.createpneumatictacticals.tab_dye": "染色",
   "stat.createpneumatictacticals.damage_multiplier": "伤害",
   "stat.createpneumatictacticals.fire_rate_multiplier": "射速",
   "stat.createpneumatictacticals.reload_speed": "换弹",
   "stat.createpneumatictacticals.hipfire_accuracy_multiplier": "腰射",
   "stat.createpneumatictacticals.ergonomics": "人机",
-  "stat.createpneumatictacticals.bullet_speed": "弹速",
+  "stat.createpneumatictacticals.bullet_speed": "初速",
   "stat.createpneumatictacticals.recoil_multiplier": "后座",
   "stat.createpneumatictacticals.recoil_recovery": "回正",
   "stat.createpneumatictacticals.aim_zoom": "瞄准",
@@ -58,7 +60,6 @@
   "module_type.createpneumatictacticals.stock": "后托",
   "gui.createpneumatictacticals.fail.incomplete": "枪械未完成组装（需要机匣/供弹/供气/枪管）",
   "gui.createpneumatictacticals.fail.no_ammo_selected": "未选择弹种",
-  "gui.createpneumatictacticals.fail.magazine_empty": "弹匣已空",
   "gui.createpneumatictacticals.fail.no_air": "气压不足",
   "gui.createpneumatictacticals.fail.no_pod": "背包中没有匹配的封装弹",
   "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（封装弹+加压气动瓶合成）",
@@ -77,5 +78,6 @@
   "hg_pos.createpneumatictacticals.top": "(上)",
   "hg_pos.createpneumatictacticals.bottom": "(下)",
   "hg_pos.createpneumatictacticals.left": "(左)",
-  "hg_pos.createpneumatictacticals.right": "(右)"
+  "hg_pos.createpneumatictacticals.right": "(右)",
+  "gui.createpneumatictacticals.hud.reloading": "装填中"
 }

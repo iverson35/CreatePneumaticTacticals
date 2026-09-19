@@ -42,6 +42,20 @@ public class GeoGunItem extends GunItem implements GeoItem {
                 }
                 return renderer;
             }
+
+            /**
+             * Third-person base hold: crossbow-style two-hand pose. (Custom
+             * ArmPose.create values are unusable on Forge 1.20.1: nothing
+             * consumes the transformer and the vanilla poseRightArm switch
+             * crashes on ordinals beyond the built-in 10 — ready poses are
+             * applied via HumanoidModelMixin instead.)
+             */
+            @Override
+            public net.minecraft.client.model.HumanoidModel.ArmPose getArmPose(
+                    net.minecraft.world.entity.LivingEntity entity,
+                    net.minecraft.world.InteractionHand hand, net.minecraft.world.item.ItemStack stack) {
+                return net.minecraft.client.model.HumanoidModel.ArmPose.CROSSBOW_HOLD;
+            }
         });
     }
 

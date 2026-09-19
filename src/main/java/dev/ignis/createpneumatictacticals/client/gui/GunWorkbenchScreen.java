@@ -8,6 +8,7 @@ import dev.ignis.createpneumatictacticals.item.GunItem;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -32,6 +33,10 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
     private static final int IMAGE_WIDTH = 256;
     private static final int IMAGE_HEIGHT = 200;
 
+    /** stats panel: always-on core stats, secondary block behind the toggle */
+    private boolean showAllStats = false;
+    private Button statsToggle;
+
     public GunWorkbenchScreen(GunWorkbenchMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = IMAGE_WIDTH;
@@ -42,6 +47,20 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
         this.titleLabelY = 4;
     }
 
+    @Override
+    protected void init() {
+        super.init();
+        // compact "+" toggle next to the stats header: shows/hides secondary stats
+        statsToggle = addRenderableWidget(Button.builder(Component.literal("+"),
+                        b -> {
+                            showAllStats = !showAllStats;
+                            statsToggle.setMessage(Component.literal(showAllStats ? "-" : "+"));
+                        })
+                .bounds(this.leftPos + 240, this.topPos + 3, 12, 12)
+                .build());
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
         this.renderStatsPanel(graphics, mouseX, mouseY);
@@ -132,16 +151,19 @@ public class GunWorkbenchScreen extends AbstractContainerScreen<GunWorkbenchMenu
 
         int x = this.leftPos + 190;
         int y = this.topPos + 24;
+        // core stats (always visible)
         graphics.drawString(this.font, fmt("damage_multiplier", stats.damageMultiplier), x, y, 0xFFD0D0D0, false);
         graphics.drawString(this.font, fmt("fire_rate_multiplier", stats.fireRateMultiplier), x, y + 12, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("reload_speed", stats.reloadSpeed), x, y + 24, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier), x, y + 36, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("ergonomics", stats.ergonomics), x, y + 36 + 12, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("bullet_speed", stats.bulletSpeed), x, y + 48 + 12, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("recoil_multiplier", stats.recoilMultiplier), x, y + 72, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("recoil_recovery", stats.recoilRecovery), x, y + 84, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("aim_zoom", stats.aimZoom), x, y + 96, 0xFFD0D0D0, false);
-        graphics.drawString(this.font, fmt("tactical_aim_zoom", stats.tacticalAimZoom), x, y + 108, 0xFFD0D0D0, false);
+        graphics.drawString(this.font, fmt("ergonomics", stats.ergonomics), x, y + 24, 0xFFD0D0D0, false);
+        graphics.drawString(this.font, fmt("recoil_multiplier", stats.recoilMultiplier), x, y + 36, 0xFFD0D0D0, false);
+        // secondary stats ("+" toggle); zoom stats are never shown here —
+        // they belong to the equipped sight and are visible in its tooltip
+        if (showAllStats) {
+            graphics.drawString(this.font, fmt("reload_speed", stats.reloadSpeed), x, y + 48, 0xFF909090, false);
+            graphics.drawString(this.font, fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier), x, y + 60, 0xFF909090, false);
+            graphics.drawString(this.font, fmt("bullet_speed", stats.bulletSpeed), x, y + 72, 0xFF909090, false);
+            graphics.drawString(this.font, fmt("recoil_recovery", stats.recoilRecovery), x, y + 84, 0xFF909090, false);
+        }
 
         Map<ModuleType, ModuleDefinition> modules = GunNbt.readModules(gun);
         ModuleDefinition receiver = modules.get(ModuleType.RECEIVER);

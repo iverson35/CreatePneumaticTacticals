@@ -36,11 +36,16 @@ public final class AimHandler {
 
     /** seconds for a full hip -> ADS (or ADS -> hip) transition */
     private static final float AIM_TIME_SECONDS = 0.18f;
+    /** seconds for a main-sight <-> tactical-sight switch */
+    private static final float STANCE_SWITCH_SECONDS = 0.25f;
     /** movement speed factor while fully aiming */
     private static final float AIM_WALK_FACTOR = 0.4f;
 
     private static float aimProgress = 0f;
     private static float prevAimProgress = 0f;
+    private static float stanceBlend = 0f;
+    private static float prevStanceBlend = 0f;
+    private static long lastStanceGunId = -1;
     private static boolean lastAiming = false;
     private AimHandler() {}
 
@@ -58,26 +63,39 @@ public final class AimHandler {
         return Mth.lerp(partialTick, prevAimProgress, aimProgress);
     }
 
+    /**
+     * Sight-stance blend, render-interpolated. 0 = main sight, 1 = tactical
+     * (canted) sight. Ramps over {@link #STANCE_SWITCH_SECONDS} after a switch
+     * so the gun slides between the two sight pictures instead of snapping.
+     */
+    public static float stanceBlend(float partialTick) {
+        return Mth.lerp(partialTick, prevStanceBlend, stanceBlend);
+    }
+
 
     /**
      * Eased view scale shared by FOV and mouse sensitivity:
      * {@code 1 / (1 + (zoom - 1) * easedProgress)}. 1 while not aiming.
      */
     public static double aimViewScale() {
+        // third person: aiming never zooms (F5 cameras keep their FOV)
+        if (Minecraft.getInstance().options.getCameraType() != net.minecraft.client.CameraType.FIRST_PERSON)
+            return 1.0;
         float p = aimProgress(Minecraft.getInstance().getFrameTime());
         if (p <= 0f) return 1.0;
         p = p * p * (3f - 2f * p);
         return 1.0 / (1.0 + (zoom() - 1.0) * p);
     }
 
-    /** Current zoom factor for the held gun (aim stance aware). */
+    /** Current zoom factor for the held gun; lerps between the two sight stances. */
     public static double zoom() {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return 1.0;
-        ItemStack gun = player.getMainHandItem();
-        GunStats stats = GunStats.ofGun(gun);
-        return "tactical".equals(GunNbt.getAimStance(gun)) ? stats.tacticalAimZoom : stats.aimZoom;
+        GunStats stats = GunStats.ofGun(player.getMainHandItem());
+        float b = stanceBlend(mc.getFrameTime());
+        b = b * b * (3f - 2f * b);
+        return Mth.lerp(b, stats.aimZoom, stats.tacticalAimZoom);
     }
 
     @SubscribeEvent
@@ -92,6 +110,24 @@ public final class AimHandler {
         prevAimProgress = aimProgress;
         float step = 1f / (AIM_TIME_SECONDS * 20f);
         aimProgress = Mth.clamp(aimProgress + (aiming ? step : -step), 0f, 1f);
+        // sight-stance blend: follows the per-gun remembered stance (NBT),
+        // ramps over STANCE_SWITCH_SECONDS so X-switching slides the gun.
+        // Switching GUNS snaps instead — the two guns' camera bones differ,
+        // a cross-gun blend would slide to nowhere.
+        prevStanceBlend = stanceBlend;
+        boolean tactical = false;
+        Player p = Minecraft.getInstance().player;
+        long gunId = -1;
+        if (p != null && p.getMainHandItem().getItem() instanceof GeoGunItem) {
+            tactical = "tactical".equals(GunNbt.getAimStance(p.getMainHandItem()));
+            gunId = software.bernie.geckolib.animatable.GeoItem.getId(p.getMainHandItem());
+        }
+        if (gunId != lastStanceGunId) {
+            lastStanceGunId = gunId;
+            stanceBlend = prevStanceBlend = tactical ? 1f : 0f;
+        }
+        float stanceStep = 1f / (STANCE_SWITCH_SECONDS * 20f);
+        stanceBlend = Mth.clamp(stanceBlend + (tactical ? stanceStep : -stanceStep), 0f, 1f);
     }
 
     @SubscribeEvent

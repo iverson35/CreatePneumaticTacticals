@@ -104,14 +104,14 @@ public class ModuleItem extends Item implements GeoItem {
                     .withStyle(ChatFormatting.YELLOW));
         }
         addStatLines(tooltip, Map.of(
-                "module.stat.reload_speed", def.reloadSpeed,
-                "module.stat.damage_multiplier", def.damageMultiplier,
-                "module.stat.fire_rate_multiplier", def.fireRateMultiplier,
-                "module.stat.hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier,
-                "module.stat.ergonomics", def.ergonomics,
-                "module.stat.bullet_speed", def.bulletSpeed,
-                "module.stat.recoil_multiplier", def.recoilMultiplier,
-                "module.stat.recoil_recovery", def.recoilRecovery
+                "reload_speed", def.reloadSpeed,
+                "damage_multiplier", def.damageMultiplier,
+                "fire_rate_multiplier", def.fireRateMultiplier,
+                "hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier,
+                "ergonomics", def.ergonomics,
+                "bullet_speed", def.bulletSpeed,
+                "recoil_multiplier", def.recoilMultiplier,
+                "recoil_recovery", def.recoilRecovery
         ));
     }
 
@@ -122,7 +122,8 @@ public class ModuleItem extends Item implements GeoItem {
             String fmt = formatStat(v);
             String sign = v > 0 ? "+" : "";
             ChatFormatting color = v > 0 ? ChatFormatting.GREEN : ChatFormatting.RED;
-            tooltip.add(Component.translatable(e.getKey(), sign + fmt).withStyle(color));
+            tooltip.add(Component.translatable("stat.createpneumatictacticals." + e.getKey())
+                    .append(": ").append(sign + fmt).withStyle(color));
         }
     }
 

@@ -9,7 +9,8 @@
   ],
   "client": [
     "HumanoidModelMixin",
-    "MouseHandlerMixin"
+    "MouseHandlerMixin",
+    "PotatoProjectileRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

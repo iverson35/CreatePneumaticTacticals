@@ -33,12 +33,21 @@ import java.util.Map;
  * gun NBT. Modules are written on placement, removed on pickup. A receiver
  * dropped into an empty bench auto-creates a bare gun. Dependent slots
  * (e.g. muzzle without barrel) are inactive on both sides via Slot.isActive.
+ *
+ * <p>The GUN slot is the block entity's persistent inventory: closing the UI
+ * keeps the staged gun; it leaves only via the UI or by breaking the block.
+ * Module slots are menu-session state — materialized from the gun's NBT on
+ * open, baked back into the NBT on every edit — so they are never persisted
+ * (persisting both sides would duplicate modules). Closing with no gun ever
+ * assembled returns the staged module items to the player.
  */
 public class GunWorkbenchMenu extends AbstractContainerMenu {
 
     public static final int SLOT_GUN = 0;
     public static final int MODULE_COUNT = 13;
     public static final int SLOT_LAST_MODULE = SLOT_GUN + MODULE_COUNT;
+    /** bench-owned slots: 1 gun + 13 modules (persisted on the block entity) */
+    public static final int BENCH_SLOTS = SLOT_LAST_MODULE + 1;
     public static final int INV_START = SLOT_LAST_MODULE + 1;
     public static final int SLOT_COUNT = INV_START + 36;
 
@@ -71,7 +80,10 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     };
 
     private final ContainerLevelAccess access;
-    private final SimpleContainer container = new SimpleContainer(SLOT_COUNT);
+    /** module slots: menu-session staging, materialized from / baked into gun NBT */
+    private final SimpleContainer container = new SimpleContainer(BENCH_SLOTS);
+    /** gun slot: the block entity's persistent inventory (dummy on the client) */
+    private final SimpleContainer gunContainer;
     private final Player player;
     /** true once the current gun's NBT modules have been materialized into the module slots */
     private boolean modulesLoaded = false;
@@ -79,17 +91,20 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     /** true while a gun is present; guards auto-creation so the gun can be taken out */
     private boolean hadGun = false;
 
+    /** client side: dummy containers, the server syncs slot contents */
     public GunWorkbenchMenu(int id, Inventory inventory, FriendlyByteBuf data) {
-        this(id, inventory, posFor(inventory, data));
+        this(id, inventory, posFor(inventory, data), new SimpleContainer(1));
     }
 
-    public GunWorkbenchMenu(int id, Inventory inventory, ContainerLevelAccess access) {
+    /** server side: the gun slot binds to the block entity's persistent inventory */
+    public GunWorkbenchMenu(int id, Inventory inventory, ContainerLevelAccess access, SimpleContainer gunContainer) {
         super(ModMenus.GUN_WORKBENCH.get(), id);
         this.access = access;
         this.player = inventory.player;
+        this.gunContainer = gunContainer;
         this.container.addListener(c -> this.slotsChanged(this.container));
 
-        this.addSlot(new GunSlot(this.container, SLOT_GUN, 18, 30));
+        this.addSlot(new GunSlot(this.gunContainer, SLOT_GUN, 18, 30));
         for (int i = 0; i < MODULE_COUNT; i++) {
             this.addSlot(new ModuleSlot(this.container, SLOT_GUN + 1 + i,
                     MODULE_SLOT_POS[i][0], MODULE_SLOT_POS[i][1], SLOT_TYPES[i], i));
@@ -103,6 +118,12 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         for (int col = 0; col < 9; col++) {
             this.addSlot(new InvSlot(inventory, 27 + col, 8 + col * 18, 172));
         }
+        // persisted gun: materialize its module slots NOW (server side), so
+        // the opening slot sync already shows them — syncGun otherwise only
+        // runs on clicks, leaving the modules invisible until one
+        if (!this.player.level().isClientSide && !this.gunContainer.getItem(SLOT_GUN).isEmpty()) {
+            this.syncGun(this.player);
+        }
     }
 
     private static ContainerLevelAccess posFor(Inventory inventory, FriendlyByteBuf data) {
@@ -110,7 +131,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
     }
 
     public ItemStack getGunStack() {
-        return this.container.getItem(SLOT_GUN);
+        return this.gunContainer.getItem(SLOT_GUN);
     }
 
     // --- module resolution ---
@@ -155,7 +176,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         if (!this.depsSatisfied(moduleSlotIndex)) return "missing_dependency";
         ModuleDefinition def = definitionOf(stack);
         if (def == null || def.type != type) return "wrong_type";
-        ItemStack gun = this.container.getItem(SLOT_GUN);
+        ItemStack gun = this.gunContainer.getItem(SLOT_GUN);
         Map<ModuleType, ModuleDefinition> installed = GunNbt.readModules(gun);
         java.util.Collection<ModuleDefinition> hgAtt = GunNbt.readHandguardAttachments(gun).values();
         HandguardPosition pos = hgPositionOf(moduleSlotIndex);
@@ -184,7 +205,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
      * - module removed from a slot -> removed from gun NBT on next rebuild
      */
     private void syncGun(Player player) {
-        ItemStack gun = this.container.getItem(SLOT_GUN);
+        ItemStack gun = this.gunContainer.getItem(SLOT_GUN);
         boolean hasGun = gun.getItem() instanceof GunItem;
         this.hadGun |= hasGun;
         if (!hasGun) {
@@ -205,12 +226,12 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                         GunNbt.setFireMode(newGun, receiverDef.fireModes.get(0));
                     }
                     GunNbt.setAmmoCount(newGun, 0);
-                    this.container.setItem(SLOT_GUN, newGun);
+                    this.gunContainer.setItem(SLOT_GUN, newGun);
                     this.modulesLoaded = true;
                     this.hadGun = true;
                 }
             }
-            if (this.container.getItem(SLOT_GUN).isEmpty()) {
+            if (this.gunContainer.getItem(SLOT_GUN).isEmpty()) {
                 this.modulesLoaded = false;
                 this.consumeModules();
                 return;
@@ -280,30 +301,27 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             this.eject(SLOT_GUN + 1 + i, player);
         }
     }
+
+    @Override
+    public void removed(Player player) {
+        if (!player.level().isClientSide && this.gunContainer.getItem(SLOT_GUN).isEmpty()) {
+            if (this.modulesLoaded) {
+                // a gun was here and left with the modules baked into its NBT
+                // — the slot items are virtual copies, never return them
+                this.consumeModules();
+            } else {
+                // no gun was ever assembled: staged modules are real items
+                this.ejectModules(player);
+            }
+        }
+        super.removed(player);
+    }
+
     /** Drops the staged modules: they are baked into the gun NBT it left with. */
     private void consumeModules() {
         for (int i = 0; i < MODULE_COUNT; i++) {
             this.container.setItem(SLOT_GUN + 1 + i, ItemStack.EMPTY);
         }
-    }
-
-    @Override
-    public void removed(Player player) {
-        if (!player.level().isClientSide) {
-            ItemStack gun = this.container.getItem(SLOT_GUN);
-            if (!gun.isEmpty()) {
-                // gun still staged: hand it over, its modules are in its NBT
-                if (!player.getInventory().add(gun)) {
-                    player.drop(gun, false);
-                }
-                this.container.setItem(SLOT_GUN, ItemStack.EMPTY);
-                this.consumeModules();
-            } else {
-                // defensive: no gun was ever assembled, return staged leftovers
-                this.ejectModules(player);
-            }
-        }
-        super.removed(player);
     }
 
     @Override

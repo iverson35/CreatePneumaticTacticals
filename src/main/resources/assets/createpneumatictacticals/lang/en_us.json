@@ -27,12 +27,14 @@
   "gui.createpneumatictacticals.pick_color": "Pick a color",
   "gui.createpneumatictacticals.craft": "Craft",
   "gui.createpneumatictacticals.dye": "Apply Dye",
+  "gui.createpneumatictacticals.tab_craft": "Crafting",
+  "gui.createpneumatictacticals.tab_dye": "Dyeing",
   "stat.createpneumatictacticals.damage_multiplier": "Damage",
   "stat.createpneumatictacticals.fire_rate_multiplier": "Fire Rate",
   "stat.createpneumatictacticals.reload_speed": "Reload",
   "stat.createpneumatictacticals.hipfire_accuracy_multiplier": "Hipfire",
   "stat.createpneumatictacticals.ergonomics": "Ergo",
-  "stat.createpneumatictacticals.bullet_speed": "Velocity",
+  "stat.createpneumatictacticals.bullet_speed": "Muzzle Vel.",
   "stat.createpneumatictacticals.recoil_multiplier": "Recoil",
   "stat.createpneumatictacticals.recoil_recovery": "Recovery",
   "stat.createpneumatictacticals.aim_zoom": "Zoom",
@@ -58,7 +60,6 @@
   "module_type.createpneumatictacticals.stock": "Stock",
   "gui.createpneumatictacticals.fail.incomplete": "Gun incomplete (needs receiver/feed/supply/barrel)",
   "gui.createpneumatictacticals.fail.no_ammo_selected": "No ammo selected",
-  "gui.createpneumatictacticals.fail.magazine_empty": "Magazine empty",
   "gui.createpneumatictacticals.fail.no_air": "Not enough air pressure",
   "gui.createpneumatictacticals.fail.no_pod": "No matching pod in inventory",
   "gui.createpneumatictacticals.fail.no_pressurized_pod": "Cartridge supply needs pressurized pods (pod + pressurized air vial)",
@@ -78,5 +79,6 @@
   "hg_pos.createpneumatictacticals.top": " (top)",
   "hg_pos.createpneumatictacticals.bottom": " (bottom)",
   "hg_pos.createpneumatictacticals.left": " (left)",
-  "hg_pos.createpneumatictacticals.right": " (right)"
+  "hg_pos.createpneumatictacticals.right": " (right)",
+  "gui.createpneumatictacticals.hud.reloading": "Reloading"
 }

@@ -94,27 +94,38 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             return;
         }
         BakedGeoModel model = ModuleGunGeoModel.INSTANCE.getBakedModel(modelId); // activates bones on the shared processor
+        java.util.Map<CoreGeoBone, float[]> saved = null;
         if (animationsEnabled) {
             driveAnimation(ModuleAnimatable.of(def.id), ctx.animId, ctx.partialTick);
         } else {
+            // GUI icon / dropped gun: draw at rest, but restore afterwards.
+            // Bones are shared with the world passes and GeckoLib skips
+            // re-applying animation on same-tick frames (isReRender), so a
+            // leftover reset leaks the rest pose into the world render —
+            // the magazine visibly flickers between rest and animated.
+            saved = GunAnimations.snapshotBones(ModuleGunGeoModel.INSTANCE);
             GunAnimations.resetToRestPose(ModuleGunGeoModel.INSTANCE);
         }
 
         ctx.poseStack.pushPose();
-        applyBoneChain(loc, ctx.poseStack);
-        RenderType type = RenderType.entityCutoutNoCull(ModuleGunGeoModel.textureId(def.id));
-        getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay, 1, 1, 1, 1);
-        // child mounts (barrel -> muzzle, handguard -> attachments); their
-        // locator lookup sees this module's animated bone state
-        if (def.type == ModuleType.BARREL) {
-            mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx);
-        } else if (def.type == ModuleType.HANDGUARD && !ctx.hgAttachments.isEmpty()) {
-            for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
-                mount(model, e.getKey().locatorName(), e.getValue(), ctx);
+        try {
+            applyBoneChain(loc, ctx.poseStack);
+            RenderType type = RenderType.entityCutoutNoCull(ModuleGunGeoModel.textureId(def.id));
+            getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                    ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay, 1, 1, 1, 1);
+            // child mounts (barrel -> muzzle, handguard -> attachments); their
+            // locator lookup sees this module's animated bone state
+            if (def.type == ModuleType.BARREL) {
+                mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx);
+            } else if (def.type == ModuleType.HANDGUARD && !ctx.hgAttachments.isEmpty()) {
+                for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
+                    mount(model, e.getKey().locatorName(), e.getValue(), ctx);
+                }
             }
+        } finally {
+            ctx.poseStack.popPose();
+            if (saved != null) GunAnimations.restoreBones(saved);
         }
-        ctx.poseStack.popPose();
     }
 
     /**

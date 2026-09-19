@@ -50,8 +50,8 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         this.blockEntity = be;
         this.access = ContainerLevelAccess.create(be.getLevel(), be.getBlockPos());
 
-        // dye slot: module items only
-        this.addSlot(new Slot(be.getDyeContainer(), 0, 138, 20) {
+        // dye slot (dyeing tab top-left): module items only
+        this.addSlot(new Slot(be.getDyeContainer(), 0, 16, 32) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return stack.getItem() instanceof ModuleItem;
@@ -60,11 +60,11 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(playerInv, 9 + row * 9 + col, 8 + col * 18, 103 + row * 18));
+                this.addSlot(new Slot(playerInv, 9 + row * 9 + col, 8 + col * 18, 123 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInv, col, 8 + col * 18, 161));
+            this.addSlot(new Slot(playerInv, col, 8 + col * 18, 181));
         }
     }
 

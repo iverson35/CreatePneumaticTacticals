@@ -54,6 +54,33 @@ public final class GunAnimations {
             bone.setScaleZ(snap.getScaleZ());
         }
     }
+    /**
+     * Captures pos/rot/scale of every currently-registered bone, keyed by the
+     * bone OBJECT (not name/index): the shared processor's registered set
+     * changes as other modules activate their baked models mid-pass.
+     */
+    public static java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> snapshotBones(
+            software.bernie.geckolib.model.GeoModel<?> model) {
+        java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> out = new java.util.HashMap<>();
+        for (software.bernie.geckolib.core.animatable.model.CoreGeoBone bone
+                : model.getAnimationProcessor().getRegisteredBones()) {
+            out.put(bone, new float[]{bone.getPosX(), bone.getPosY(), bone.getPosZ(),
+                    bone.getRotX(), bone.getRotY(), bone.getRotZ(),
+                    bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()});
+        }
+        return out;
+    }
+
+    /** restores a snapshotBones capture onto the same bone objects */
+    public static void restoreBones(java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> snapshot) {
+        for (java.util.Map.Entry<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> e : snapshot.entrySet()) {
+            software.bernie.geckolib.core.animatable.model.CoreGeoBone bone = e.getKey();
+            float[] v = e.getValue();
+            bone.setPosX(v[0]); bone.setPosY(v[1]); bone.setPosZ(v[2]);
+            bone.setRotX(v[3]); bone.setRotY(v[4]); bone.setRotZ(v[5]);
+            bone.setScaleX(v[6]); bone.setScaleY(v[7]); bone.setScaleZ(v[8]);
+        }
+    }
 
     public static RawAnimation filterExisting(RawAnimation anim, net.minecraft.resources.ResourceLocation animationFile) {
         RawAnimation out = null;

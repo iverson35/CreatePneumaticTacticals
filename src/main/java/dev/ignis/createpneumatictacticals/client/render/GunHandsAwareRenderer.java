@@ -44,6 +44,12 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
             if (Math.abs(kick) > 0.001) {
                 poseStack.translate(0, 0, kick * 0.01);
             }
+            // low/high ready pose while sprinting / elytra flying
+            float partialTick = net.minecraft.client.Minecraft.getInstance().getFrameTime();
+            ReadyPoseTransform.apply(poseStack,
+                    dev.ignis.createpneumatictacticals.Config.readyPose
+                            == dev.ignis.createpneumatictacticals.Config.ReadyPose.HIGH,
+                    dev.ignis.createpneumatictacticals.client.ReadyModel.progress(partialTick));
             // ADS: bring the receiver's camera locator bone to screen center
             AdsTransform.apply(stack, poseStack);
         }

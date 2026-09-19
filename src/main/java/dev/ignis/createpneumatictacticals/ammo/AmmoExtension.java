@@ -3,6 +3,8 @@ package dev.ignis.createpneumatictacticals.ammo;
 import dev.ignis.createpneumatictacticals.module.GunType;
 import java.util.HashMap;
 import java.util.Map;
+import net.minecraft.world.item.Item;
+
 /**
  * Extended ammo attributes for Create potato cannon projectile types.
  * Attached by string id ("create:potato" etc.) and loaded from datapack JSON;
@@ -28,8 +30,10 @@ public final class AmmoExtension {
     public double damageFalloffRate = 0;     // damage loss per block beyond effective range
 
     // --- gunplay ---
+    // fire rate deliberately has NO extension field: it is always the Create
+    // type's reload_ticks (potato-cannon parity), scaled by the gun's
+    // fire_rate_multiplier
     public double damage = -1;              // <=0: use Create's type.damage()
-    public double fireRate = 300;            // rpm; final rate = fireRate * fire_rate_multiplier
     public double spread = 1.0;              // degrees; S0 of the hipfire accuracy model
     public double headshotMultiplier = 1.5;
     public GunType gunType = GunType.LIGHT;  // HEAVY receivers accept lighter ammo
@@ -58,5 +62,14 @@ public final class AmmoExtension {
 
     public static void clear() {
         TABLE.clear();
+    }
+
+    /** representative content item for a potato projectile type id; null when unknown */
+    public static Item contentItemFor(net.minecraft.core.RegistryAccess registries, String ammoId) {
+        if (ammoId == null) return null;
+        var type = registries.registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
+                .get(net.minecraft.resources.ResourceLocation.tryParse(ammoId));
+        if (type == null) return null;
+        return type.items().stream().findFirst().map(h -> (Item) h.value()).orElse(null);
     }
 }

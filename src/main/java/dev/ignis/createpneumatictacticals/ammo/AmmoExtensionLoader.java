@@ -66,7 +66,6 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         ext.effectiveRange = optDouble(json, "effective_range", ext.effectiveRange);
         ext.damageFalloffRate = optDouble(json, "damage_falloff_rate", ext.damageFalloffRate);
         ext.damage = optDouble(json, "damage", ext.damage);
-        ext.fireRate = optDouble(json, "fire_rate", ext.fireRate);
         ext.spread = optDouble(json, "spread", ext.spread);
         ext.headshotMultiplier = optDouble(json, "headshot_multiplier", ext.headshotMultiplier);
         if (json.has("gun_type")) {

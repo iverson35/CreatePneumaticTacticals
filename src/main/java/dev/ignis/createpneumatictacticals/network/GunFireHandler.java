@@ -80,9 +80,10 @@ public final class GunFireHandler {
     }
 
     /**
-     * Rotate {@code dir} by a random angle within a cone of {@code spreadDeg}.
-     * The orthonormal combination preserves magnitude — do NOT normalize the
-     * result, that would reset the projectile speed to 1 block/tick.
+     * Rotate the unit {@code dir} by a random angle within a cone of
+     * {@code spreadDeg} (uniform over the disc: radius sqrt-sampled, angle
+     * uniform). Returns a unit vector when given one; callers normalize
+     * again after adding split-pellet ring offsets.
      */
     private static Vec3 applySpread(Vec3 dir, double spreadDeg) {
         if (spreadDeg <= 0) return dir;
@@ -100,6 +101,10 @@ public final class GunFireHandler {
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
+        // ready pose: no firing while sprinting / elytra flying (the client
+        // also enforces the ready-up delay after stopping; the flag is synced)
+        if (player.isSprinting() || player.isFallFlying()) return;
+
         GunStats stats = GunStats.ofGun(gun);
         if (!stats.isComplete()) return;
 
@@ -107,7 +112,8 @@ public final class GunFireHandler {
         ModuleDefinition feed = stats.feed;
         ModuleDefinition supply = stats.supply;
 
-        // --- rate limit ---
+        // --- rate limit bookkeeping (the interval itself is computed below,
+        // once the ammo type and its reload_ticks are known) ---
         String key = player.getStringUUID();
         long now = player.level().getGameTime();
         String ammoId = GunNbt.getAmmo(gun);
@@ -116,18 +122,11 @@ public final class GunFireHandler {
             return;
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
-        long intervalTicks = Math.max(1, (long) (1200.0 / (ext.fireRate * stats.fireRateMultiplier)));
-        Long last = LAST_SHOT.get(key);
-        if (last != null && now - last < intervalTicks) return;
-        LAST_SHOT.put(key, now);
 
         // --- backpack feed bypasses count; others need rounds in magazine ---
         boolean backpack = feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
         if (!backpack) {
-            if (GunNbt.getAmmoCount(gun) <= 0) {
-                feedback(player, "magazine_empty");
-                return;
-            }
+            if (GunNbt.getAmmoCount(gun) <= 0) return; // empty magazine: silent
         }
 
         // --- air ---
@@ -164,15 +163,27 @@ public final class GunFireHandler {
         Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
         if (typeOpt.isEmpty()) return;
         PotatoCannonProjectileType type = typeOpt.get();
+        // fire rate = the ammo's own potato-cannon cadence (reload_ticks),
+        // scaled by the gun's fire_rate_multiplier — multiplier 1 is exactly
+        // Create-cannon parity
+        long intervalTicks = Math.max(1,
+                (long) (type.reloadTicks() / stats.fireRateMultiplier));
+        Long last = LAST_SHOT.get(key);
+        if (last != null && now - last < intervalTicks) return;
+        LAST_SHOT.put(key, now);
         double spreadDeg = spreadDegrees(player, ext, stats);
 
-        // spawn from the eye line, 1 block ahead: the potato cannon's cosmetic
-        // muzzle offset (getGunBarrelVec) makes close-range shots miss the
-        // crosshair, so guns fire straight from the view axis
-        Vec3 barrelPos = player.getEyePosition().add(player.getLookAngle());
-        Vec3 motion = player.getLookAngle()
-                .scale(2 * type.velocityMultiplier() * stats.bulletSpeed);
-        for (int i = 0; i < Math.max(1, type.split()); i++) {
+        // spread cone apexes at the EYE: sample the angular offset first,
+        // put each launch point on its own ray 1 block out, fire along
+        // eye -> launchPoint. Spawning everything on the shared axis point
+        // instead hinges the cone there, giving (R-1)*tan(θ) deviation and
+        // trajectories that don't pass through the eye — close-range shots
+        // wrongly collapse toward the crosshair.
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle();
+        double speed = 2 * type.velocityMultiplier() * stats.bulletSpeed;
+        int pellets = Math.max(1, type.split());
+        for (int i = 0; i < pellets; i++) {
             PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(player.level());
             if (projectile == null) return;
             // content: backpack/cartridge use the pod itself; magazine mode
@@ -181,21 +192,27 @@ public final class GunFireHandler {
             if (contentStack == null) return;
             contentStack.setTag(null);
             projectile.setItem(contentStack);
-            projectile.setPos(barrelPos.x, barrelPos.y - 0.1, barrelPos.z);
-            Vec3 splitMotion = applySpread(motion, spreadDeg);
-            if (type.split() > 1) {
+            Vec3 dir = applySpread(look, spreadDeg);
+            if (pellets > 1) {
                 // Create's spray (PotatoCannonItem.use): per-pellet deterministic
-                // angle + jitter, a 0.1 offset rotated into the motion's
-                // perpendicular plane. Reimplemented here because catnip's
-                // VecHelper is not on the compile classpath.
-                double ang = Math.toRadians((360.0 / type.split()) * i
+                // ring offset + jitter in the plane perpendicular to the shot.
+                // Reimplemented here because catnip's VecHelper is not on the
+                // compile classpath.
+                double ang = Math.toRadians((360.0 / pellets) * i
                         + 40 * (player.getRandom().nextFloat() - 0.5f));
-                Vec3 upAxis = Math.abs(motion.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-                Vec3 u = motion.cross(upAxis).normalize();
-                Vec3 w = motion.cross(u).normalize();
-                splitMotion = splitMotion.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
+                Vec3 upAxis = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+                Vec3 u = dir.cross(upAxis).normalize();
+                Vec3 w = dir.cross(u).normalize();
+                dir = dir.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
             }
-            projectile.setDeltaMovement(splitMotion);
+            dir = dir.normalize();
+            Vec3 launch = eye.add(dir.scale(1.0));
+            // setPos anchors the entity ORIGIN (feet), but both the rendered
+            // sprite and the hitbox are centered bbHeight/2 (0.125) above it —
+            // drop the anchor so the projectile's center sits exactly on the
+            // eye ray through the crosshair
+            projectile.setPos(launch.x, launch.y - 0.125f, launch.z);
+            projectile.setDeltaMovement(dir.scale(speed));
             // mark gun-fired projectiles: the hit/bounce/explosion runtime
             // (PotatoProjectileMixin) keys off cpt_gunshot and reads the ammo
             // extension via cpt_ammo; cpt_dmg carries the gun's damage multiplier

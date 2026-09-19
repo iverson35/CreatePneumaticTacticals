@@ -59,7 +59,10 @@ public final class ModuleAnimatable implements GeoAnimatable {
 
     @Override
     public double getTick(Object o) {
-        var level = software.bernie.geckolib.util.ClientUtils.getLevel();
-        return level != null ? level.getGameTime() : 0;
+        // continuous client clock (same source handleAnimations falls back to
+        // for non-entity animatables): an integer gameTime would make module
+        // animations step at 20Hz and lets the isReRender shortcut skip
+        // re-posing bones on same-tick frames
+        return software.bernie.geckolib.util.RenderUtils.getCurrentTick();
     }
 }

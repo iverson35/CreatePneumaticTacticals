@@ -1,5 +1,6 @@
 package dev.ignis.createpneumatictacticals.client;
 
+import dev.ignis.createpneumatictacticals.Config;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
@@ -9,6 +10,7 @@ import dev.ignis.createpneumatictacticals.network.FireRequestPacket;
 import dev.ignis.createpneumatictacticals.network.ReloadResultPacket;
 import dev.ignis.createpneumatictacticals.network.GunActionPacket;
 import dev.ignis.createpneumatictacticals.module.FireMode;
+import com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -64,9 +66,11 @@ public final class ClientGunInput {
 
         ItemStack gun = player.getMainHandItem();
         boolean holdingGun = gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem;
+        ReadyModel.tick(player, holdingGun);
         if (!holdingGun) {
             wasFiring = false;
             cancelReload();
+            updatePoseBroadcast(false, gun);
             return;
         }
 
@@ -117,12 +121,46 @@ public final class ClientGunInput {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.CYCLE_AIM_STANCE));
         }
 
+        updatePoseBroadcast(true, gun);
     }
+
+    // --- third-person pose sync: the owning client is the source of truth ---
+    private static dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose lastSentPose =
+            dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIP;
+
+    private static void updatePoseBroadcast(boolean holdingGun, ItemStack gun) {
+        dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose pose;
+        if (!holdingGun) {
+            pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIP;
+        } else if (reloading) {
+            pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING;
+        } else if (AimHandler.isAiming()) {
+            pose = "tactical".equals(GunNbt.getAimStance(gun))
+                    ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.TACTICAL
+                    : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.ADS;
+        } else if (ReadyModel.isStowed()) {
+            pose = Config.readyPose == Config.ReadyPose.HIGH
+                    ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIGH_READY
+                    : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.LOW_READY;
+        } else {
+            pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIP;
+        }
+        if (pose != lastSentPose) {
+            lastSentPose = pose;
+            CptNetwork.CHANNEL.sendToServer(new dev.ignis.createpneumatictacticals.network.PoseUpdatePacket(pose));
+        }
+    }
+    /** client reload in progress (drives the HUD "reloading" indicator) */
+    public static boolean isReloading() {
+        return reloading;
+    }
+
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
         if (!stats.isComplete()) {
             feedback(player, "incomplete");
             return;
         }
+        if (!ReadyModel.canFire()) return; // ready pose: gun not yet back in the firing stance
         FireMode mode = GunNbt.getFireMode(gun);
         long now = System.currentTimeMillis();
 
@@ -137,11 +175,21 @@ public final class ClientGunInput {
         }
         if (stats.feed != null && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
                 && GunNbt.getAmmoCount(gun) <= 0) {
-            feedback(player, "magazine_empty", ModKeybinds.RELOAD);
-            return;
+            return; // empty magazine: silent (the HUD clip counter + auto reload say it)
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
-        long interval = (long) (60000.0 / Math.max(1, ext.fireRate * stats.fireRateMultiplier));
+        // mirror of the server gate: ammo reload_ticks / multiplier, in ms
+        // (client lookups are best-effort — the server validates anyway)
+        long interval;
+        PotatoCannonProjectileType type = PotatoCannonProjectileType
+                .getTypeForItem(player.level().registryAccess(),
+                        AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId))
+                .map(ref -> ref.value()).orElse(null);
+        if (type != null) {
+            interval = (long) (50 * Math.max(1, type.reloadTicks() / stats.fireRateMultiplier));
+        } else {
+            interval = 50; // unknown type: 10/s fallthrough, server will gate
+        }
         if (now - lastLocalShotMs < interval) return;
         if (reloading) return;
 

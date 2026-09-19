@@ -139,14 +139,18 @@ public final class GunHudOverlay implements IGuiOverlay {
         // line 1 (bottom): clip / reserve
         String countText;
         int countColor = TEXT_COLOR;
+        // creative: reserve is bottomless, show the infinity sign
+        String reserveText = player.isCreative() ? "∞" : String.valueOf(reserveCount(player, stats, ammoId));
         if (backpack) {
-            int reserve = reserveCount(player, stats, ammoId);
-            countText = "∞ " + reserve; // backpack feed has no clip
+            // backpack feed has no clip; creative reserve is already "∞", don't double it
+            countText = player.isCreative() ? "∞" : "∞ " + reserveText;
         } else {
             int clip = GunNbt.getAmmoCount(gun);
-            int reserve = reserveCount(player, stats, ammoId);
-            countText = clip + " / " + reserve;
-            if (clip == 0) countColor = WARN_COLOR;
+            String clipText = ClientGunInput.isReloading()
+                    ? Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".hud.reloading").getString()
+                    : String.valueOf(clip);
+            countText = clipText + " / " + reserveText;
+            if (clip == 0 && !ClientGunInput.isReloading()) countColor = WARN_COLOR;
         }
         drawRightAligned(g, mc, countText, x, y - 9, countColor);
 
