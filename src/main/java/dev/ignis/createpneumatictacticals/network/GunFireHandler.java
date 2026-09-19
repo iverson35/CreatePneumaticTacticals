@@ -70,12 +70,14 @@ public final class GunFireHandler {
     }
 
     private static double posePenalty(ServerPlayer player) {
+        // base hipfire pose penalties doubled (standing 2, walking/air 6,
+        // crouch 1.6, sprint 16) — hip was too accurate for all poses
         // sprint-fire (high-ergonomics guns only) is wildly inaccurate
-        if (player.isSprinting() || player.isFallFlying()) return 8.0;
-        if (!player.onGround()) return 3.0;
-        if (player.isCrouching()) return 0.8;
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 3.0; // walking
-        return 1.0;
+        if (player.isSprinting() || player.isFallFlying()) return 16.0;
+        if (!player.onGround()) return 6.0;
+        if (player.isCrouching()) return 1.6;
+        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 6.0; // walking
+        return 2.0;
     }
 
     private static void addBloom(ServerPlayer player, AmmoExtension ext) {

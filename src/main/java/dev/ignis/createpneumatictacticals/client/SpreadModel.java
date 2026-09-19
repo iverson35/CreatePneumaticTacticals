@@ -58,16 +58,19 @@ public final class SpreadModel {
     }
 
     private static double posePenalty(Player player) {
+        // base hipfire pose penalties doubled (standing 2, walking/air 6,
+        // crouch 1.6, sprint 16) — hip was too accurate for all poses.
+        // Keep in sync with GunFireHandler.posePenalty (server-authoritative).
         // sprint-fire (high-ergonomics guns only) is wildly inaccurate
-        if (player.isSprinting() || player.isFallFlying()) return 8.0;
-        if (!player.onGround()) return 3.0;
-        if (player.isCrouching()) return 0.8;
+        if (player.isSprinting() || player.isFallFlying()) return 16.0;
+        if (!player.onGround()) return 6.0;
+        if (player.isCrouching()) return 1.6;
         // walking: velocity OR the per-tick walkDist increment (walkDist is
         // the animation driver, guaranteed populated client-side; deltaMovement
         // alone proved unreliable in some setups)
         if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02
-                || player.walkDist - player.walkDistO > 0.02f) return 3.0;
-        return 1.0;
+                || player.walkDist - player.walkDistO > 0.02f) return 6.0;
+        return 2.0;
     }
 
     public static void addBloom(AmmoExtension ext) {
