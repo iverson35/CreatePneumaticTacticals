@@ -62,7 +62,11 @@ public final class SpreadModel {
         if (player.isSprinting() || player.isFallFlying()) return 8.0;
         if (!player.onGround()) return 3.0;
         if (player.isCrouching()) return 0.8;
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 3.0; // walking
+        // walking: velocity OR the per-tick walkDist increment (walkDist is
+        // the animation driver, guaranteed populated client-side; deltaMovement
+        // alone proved unreliable in some setups)
+        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02
+                || player.walkDist - player.walkDistO > 0.02f) return 3.0;
         return 1.0;
     }
 

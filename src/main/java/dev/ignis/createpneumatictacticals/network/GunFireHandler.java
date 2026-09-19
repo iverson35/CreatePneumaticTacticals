@@ -39,6 +39,10 @@ public final class GunFireHandler {
     private static final Map<String, Double> BLOOM = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final java.util.Random RANDOM = new java.util.Random();
+    /** anti-cheat clamp: client-supplied view direction may deviate from the
+     * server's own look vector by at most this many degrees (covers the
+     * legitimate 20Hz rotation-sync lag with a wide margin) */
+    private static final double MAX_DIR_DEVIATION = 15.0;
     /** bloom fully decays after this many ticks without shooting (client: 400ms) */
     private static final long BLOOM_DECAY_TICKS = 8;
 
@@ -98,7 +102,15 @@ public final class GunFireHandler {
                 .add(v.scale(dir.length() * Math.sin(angle) * Math.sin(phi)));
     }
 
-    public static void onFireRequest(ServerPlayer player) {
+    /**
+     * @param clientEye the shooter's eye position at click time (client frame);
+     *                  null for legacy/internal callers
+     * @param clientDir the shooter's view direction at click time; clamped to
+     *                  within {@link #MAX_DIR_DEVIATION} degrees of the
+     *                  server's own look vector so a hacked client cannot
+     *                  shoot around corners
+     */
+    public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir) {
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
@@ -187,8 +199,30 @@ public final class GunFireHandler {
         // crosshair.
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
-        double speed = 2 * type.velocityMultiplier() * stats.bulletSpeed;
+        if (clientEye != null && clientDir != null && clientDir.lengthSqr() > 1.0E-8) {
+            // trust the client's click-time camera (zero-latency crosshair),
+            // clamped: position to 2 blocks of the server eye, direction to
+            // MAX_DIR_DEVIATION of the server look
+            if (clientEye.distanceToSqr(eye) < 4.0) {
+                Vec3 d = clientDir.normalize();
+                double dot = net.minecraft.util.Mth.clamp(d.dot(look), -1.0, 1.0);
+                if (Math.toDegrees(Math.acos(dot)) <= MAX_DIR_DEVIATION) {
+                    eye = clientEye;
+                    look = d;
+                }
+            }
+        }
         int pellets = Math.max(1, type.split());
+        // Vanilla motion sync (ClientboundSetEntityMotionPacket, sent both at
+        // spawn pairing and per-tick for trackDelta entities like the potato
+        // projectile) encodes each axis independently as clamp(v, -3.9, 3.9).
+        // Above 3.9 the dominant axis is truncated on the client while
+        // diagonal components (S * 0.707) stay intact, pulling the visible
+        // trajectory toward the 45-degree diagonals — a real directional
+        // artifact, not just slower bullets. Cap the launch speed so the
+        // client reproduces the true ballistics (vanilla arrows cap at ~3.0
+        // for the same reason).
+        double speed = Math.min(2 * type.velocityMultiplier() * stats.bulletSpeed, 3.9);
         for (int i = 0; i < pellets; i++) {
             PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(player.level());
             if (projectile == null) return;
@@ -205,6 +239,7 @@ public final class GunFireHandler {
                 // Reimplemented here because catnip's VecHelper is not on the
                 // compile classpath.
                 double ang = Math.toRadians((360.0 / pellets) * i
+                        + 360.0 * player.getRandom().nextFloat()
                         + 40 * (player.getRandom().nextFloat() - 0.5f));
                 Vec3 upAxis = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
                 Vec3 u = dir.cross(upAxis).normalize();

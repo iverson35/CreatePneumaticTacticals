@@ -213,7 +213,16 @@ public final class ClientGunInput {
         if (reloading) return;
 
         // burst: single request per click for now (server sequences the burst)
-        CptNetwork.CHANNEL.sendToServer(new FireRequestPacket());
+        // click-time camera pose, INCLUDING the recoil view punch: the
+        // crosshair is drawn at the punched camera center, so the bullet
+        // must follow the punched direction (entity look alone ignores the
+        // punch and lands beside the crosshair). This also kills the ~50ms
+        // rotation-sync lag that put turned shots on the wrong side.
+        float punchPitch = player.getXRot() - (float) dev.ignis.createpneumatictacticals.client.RecoilModel.pitchDegrees();
+        float punchYaw = player.getYRot() - (float) dev.ignis.createpneumatictacticals.client.RecoilModel.yawDegrees();
+        net.minecraft.world.phys.Vec3 punchDir = net.minecraft.world.phys.Vec3.directionFromRotation(punchPitch, punchYaw);
+        CptNetwork.CHANNEL.sendToServer(new FireRequestPacket(
+                player.getEyePosition(1.0f), punchDir));
         // instant local fire sound (default: potato-cannon FWOOMP); the
         // server broadcast excludes the shooter
         String soundId = stats.receiver.fireSound != null ? stats.receiver.fireSound : "create:fwoomp";

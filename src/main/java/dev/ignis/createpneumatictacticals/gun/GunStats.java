@@ -18,6 +18,14 @@ public final class GunStats {
     public double fireRateMultiplier = 1.0;
     public double hipfireAccuracyMultiplier = 1.0;
     public double ergonomics = 1.0;
+    /**
+     * Launch speed is 2 * ammoVelocityMultiplier * bulletSpeed, capped at
+     * 3.9 blocks/tick in GunFireHandler: vanilla motion sync clamps each axis
+     * to +-3.9 (ClientboundSetEntityMotionPacket), so anything faster gets its
+     * dominant axis truncated on the client and the visible trajectory bends
+     * toward the 45-degree diagonals. Modules pushing bulletSpeed beyond that
+     * cap only shorten time-of-flight server-side, never visual speed.
+     */
     public double bulletSpeed = 1.0;
     public double recoilMultiplier = 1.0;
     public double recoilRecovery = 1.0;
