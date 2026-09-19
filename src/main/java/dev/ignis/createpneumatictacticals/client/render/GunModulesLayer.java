@@ -180,19 +180,40 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         if (ctx.stack != mc().player.getMainHandItem()) return;
         org.joml.Vector3f tip = new org.joml.Vector3f(0, 0, 0);
         if (muzzleDef != null) {
-            float maxZ = Float.NEGATIVE_INFINITY;
             software.bernie.geckolib.cache.object.BakedGeoModel mm = null;
             try {
                 mm = ModuleGunGeoModel.INSTANCE.getBakedModel(ModuleGunGeoModel.modelId(muzzleDef.id));
             } catch (Exception ignored) {}
             if (mm != null) {
+                // preferred: the device marks its muzzle port with a
+                // loc_muzzle bone (same convention as the barrel model).
+                // Walk the device's own bone chain and capture exactly at
+                // that pivot — no cube-space reconstruction involved.
+                CoreGeoBone port = mm.getBone("loc_muzzle").orElse(null);
+                if (port != null) {
+                    poseStack.pushPose();
+                    try {
+                        applyBoneChain(port, poseStack);
+                        MuzzleAnchor.capture(poseStack, new org.joml.Vector3f(0, 0, 0),
+                                mc().player.getUUID());
+                    } finally {
+                        poseStack.popPose();
+                    }
+                    return;
+                }
+                // legacy fallback (no port bone): front face from the cubes.
+                // GeoCube pivots/sizes are px-space model units; the device
+                // extends along -Z_world with its rear at the mount, so the
+                // max-z face is the rear — closest cheap approximation for
+                // devices authored without a loc_muzzle bone.
+                float maxZ = Float.NEGATIVE_INFINITY;
                 for (software.bernie.geckolib.cache.object.GeoBone bone : mm.topLevelBones()) {
                     for (software.bernie.geckolib.cache.object.GeoCube cube : bone.getCubes()) {
                         maxZ = Math.max(maxZ, (float) (cube.pivot().z + cube.size().z / 2));
                     }
                 }
+                if (maxZ != Float.NEGATIVE_INFINITY) tip.set(0, 0, maxZ);
             }
-            if (maxZ != Float.NEGATIVE_INFINITY) tip.set(0, 0, maxZ);
         }
         MuzzleAnchor.capture(poseStack, tip, mc().player.getUUID());
     }
