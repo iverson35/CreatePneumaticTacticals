@@ -2,6 +2,7 @@ package dev.ignis.createpneumatictacticals.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
@@ -32,6 +33,14 @@ public final class ItemGuiTransform {
     private ItemGuiTransform() {}
 
     public static void apply(PoseStack poseStack, BakedGeoModel model) {
+        apply(poseStack, model, false);
+    }
+
+    /**
+     * @param flipZ pre-rotate the model 180° around Z — for attachments
+     *              modeled upside down against the rolled bottom loc bone
+     */
+    public static void apply(PoseStack poseStack, BakedGeoModel model, boolean flipZ) {
         if (model == null) return;
         float[] b;
         synchronized (BOUNDS) {
@@ -40,6 +49,7 @@ public final class ItemGuiTransform {
         if (b == null) return; // empty model: nothing to fit
 
         Quaternionf rot = Axis.YP.rotationDegrees(75).mul(Axis.XP.rotationDegrees(20));
+        if (flipZ) rot.mul(Axis.ZP.rotationDegrees(180)); // model-space flip first
         // projected half-extent of the rotated bounding box on screen axes
         float spanX = 0, spanY = 0;
         for (int i = 0; i < 8; i++) {
@@ -80,6 +90,17 @@ public final class ItemGuiTransform {
     private static void walk(GeoBone bone, float px, float py, float pz, float[] mm) {
         float x = px + bone.getPosX(), y = py + bone.getPosY(), z = pz + bone.getPosZ();
         for (GeoCube cube : bone.getCubes()) {
+            // beam-like geometry (e.g. laser lines: 0 x 0.2 x 32): one edge
+            // vastly longer than the other two would shrink the whole item
+            // to fit the slot — exclude it from the bounds; it still renders,
+            // just sticking out past the slot edge. Ratio is longest edge vs
+            // SECOND longest (not shortest): a wide zero-thickness plate
+            // (16x16x0) is geometry, a zero-width 32-long line is a beam
+            Vec3 sz = cube.size();
+            float a = (float) sz.x, b = (float) sz.y, c = (float) sz.z;
+            float longest = Math.max(a, Math.max(b, c));
+            float second = Math.max(Math.min(a, b), Math.max(Math.min(b, c), Math.min(a, c)));
+            if (longest / Math.max(second, 1.0e-4f) > 16) continue;
             for (GeoQuad quad : cube.quads()) {
                 for (GeoVertex v : quad.vertices()) {
                     Vector3f p = v.position();

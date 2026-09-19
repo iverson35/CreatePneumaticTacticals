@@ -40,18 +40,6 @@ public final class AimHandler {
     private static final float STANCE_SWITCH_SECONDS = 0.25f;
     /** movement speed factor while fully aiming at ergonomics 1 */
     private static final float AIM_WALK_FACTOR = 0.4f;
-    /** handling-speed ratio bounds applied to the gun's ergonomics */
-    private static final double ERGO_MIN = 0.25, ERGO_MAX = 3.0;
-
-    /**
-     * Ergonomics-scaled handling factor shared by aim/stance/ready recovery:
-     * 1 = base feel, clamped to {@link #ERGO_MIN}..{@link #ERGO_MAX} so no
-     * module combination produces degenerate timing.
-     */
-    public static double ergoScaleOf(ItemStack gun) {
-        if (!(gun.getItem() instanceof GeoGunItem)) return 1.0;
-        return Mth.clamp(GunStats.ofGun(gun).ergonomics, ERGO_MIN, ERGO_MAX);
-    }
 
     private static float aimProgress = 0f;
     private static float prevAimProgress = 0f;
@@ -61,13 +49,14 @@ public final class AimHandler {
     private static boolean lastAiming = false;
     private AimHandler() {}
 
-    /** True while holding a gun and holding right mouse. */
+    /** True while holding a gun and holding right mouse (muzzle must be clear). */
     public static boolean isAiming() {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         return player != null && mc.screen == null
                 && player.getMainHandItem().getItem() instanceof GeoGunItem
-                && mc.options.keyUse.isDown();
+                && mc.options.keyUse.isDown()
+                && !MuzzleClearance.isBlocked();
     }
 
     /** Smoothed aim transition progress, render-interpolated. 0 = hip, 1 = fully aimed. */
@@ -123,7 +112,7 @@ public final class AimHandler {
         prevAimProgress = aimProgress;
         Player p = Minecraft.getInstance().player;
         ItemStack heldGun = p != null ? p.getMainHandItem() : ItemStack.EMPTY;
-        double ergo = ergoScaleOf(heldGun);
+        double ergo = GunStats.ergoScale(heldGun);
         // ergonomics scales both directions of the hip<->ADS transition
         float step = (float) (1f / (AIM_TIME_SECONDS * 20f) * ergo);
         aimProgress = Mth.clamp(aimProgress + (aiming ? step : -step), 0f, 1f);
@@ -160,7 +149,7 @@ public final class AimHandler {
         // the penalty share itself is clamped to [0, 0.9] so a stacked build
         // can never fully cancel the slowdown
         ItemStack gun = event.getEntity().getMainHandItem();
-        double ergo = ergoScaleOf(gun);
+        double ergo = GunStats.ergoScale(gun);
         float penalty = (float) Math.min(0.9, (1f - AIM_WALK_FACTOR) / ergo);
         float factor = 1f - penalty * p;
         event.getInput().leftImpulse *= factor;

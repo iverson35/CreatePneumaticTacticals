@@ -66,10 +66,11 @@ public final class GunFireHandler {
     }
 
     private static double posePenalty(ServerPlayer player) {
-        if (player.isSprinting() || player.isFallFlying()) return 3.0;
+        // sprint-fire (high-ergonomics guns only) is wildly inaccurate
+        if (player.isSprinting() || player.isFallFlying()) return 8.0;
         if (!player.onGround()) return 3.0;
         if (player.isCrouching()) return 0.8;
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 1.6;
+        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 3.0; // walking
         return 1.0;
     }
 
@@ -101,11 +102,14 @@ public final class GunFireHandler {
         ItemStack gun = player.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
-        // ready pose: no firing while sprinting / elytra flying (the client
-        // also enforces the ready-up delay after stopping; the flag is synced)
-        if (player.isSprinting() || player.isFallFlying()) return;
-
         GunStats stats = GunStats.ofGun(gun);
+
+        // ready pose: no firing while elytra flying, or sprinting with a gun
+        // too sluggish to stay firing-ready — ergonomics above
+        // SPRINT_FIRE_ERGO keeps the gun up (the client mirrors this gate 1:1)
+        if (player.isFallFlying()) return;
+        if (player.isSprinting() && GunStats.ergoScale(gun) <= GunStats.SPRINT_FIRE_ERGO) return;
+
         if (!stats.isComplete()) return;
 
         ModuleDefinition receiver = stats.receiver;
@@ -175,11 +179,12 @@ public final class GunFireHandler {
         double spreadDeg = spreadDegrees(player, ext, stats);
 
         // spread cone apexes at the EYE: sample the angular offset first,
-        // put each launch point on its own ray 1 block out, fire along
-        // eye -> launchPoint. Spawning everything on the shared axis point
-        // instead hinges the cone there, giving (R-1)*tan(θ) deviation and
-        // trajectories that don't pass through the eye — close-range shots
-        // wrongly collapse toward the crosshair.
+        // put each launch point on its own ray 0.5 blocks out (matches the
+        // muzzle-clearance ray), fire along eye -> launchPoint. Spawning
+        // everything on the shared axis point instead hinges the cone there,
+        // giving (1-R)*tan(θ) deviation and trajectories that don't pass
+        // through the eye — close-range shots wrongly collapse toward the
+        // crosshair.
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         double speed = 2 * type.velocityMultiplier() * stats.bulletSpeed;
@@ -207,7 +212,7 @@ public final class GunFireHandler {
                 dir = dir.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
             }
             dir = dir.normalize();
-            Vec3 launch = eye.add(dir.scale(1.0));
+            Vec3 launch = eye.add(dir.scale(0.5));
             // setPos anchors the entity ORIGIN (feet), but both the rendered
             // sprite and the hitbox are centered bbHeight/2 (0.125) above it —
             // drop the anchor so the projectile's center sits exactly on the

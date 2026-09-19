@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 
 /**
  * C2S: the owning client reports its current gun pose (hip / ads / tactical /
- * low_ready / high_ready / reloading). Pose inputs are client-local (aim key,
+ * low_ready / high_ready / reloading / reloading_empty). Pose inputs are client-local (aim key,
  * reload state machine, ready-pose style config), so the client is the only
  * source of truth; the server validates that a gun is actually held and
  * rebroadcasts to tracking clients for third-person rendering.

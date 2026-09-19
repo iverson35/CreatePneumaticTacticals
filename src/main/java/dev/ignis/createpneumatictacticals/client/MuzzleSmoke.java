@@ -49,8 +49,8 @@ public final class MuzzleSmoke {
         // muzzle module gas suppression: -10 = double smoke, +10 = none
         // (smoke = (1 - v/20) * base puffs)
         GunStats stats = GunStats.ofGun(player.getMainHandItem());
-        double suppression = Mth.clamp(stats.gasSuppression, -10, 10);
-        double smokeScale = 1.0 - suppression / 20.0;
+        double suppression = Mth.clamp(stats.gasSuppression, -5, 1);
+        double smokeScale = 1.0 - suppression;
         double scale = Mth.clamp(reloadTicks / BASE_RELOAD_TICKS, 0.25, 2.5) * smokeScale;
         int puffs = (int) Math.round(4 * scale);
 

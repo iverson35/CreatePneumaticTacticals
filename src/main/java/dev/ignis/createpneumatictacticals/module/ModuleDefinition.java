@@ -30,8 +30,13 @@ public final class ModuleDefinition {
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
             recoilMultiplier, recoilRecovery;
-    /** muzzle: -10..10 gas suppression; -10 = double smoke, +10 = none */
+    /** muzzle: -5..1 gas suppression; -1 = double smoke, +1 = none */
     public final double gasSuppression;
+    /**
+     * stats apply only once no matter how many copies are installed
+     * (multi-slot stacking still allowed; duplicates just stop stacking)
+     */
+    public final boolean unique;
     /**
      * muzzle: gas guides (side ports). weight distributes guided particles
      * among entries; velocity_multiplier/spread_multiplier scale the puff's
@@ -81,6 +86,7 @@ public final class ModuleDefinition {
         this.recoilMultiplier = b.recoilMultiplier;
         this.recoilRecovery = b.recoilRecovery;
         this.gasSuppression = b.gasSuppression;
+        this.unique = b.unique;
         this.gasGuides = b.gasGuides;
         this.gasPassThrough = b.gasPassThrough;
         this.gunType = b.gunType;
@@ -140,9 +146,10 @@ public final class ModuleDefinition {
         b.bulletSpeed = GsonHelper.getAsDouble(props, "bullet_speed", 0);
         b.recoilMultiplier = GsonHelper.getAsDouble(props, "recoil_multiplier", 0);
         b.recoilRecovery = GsonHelper.getAsDouble(props, "recoil_recovery", 0);
+        b.unique = GsonHelper.getAsBoolean(props, "unique", false);
         if (type == ModuleType.MUZZLE) {
             b.gasSuppression = net.minecraft.util.Mth.clamp(
-                    GsonHelper.getAsDouble(props, "gas_suppression", 0), -10, 10);
+                    GsonHelper.getAsDouble(props, "gas_suppression", 0), -5, 1);
             // fraction of puffs that skips the guides (fires straight ahead)
             b.gasPassThrough = net.minecraft.util.Mth.clamp(
                     GsonHelper.getAsDouble(props, "gas_pass_through", 1), 0, 1);
@@ -247,6 +254,7 @@ public final class ModuleDefinition {
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
                 recoilMultiplier, recoilRecovery;
         private double gasSuppression;
+        private boolean unique;
         private final List<GasGuide> gasGuides = new ArrayList<>();
         private double gasPassThrough = 1;
         @Nullable private GunType gunType;

@@ -1,0 +1,9 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "create:iron_sheet"},
+    {"item": "minecraft:red_dye"},
+    {"item": "create:andesite_alloy"}
+  ],
+  "result": "createpneumatictacticals:pica_sight_small_mounted_md1"
+}

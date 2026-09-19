@@ -21,7 +21,7 @@ public final class GunStats {
     public double bulletSpeed = 1.0;
     public double recoilMultiplier = 1.0;
     public double recoilRecovery = 1.0;
-    /** total muzzle gas suppression, clamped -10..10; smoke = (1 - v/20) * base */
+    /** total muzzle gas suppression, clamped -5..1; smoke = (1 - v) * base (±1 = ±100%) */
     public double gasSuppression = 0;
     public double aimZoom = 1.25;
     public double tacticalAimZoom = 1.0;
@@ -30,6 +30,22 @@ public final class GunStats {
     @Nullable public ModuleDefinition supply;
     @Nullable public ModuleDefinition barrel;
     @Nullable public ModuleDefinition muzzle;
+
+    /** handling-speed ratio bounds applied to ergonomics (aim/stance/ready feel) */
+    public static final double ERGO_MIN = 0.25, ERGO_MAX = 3.0;
+    /** ergonomics above this keeps the gun firing-ready while sprinting */
+    public static final double SPRINT_FIRE_ERGO = 1.2;
+
+    /**
+     * Ergonomics handling factor shared by aim/stance/ready recovery: 1 =
+     * base feel, clamped to {@link #ERGO_MIN}..{@link #ERGO_MAX} so no module
+     * combination produces degenerate timing. Common code — the server fire
+     * gate mirrors the client's sprint-fire rule with this.
+     */
+    public static double ergoScale(net.minecraft.world.item.ItemStack stack) {
+        if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem)) return 1.0;
+        return Mth.clamp(ofGun(stack).ergonomics, ERGO_MIN, ERGO_MAX);
+    }
 
     /** aggregates singles + position-bound handguard attachments from the gun stack */
     public static GunStats ofGun(net.minecraft.world.item.ItemStack stack) {
@@ -45,7 +61,10 @@ public final class GunStats {
         GunStats s = new GunStats();
         java.util.List<ModuleDefinition> all = new java.util.ArrayList<>(installed.values());
         all.addAll(extras);
+        java.util.Set<ModuleDefinition> counted = new java.util.HashSet<>();
         for (ModuleDefinition def : all) {
+            // unique modules stack no stats beyond the first copy
+            if (def.unique && !counted.add(def)) continue;
             s.reloadSpeed += def.reloadSpeed;
             s.damageMultiplier += def.damageMultiplier;
             s.fireRateMultiplier += def.fireRateMultiplier;
@@ -83,7 +102,7 @@ public final class GunStats {
         s.bulletSpeed = Math.max(0.1, s.bulletSpeed);
         s.recoilMultiplier = Mth.clamp(s.recoilMultiplier, 0.1, 3.0);
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);
-        s.gasSuppression = Mth.clamp(s.gasSuppression, -10, 10);
+        s.gasSuppression = Mth.clamp(s.gasSuppression, -5, 1);
     }
 
     public boolean isComplete() {

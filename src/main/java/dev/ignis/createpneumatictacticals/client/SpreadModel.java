@@ -58,10 +58,11 @@ public final class SpreadModel {
     }
 
     private static double posePenalty(Player player) {
-        if (player.isSprinting() || player.isFallFlying()) return 3.0; // ready pose: can't fire anyway
+        // sprint-fire (high-ergonomics guns only) is wildly inaccurate
+        if (player.isSprinting() || player.isFallFlying()) return 8.0;
         if (!player.onGround()) return 3.0;
         if (player.isCrouching()) return 0.8;
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 1.6;
+        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 3.0; // walking
         return 1.0;
     }
 

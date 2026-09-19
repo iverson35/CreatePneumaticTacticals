@@ -3,7 +3,7 @@
   "module_type": "muzzle",
   "gun_properties": {
     "recoil_multiplier": -0.3,
-    "gas_suppression": -10,
+    "gas_suppression": -2,
     "gas_pass_through": 0.2,
     "gas_guides": [
       {

@@ -36,6 +36,8 @@ public final class ClientGunInput {
     // --- client reload state machine: R starts it, completion sends the result packet ---
     private static boolean reloading = false;
     private static boolean reloadRoundMode = false;
+    /** empty-magazine reload drives the third-person RELOADING_EMPTY pose */
+    private static boolean reloadEmpty = false;
     private static long reloadEndMs = 0;
     private static long reloadBatchMs = 0;
     private static int reloadBatch = 0;
@@ -73,6 +75,7 @@ public final class ClientGunInput {
 
         ItemStack gun = player.getMainHandItem();
         boolean holdingGun = gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem;
+        MuzzleClearance.tick(player, holdingGun);
         ReadyModel.tick(player, holdingGun);
         if (!holdingGun) {
             wasFiring = false;
@@ -140,7 +143,9 @@ public final class ClientGunInput {
         if (!holdingGun) {
             pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIP;
         } else if (reloading) {
-            pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING;
+            pose = reloadEmpty
+                    ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING_EMPTY
+                    : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING;
         } else if (AimHandler.isAiming()) {
             pose = "tactical".equals(GunNbt.getAimStance(gun))
                     ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.TACTICAL
@@ -162,12 +167,19 @@ public final class ClientGunInput {
         return reloading;
     }
 
+    /** wall-clock ms of the last local shot (0 = never); ReadyModel reads
+     *  it for the sprint-fire return-to-ready timing */
+    public static long lastShotMs() {
+        return lastLocalShotMs;
+    }
+
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
         if (!stats.isComplete()) {
             feedback(player, "incomplete");
             return;
         }
         if (!ReadyModel.canFire()) return; // ready pose: gun not yet back in the firing stance
+        if (MuzzleClearance.isBlocked()) return; // muzzle pressed into geometry
         FireMode mode = GunNbt.getFireMode(gun);
         long now = System.currentTimeMillis();
 
@@ -260,6 +272,7 @@ public final class ClientGunInput {
         reloadRoundMode = stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.ROUND;
         // duration = receiver animation length (+ bolt when empty) / reload speed
         boolean empty = GunNbt.getAmmoCount(gun) <= 0;
+        reloadEmpty = empty; // third-person choreography variant
         reloadBatchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, reloadRoundMode, empty, stats.reloadSpeed);
         reloadEndMs = System.currentTimeMillis() + reloadBatchMs;

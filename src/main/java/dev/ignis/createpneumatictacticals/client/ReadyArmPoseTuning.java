@@ -41,7 +41,8 @@ public final class ReadyArmPoseTuning {
         long now = System.currentTimeMillis();
         long dt = Math.min(100L, now - b.lastMs);
         b.lastMs = now;
-        float rampMs = (float) (ADS_RAMP_MS / AimHandler.ergoScaleOf(gun));
+        float rampMs = (float) (ADS_RAMP_MS
+                / dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(gun));
         b.value = net.minecraft.util.Mth.clamp(b.value + (ads ? dt : -dt) / rampMs, 0f, 1f);
         if (!ads && b.value == 0f) ADS_BLENDS.remove(entityId, b);
         return b.value * b.value * (3 - 2 * b.value);

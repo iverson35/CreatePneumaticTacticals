@@ -1,5 +1,6 @@
 package dev.ignis.createpneumatictacticals.mixin;
 
+import dev.ignis.createpneumatictacticals.client.ReloadArmAnimation;
 import dev.ignis.createpneumatictacticals.client.ReadyArmPoseTuning;
 import dev.ignis.createpneumatictacticals.network.ClientPoses;
 import dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket;
@@ -15,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Third-person gun poses (plan_v2 第三人称表现), applied additively on top of
  * the CROSSBOW_HOLD base pose from IClientItemExtensions:
- *  - RELOADING: procedural left-arm swing
+ *  - RELOADING / RELOADING_EMPTY: left-arm reload choreography
+ *    (ReloadArmAnimation: swing down, sway, swing up; empty adds the tap)
  *  - LOW/HIGH_READY: arm offsets from ReadyArmPoseTuning, blended in/out over
  *    ~150ms so stance changes don't snap. Additive only: composes with
  *    whatever other mods did to the arms.
@@ -33,10 +35,12 @@ public abstract class HumanoidModelMixin {
     private void cpt$gunPoses(LivingEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                               float netHeadYaw, float headPitch, CallbackInfo ci) {
         PoseBroadcastPacket.Pose pose = ClientPoses.get(entity.getId());
-        if (pose == PoseBroadcastPacket.Pose.RELOADING) {
-            // procedural swing: ~2 Hz X-axis oscillation, amplitude 25°
-            leftArm.xRot += (float) Math.sin(ageInTicks * 0.4f) * 0.45f;
-        }
+        // reload left-arm choreography (unconditional call: the out phase has
+        // to keep animating after the pose already left RELOADING)
+        ReloadArmAnimation.apply(entity.getId(),
+                pose == PoseBroadcastPacket.Pose.RELOADING || pose == PoseBroadcastPacket.Pose.RELOADING_EMPTY,
+                pose == PoseBroadcastPacket.Pose.RELOADING_EMPTY,
+                ageInTicks, leftArm);
 
         boolean ready = pose == PoseBroadcastPacket.Pose.LOW_READY || pose == PoseBroadcastPacket.Pose.HIGH_READY;
         ReadyArmPoseTuning.BlendResult blend =

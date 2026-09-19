@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 /**
  * S2C: broadcast pose changes of a player to tracking clients for third-person
  * rendering. Pose string values:
- *   hip | ads | tactical | low_ready | high_ready | reloading(<reloadEndsAtTick>)
+ *   hip | ads | tactical | low_ready | high_ready | reloading | reloading_empty
  */
 public class PoseBroadcastPacket {
 
@@ -18,7 +18,9 @@ public class PoseBroadcastPacket {
     public final Pose pose;
 
     public enum Pose {
-        HIP, ADS, TACTICAL, LOW_READY, HIGH_READY, RELOADING
+        HIP, ADS, TACTICAL, LOW_READY, HIGH_READY, RELOADING,
+        /** empty-magazine reload: same choreography + a bolt-rack inward tap */
+        RELOADING_EMPTY
     }
 
     public PoseBroadcastPacket(int entityId, Pose pose) {
