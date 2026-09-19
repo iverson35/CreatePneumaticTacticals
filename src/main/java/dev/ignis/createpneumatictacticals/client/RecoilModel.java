@@ -39,8 +39,12 @@ public final class RecoilModel {
         double viewScale = aiming ? scale : scale * 0.5;
         pitchOffset += basePitch * viewScale;
         yawOffset += (Math.random() * 2 - 1) * baseYaw * viewScale;
-        springVel += 40 * scale;
-        shake += 1.5 * scale;
+        // model kick + screen shake follow the receiver's base recoil, so
+        // tuning a gun's base_recoil_pitch scales the whole feel, not just
+        // the view angle (constants normalized to the former fixed kick at
+        // base 1.2: 33*1.2 = 40, 1.25*1.2 = 1.5)
+        springVel += 33.0 * basePitch * scale;
+        shake += 1.25 * basePitch * scale;
     }
 
     /** advance all layers to now; idempotent within the same nanos */

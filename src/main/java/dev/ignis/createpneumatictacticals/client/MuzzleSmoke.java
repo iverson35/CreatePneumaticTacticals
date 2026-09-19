@@ -4,6 +4,7 @@ import com.simibubi.create.foundation.particle.AirParticleData;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.client.render.MuzzleAnchor;
 import dev.ignis.createpneumatictacticals.client.particle.ModParticles;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.Camera;
@@ -88,19 +89,57 @@ public final class MuzzleSmoke {
             // sqrt-sampled disc + uniform phi like the server spread) and
             // velocity biases forward with a slight outward radial push —
             // an even, forward-extending plume instead of a ball at the tip
-            double halfAngle = Math.toRadians(18 + RANDOM.nextDouble() * 14);
+            Vec3 axis = dir;
+            double speedMult = 1;
+            double spreadMult = 1;
+            // gas guides: the installed muzzle device's ports redirect most
+            // puffs — pick a guide by weight (pass-through fraction skips)
+            ModuleDefinition.GasGuide guide = stats.muzzle != null && !stats.muzzle.gasGuides.isEmpty()
+                    && RANDOM.nextDouble() >= stats.muzzle.gasPassThrough
+                    ? pickGuide(stats.muzzle.gasGuides) : null;
+            if (guide != null) {
+                axis = offsetDirection(dir, guide.directionX(), guide.directionY());
+                speedMult = guide.velocityMultiplier();
+                spreadMult = guide.spreadMultiplier();
+            }
+            double halfAngle = Math.toRadians(18 + RANDOM.nextDouble() * 14) * spreadMult;
             double phi = RANDOM.nextDouble() * 2 * Math.PI;
             double rr = Math.sqrt(RANDOM.nextDouble()) * Math.tan(halfAngle);
-            Vec3 up = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-            Vec3 u = dir.cross(up).normalize();
-            Vec3 w = dir.cross(u).normalize();
+            Vec3 up = Math.abs(axis.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+            Vec3 u = axis.cross(up).normalize();
+            Vec3 w = axis.cross(u).normalize();
             Vec3 radial = u.scale(Math.cos(phi) * rr).add(w.scale(Math.sin(phi) * rr));
             double dist = 0.1 + RANDOM.nextDouble() * 0.45;
-            Vec3 pos = location.add(dir.scale(dist)).add(radial.scale(dist));
-            Vec3 vel = dir.scale(0.2).add(radial.scale(0.1));
+            Vec3 pos = location.add(axis.scale(dist)).add(radial.scale(dist));
+            Vec3 vel = axis.scale(0.2 * speedMult).add(radial.scale(0.1 * speedMult));
             level.addParticle((net.minecraft.core.particles.SimpleParticleType) ModParticles.MUZZLE_SMOKE.get(),
                     pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
         }
+    }
+
+    /** weight-proportional pick among the muzzle device's guide ports */
+    private static ModuleDefinition.GasGuide pickGuide(java.util.List<ModuleDefinition.GasGuide> guides) {
+        double total = 0;
+        for (ModuleDefinition.GasGuide g : guides) total += Math.max(0, g.weight());
+        if (total <= 0) return null;
+        double r = RANDOM.nextDouble() * total;
+        for (ModuleDefinition.GasGuide g : guides) {
+            r -= Math.max(0, g.weight());
+            if (r <= 0) return g;
+        }
+        return guides.get(guides.size() - 1);
+    }
+
+    /** shot direction rotated by (yawOffsetDeg, pitchOffsetDeg) relative to itself */
+    private static Vec3 offsetDirection(Vec3 dir, double yawDeg, double pitchDeg) {
+        Vec3 up = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 u = dir.cross(up).normalize();      // horizontal-ish right
+        Vec3 w = dir.cross(u).normalize();       // up relative to dir
+        // yaw: rotate around w (horizontal spread); pitch: around u
+        double yaw = Math.toRadians(yawDeg);
+        double pitch = Math.toRadians(pitchDeg);
+        Vec3 d1 = dir.scale(Math.cos(yaw)).add(u.scale(Math.sin(yaw)));
+        return d1.scale(Math.cos(pitch)).add(w.scale(Math.sin(pitch))).normalize();
     }
 
     /** VecHelper.offsetRandomly equivalent (catnip is not on the classpath here) */

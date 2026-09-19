@@ -1,0 +1,8 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "create:iron_sheet"},
+    {"item": "create:andesite_alloy"}
+  ],
+  "result": "createpneumatictacticals:1vo_muzzle_brake_a"
+}

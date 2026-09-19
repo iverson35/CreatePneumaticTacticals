@@ -29,6 +29,7 @@ public final class GunStats {
     @Nullable public ModuleDefinition feed;
     @Nullable public ModuleDefinition supply;
     @Nullable public ModuleDefinition barrel;
+    @Nullable public ModuleDefinition muzzle;
 
     /** aggregates singles + position-bound handguard attachments from the gun stack */
     public static GunStats ofGun(net.minecraft.world.item.ItemStack stack) {
@@ -57,8 +58,9 @@ public final class GunStats {
         }
         s.receiver = installed.get(ModuleType.RECEIVER);
         s.feed = installed.get(ModuleType.FEED);
-        s.supply = installed.get(ModuleType.SUPPLY);
         s.barrel = installed.get(ModuleType.BARREL);
+        s.supply = installed.get(ModuleType.SUPPLY);
+        s.muzzle = installed.get(ModuleType.MUZZLE);
         if (installed.containsKey(ModuleType.SIGHT)) {
             s.aimZoom = installed.get(ModuleType.SIGHT).aimZoom;
         }

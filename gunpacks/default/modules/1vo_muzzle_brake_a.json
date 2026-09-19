@@ -1,0 +1,25 @@
+{
+  "name": "createpneumatictacticals:1vo_muzzle_brake_a",
+  "module_type": "muzzle",
+  "gun_properties": {
+    "recoil_multiplier": -0.15,
+    "gas_suppression": 0,
+    "gas_pass_through": 0.2,
+    "gas_guides": [
+      {
+        "weight": 1,
+        "velocity_multiplier": 0.8,
+        "spread_multiplier": 0.8,
+        "direction_x": 90,
+        "direction_y": 0
+      },
+      {
+        "weight": 1,
+        "velocity_multiplier": 0.8,
+        "spread_multiplier": 0.8,
+        "direction_x": -90,
+        "direction_y": 0
+      }
+    ]
+  }
+}

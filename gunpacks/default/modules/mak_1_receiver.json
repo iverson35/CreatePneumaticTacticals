@@ -11,7 +11,7 @@
     "auto"
   ],
   "fire_sound": "createpneumatictacticals:gun.mak_1.fire",
-  "base_recoil_pitch": 1.2,
-  "base_recoil_yaw": 0.3,
+  "base_recoil_pitch": 3.6,
+  "base_recoil_yaw": 0.9,
   "gun_name": "gun.createpneumatictacticals.mak_1"
 }

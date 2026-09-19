@@ -32,6 +32,15 @@ public final class ModuleDefinition {
             recoilMultiplier, recoilRecovery;
     /** muzzle: -10..10 gas suppression; -10 = double smoke, +10 = none */
     public final double gasSuppression;
+    /**
+     * muzzle: gas guides (side ports). weight distributes guided particles
+     * among entries; velocity_multiplier/spread_multiplier scale the puff's
+     * forward speed and cone width; direction is the emission axis, an
+     * (x=yaw, y=pitch) offset in DEGREES relative to the shot direction.
+     * pass-through fraction of puffs skips the guides entirely.
+     */
+    public final List<GasGuide> gasGuides;
+    public final double gasPassThrough;
     /** receiver/barrel: gun type; barrel must match the installed receiver's */
     @Nullable public final GunType gunType;
     @Nullable public final List<FireMode> fireModes;
@@ -55,6 +64,10 @@ public final class ModuleDefinition {
     /** handguard_attachment: positions this attachment can mount to */
     public final List<HandguardPosition> positions;
 
+    /** one gas-guide port of a muzzle device */
+    public record GasGuide(double weight, double velocityMultiplier,
+                           double spreadMultiplier, double directionX, double directionY) {}
+
     private ModuleDefinition(Builder b) {
         this.id = b.id;
         this.type = b.type;
@@ -68,6 +81,8 @@ public final class ModuleDefinition {
         this.recoilMultiplier = b.recoilMultiplier;
         this.recoilRecovery = b.recoilRecovery;
         this.gasSuppression = b.gasSuppression;
+        this.gasGuides = b.gasGuides;
+        this.gasPassThrough = b.gasPassThrough;
         this.gunType = b.gunType;
         this.fireModes = b.fireModes == null ? null : List.copyOf(b.fireModes);
         this.fireSound = b.fireSound;
@@ -128,6 +143,20 @@ public final class ModuleDefinition {
         if (type == ModuleType.MUZZLE) {
             b.gasSuppression = net.minecraft.util.Mth.clamp(
                     GsonHelper.getAsDouble(props, "gas_suppression", 0), -10, 10);
+            // fraction of puffs that skips the guides (fires straight ahead)
+            b.gasPassThrough = net.minecraft.util.Mth.clamp(
+                    GsonHelper.getAsDouble(props, "gas_pass_through", 1), 0, 1);
+            if (props.has("gas_guides")) {
+                for (JsonElement el : props.getAsJsonArray("gas_guides")) {
+                    JsonObject g = el.getAsJsonObject();
+                    b.gasGuides.add(new GasGuide(
+                            GsonHelper.getAsDouble(g, "weight", 1),
+                            GsonHelper.getAsDouble(g, "velocity_multiplier", 1),
+                            GsonHelper.getAsDouble(g, "spread_multiplier", 1),
+                            GsonHelper.getAsDouble(g, "direction_x", 0),
+                            GsonHelper.getAsDouble(g, "direction_y", 0)));
+                }
+            }
         }
         // receiver
         if (type == ModuleType.RECEIVER || type == ModuleType.BARREL) {
@@ -218,6 +247,8 @@ public final class ModuleDefinition {
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
                 recoilMultiplier, recoilRecovery;
         private double gasSuppression;
+        private final List<GasGuide> gasGuides = new ArrayList<>();
+        private double gasPassThrough = 1;
         @Nullable private GunType gunType;
         @Nullable private List<FireMode> fireModes;
         @Nullable private String fireSound;
