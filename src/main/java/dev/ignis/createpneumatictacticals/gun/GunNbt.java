@@ -158,11 +158,26 @@ public final class GunNbt {
     // --- assembly validation ---
 
     /**
-     * Validates a candidate module against the current installation.
+     * Validates a candidate module against the current installation
+     * (no handguard attachments visible — legacy convenience overload).
      * @return null if legal, otherwise a human-readable reason (lang key suffix).
      */
     @Nullable
     public static String validate(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
+        return validate(installed, java.util.List.of(), candidate);
+    }
+
+    /**
+     * Full bidirectional validation: installed modules' rules vs candidate AND
+     * candidate's rules vs installed modules. hgAttachments = installed
+     * handguard attachments (they live outside the single-slot map; both rule
+     * directions see them).
+     * @return null if legal, otherwise a human-readable reason (lang key suffix).
+     */
+    @Nullable
+    public static String validate(Map<ModuleType, ModuleDefinition> installed,
+                                  java.util.Collection<ModuleDefinition> hgAttachments,
+                                  ModuleDefinition candidate) {
         // barrel gun_type must match the receiver's gun_type (checked both directions
         // so swapping the receiver under an installed barrel is also rejected)
         ModuleDefinition receiver = candidate.type == ModuleType.RECEIVER ? candidate
@@ -174,7 +189,8 @@ public final class GunNbt {
                 && receiver.gunType != barrel.gunType) {
             return "gun_type_mismatch";
         }
-        return checkAffectedRules(installed, candidate);
+        String forward = checkAffectedRules(mergedView(installed, hgAttachments), candidate);
+        return forward != null ? forward : checkCandidateRules(installed, hgAttachments, candidate);
     }
 
     /**
@@ -184,18 +200,28 @@ public final class GunNbt {
      */
     @Nullable
     public static String validateHandguardAttachment(Map<ModuleType, ModuleDefinition> installed,
+                                                     java.util.Collection<ModuleDefinition> hgAttachments,
                                                      HandguardPosition pos, ModuleDefinition candidate) {
         if (candidate.type != ModuleType.HANDGUARD_ATTACHMENT) return "wrong_type";
         ModuleDefinition handguard = installed.get(ModuleType.HANDGUARD);
         if (handguard == null || !handguard.attachmentPoints.contains(pos)) return "no_mount_point";
         if (!candidate.positions.contains(pos)) return "wrong_position";
-        return checkAffectedRules(installed, candidate);
+        String forward = checkAffectedRules(mergedView(installed, hgAttachments), candidate);
+        return forward != null ? forward : checkCandidateRules(installed, hgAttachments, candidate);
     }
 
-    /** module_affected rules of all installed modules vs the candidate */
+    /** single-slot modules + installed handguard attachments, as a flat view */
+    private static java.util.Collection<ModuleDefinition> mergedView(Map<ModuleType, ModuleDefinition> installed,
+                                                                     java.util.Collection<ModuleDefinition> hgAttachments) {
+        java.util.List<ModuleDefinition> all = new java.util.ArrayList<>(installed.values());
+        all.addAll(hgAttachments);
+        return all;
+    }
+
+    /** module_affected rules of all installed modules (incl. handguard attachments) vs the candidate */
     @Nullable
-    private static String checkAffectedRules(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
-        for (ModuleDefinition existing : installed.values()) {
+    private static String checkAffectedRules(java.util.Collection<ModuleDefinition> installed, ModuleDefinition candidate) {
+        for (ModuleDefinition existing : installed) {
             if (existing.id.equals(candidate.id)) continue;
             for (ModuleDefinition.Affected rule : existing.affected) {
                 if (rule.type() != candidate.type) continue;
@@ -221,13 +247,18 @@ public final class GunNbt {
     /**
      * Reverse direction: the candidate's own module_affected rules vs the
      * already-installed modules. NOT_EMPTY is a completion constraint, not an
-     * insertion constraint — skipped here. Note: only single-slot modules are
-     * visible to the reverse check (readModules view); rules targeting
-     * handguard_attachment see no installed instances.
+     * insertion constraint — skipped here.
      */
     @Nullable
-    private static String checkCandidateRules(Map<ModuleType, ModuleDefinition> installed, ModuleDefinition candidate) {
+    private static String checkCandidateRules(Map<ModuleType, ModuleDefinition> installed,
+                                              java.util.Collection<ModuleDefinition> hgAttachments,
+                                              ModuleDefinition candidate) {
         for (ModuleDefinition.Affected rule : candidate.affected) {
+            if (rule.type() == ModuleType.HANDGUARD_ATTACHMENT) {
+                String r = checkAgainstHgAttachments(rule, hgAttachments);
+                if (r != null) return r;
+                continue;
+            }
             ModuleDefinition existing = installed.get(rule.type());
             switch (rule.mode()) {
                 case EXCLUDE -> {
@@ -241,6 +272,29 @@ public final class GunNbt {
                 }
                 case NOT_EMPTY -> { /* completion-time only */ }
             }
+        }
+        return null;
+    }
+
+    /** candidate rule targeting handguard_attachment, checked against every installed attachment */
+    @Nullable
+    private static String checkAgainstHgAttachments(ModuleDefinition.Affected rule,
+                                                    java.util.Collection<ModuleDefinition> hgAttachments) {
+        switch (rule.mode()) {
+            case EXCLUDE -> {
+                for (ModuleDefinition att : hgAttachments) {
+                    if (rule.value().contains(att.id)) return "excludes_installed";
+                }
+            }
+            case INCLUDE -> {
+                for (ModuleDefinition att : hgAttachments) {
+                    if (!rule.value().contains(att.id)) return "requires_other";
+                }
+            }
+            case KEEP_EMPTY -> {
+                if (!hgAttachments.isEmpty()) return "requires_empty";
+            }
+            case NOT_EMPTY -> { /* completion-time only */ }
         }
         return null;
     }

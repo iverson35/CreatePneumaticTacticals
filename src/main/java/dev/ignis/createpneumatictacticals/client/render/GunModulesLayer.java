@@ -43,8 +43,6 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Set<String> WARNED = new HashSet<>();
-    /** ModuleAnimatable manager id, mirrors GunAnimationDriver.triggerModule */
-    private static final long INSTANCE_ID = 0;
 
     public GunModulesLayer(GeoRenderer<GeoGunItem> renderer) {
         super(renderer);
@@ -59,8 +57,10 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         Map<ModuleType, ModuleDefinition> modules = GunNbt.readModules(stack);
         if (modules.size() <= 1) return; // receiver only, or nothing
         Map<HandguardPosition, ModuleDefinition> hgAttachments = GunNbt.readHandguardAttachments(stack);
+        // module animation state is isolated per gun stack (GeoItem id), so
+        // two guns sharing a module definition don't play each other's anims
         Ctx ctx = new Ctx(animatable, stack, poseStack, bufferSource, partialTick, packedLight,
-                packedOverlay, modules, hgAttachments);
+                packedOverlay, modules, hgAttachments, software.bernie.geckolib.animatable.GeoItem.getId(stack));
 
         mount(receiverModel, "loc_feed", modules.get(ModuleType.FEED), ctx);
         mount(receiverModel, "loc_supply", modules.get(ModuleType.SUPPLY), ctx);
@@ -86,7 +86,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             return;
         }
         BakedGeoModel model = ModuleGunGeoModel.INSTANCE.getBakedModel(modelId); // activates bones on the shared processor
-        driveAnimation(ModuleAnimatable.of(def.id), ctx.partialTick);
+        driveAnimation(ModuleAnimatable.of(def.id), ctx.animId, ctx.partialTick);
 
         ctx.poseStack.pushPose();
         applyBoneChain(loc, ctx.poseStack);
@@ -105,7 +105,14 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         ctx.poseStack.popPose();
     }
 
-    /** walks root→locator applying each bone's animated local transform */
+    /**
+     * Walks root→locator applying each bone's animated local transform, then
+     * lands on the locator pivot. prepMatrixForBone ends with
+     * translateAwayFromPivotPoint (net identity for a static bone), so without
+     * the final translateToPivotPoint the module would render at the parent
+     * model origin instead of the mount point. Net transform:
+     * T(pos)·T(pivot)·R·S — module origin at the pivot, inheriting rotation.
+     */
     private static void applyBoneChain(CoreGeoBone locator, PoseStack poseStack) {
         List<CoreGeoBone> chain = new ArrayList<>();
         for (CoreGeoBone b = locator; b != null; b = b.getParent()) {
@@ -114,12 +121,13 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         for (CoreGeoBone b : chain) {
             RenderUtils.prepMatrixForBone(poseStack, b);
         }
+        RenderUtils.translateToPivotPoint(poseStack, locator);
     }
 
-    private static void driveAnimation(ModuleAnimatable ma, float partialTick) {
+    private static void driveAnimation(ModuleAnimatable ma, long instanceId, float partialTick) {
         AnimationState<ModuleAnimatable> state = new AnimationState<>(ma, 0, 0, partialTick, false);
         state.setData(DataTickets.TICK, ma.getTick(ma));
-        ModuleGunGeoModel.INSTANCE.handleAnimations(ma, INSTANCE_ID, state);
+        ModuleGunGeoModel.INSTANCE.handleAnimations(ma, instanceId, state);
     }
 
     private static void warnOnce(String key, String msg, Object... args) {
@@ -133,5 +141,6 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                        MultiBufferSource bufferSource, float partialTick,
                        int packedLight, int packedOverlay,
                        Map<ModuleType, ModuleDefinition> modules,
-                       Map<HandguardPosition, ModuleDefinition> hgAttachments) {}
+                       Map<HandguardPosition, ModuleDefinition> hgAttachments,
+                       long animId) {}
 }

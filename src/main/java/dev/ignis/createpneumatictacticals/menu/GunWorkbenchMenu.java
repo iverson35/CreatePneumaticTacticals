@@ -155,12 +155,14 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         if (!this.depsSatisfied(moduleSlotIndex)) return "missing_dependency";
         ModuleDefinition def = definitionOf(stack);
         if (def == null || def.type != type) return "wrong_type";
-        Map<ModuleType, ModuleDefinition> installed = GunNbt.readModules(this.container.getItem(SLOT_GUN));
+        ItemStack gun = this.container.getItem(SLOT_GUN);
+        Map<ModuleType, ModuleDefinition> installed = GunNbt.readModules(gun);
+        java.util.Collection<ModuleDefinition> hgAtt = GunNbt.readHandguardAttachments(gun).values();
         HandguardPosition pos = hgPositionOf(moduleSlotIndex);
         if (pos != null) {
-            return GunNbt.validateHandguardAttachment(installed, pos, def);
+            return GunNbt.validateHandguardAttachment(installed, hgAtt, pos, def);
         }
-        return GunNbt.validate(installed, def);
+        return GunNbt.validate(installed, hgAtt, def);
     }
 
     // --- click handling: keep gun NBT in sync with module slots ---

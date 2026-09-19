@@ -73,15 +73,17 @@ public final class GunAnimationDriver {
     /** receiver + every installed module (each plays the animation only if it defines it) */
     private static void broadcast(ItemStack gun, RawAnimation anim) {
         triggerReceiver(gun, anim);
+        // per-gun-stack module animation instances (mirrors GunModulesLayer)
+        long gunId = GeoItem.getId(gun);
         Set<ResourceLocation> seen = new HashSet<>();
         for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
             if (def.type != ModuleType.RECEIVER && seen.add(def.id)) {
-                triggerModule(def.id, anim);
+                triggerModule(def.id, anim, gunId);
             }
         }
         for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
             if (seen.add(def.id)) {
-                triggerModule(def.id, anim);
+                triggerModule(def.id, anim, gunId);
             }
         }
     }
@@ -94,11 +96,11 @@ public final class GunAnimationDriver {
         triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(GeoItem.getId(gun)), filtered);
     }
 
-    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim) {
+    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId) {
         RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
-        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(0), filtered);
+        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered);
     }
 
     private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim) {
