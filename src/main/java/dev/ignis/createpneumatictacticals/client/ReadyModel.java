@@ -44,7 +44,6 @@ public final class ReadyModel {
     public static void tick(Player player, boolean holdingGun) {
         prevProgress = progress;
         prevHighMix = highMix;
-        prevProgress = progress;
         double ergo = holdingGun
                 ? dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(player.getMainHandItem())
                 : 1.0;

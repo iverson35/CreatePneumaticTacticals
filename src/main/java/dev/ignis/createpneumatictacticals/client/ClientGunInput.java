@@ -67,16 +67,21 @@ public final class ClientGunInput {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
+        ItemStack gun = player.getMainHandItem();
+        boolean holdingGun = gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem;
+        // Pose state machines (ready/aim overlay) keep ticking with any GUI
+        // open: freezing them mid-transition left prev/cur unequal, and the
+        // per-frame lerp(partialTick, prev, cur) then oscillated the gun
+        // between the two frozen values at tick rate — the "gun trembles
+        // near a half-finished ready pose with the inventory/ESC open" bug.
+        // Only the input-driven logic below is blocked while a screen is up.
+        MuzzleClearance.tick(player, holdingGun);
+        ReadyModel.tick(player, holdingGun);
         if (mc.screen != null) {
             // opening any screen mid-reload interrupts it (magazine: fails; round: batch lost)
             cancelReload();
             return;
         }
-
-        ItemStack gun = player.getMainHandItem();
-        boolean holdingGun = gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem;
-        MuzzleClearance.tick(player, holdingGun);
-        ReadyModel.tick(player, holdingGun);
         if (!holdingGun) {
             wasFiring = false;
             cancelReload();
