@@ -37,7 +37,8 @@ public final class GunAnimTiming {
         ResourceLocation file = GunAssets.forStack(gun).animation();
         BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(file);
         if (baked == null) return fallbackTicks;
-        Animation anim = baked.getAnimation(name);
+        // Blockbench exports may key animations by full name; resolve first
+        Animation anim = baked.getAnimation(GunAnimations.resolve(baked, name));
         return anim != null && anim.length() > 0 ? anim.length() : fallbackTicks;
     }
 }

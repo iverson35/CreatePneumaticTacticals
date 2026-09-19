@@ -24,7 +24,7 @@ public final class GunStats {
     /** total muzzle gas suppression, clamped -10..10; smoke = (1 - v/20) * base */
     public double gasSuppression = 0;
     public double aimZoom = 1.25;
-    public double tacticalAimZoom = 1.25;
+    public double tacticalAimZoom = 1.0;
     @Nullable public ModuleDefinition receiver;
     @Nullable public ModuleDefinition feed;
     @Nullable public ModuleDefinition supply;

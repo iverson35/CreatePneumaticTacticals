@@ -196,7 +196,7 @@ public final class ModuleDefinition {
             b.aimZoom = GsonHelper.getAsDouble(json, "aim_zoom", 1.25);
         }
         if (type == ModuleType.TACTICAL_SIGHT) {
-            b.tacticalAimZoom = GsonHelper.getAsDouble(json, "tactical_aim_zoom", 1.25);
+            b.tacticalAimZoom = GsonHelper.getAsDouble(json, "tactical_aim_zoom", 1.0);
         }
         // handguard: exposed attachment points
         if (type == ModuleType.HANDGUARD) {
@@ -258,7 +258,7 @@ public final class ModuleDefinition {
         private int loadAmount, clipSize;
         @Nullable private SupplyType supplyType;
         private int airCapacity, airPerShot;
-        private double aimZoom = 1.25, tacticalAimZoom = 1.25;
+        private double aimZoom = 1.25, tacticalAimZoom = 1.0;
         @Nullable private String maskPath;
         @Nullable private int[] defaultColors;
         private List<HandguardPosition> attachmentPoints = Collections.emptyList();

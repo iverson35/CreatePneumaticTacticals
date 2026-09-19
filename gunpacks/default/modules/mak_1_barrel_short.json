@@ -3,7 +3,7 @@
   "module_type": "barrel",
   "gun_type": "medium",
   "gun_properties": {
-    "bullet_speed": 0.1,
-    "ergonomics": 0.1
+    "bullet_speed": -0.2,
+    "ergonomics": 0.2
   }
 }

@@ -1,7 +1,9 @@
 {
   "name": "createpneumatictacticals:mak_1_ammo_20",
   "module_type": "feed",
-  "gun_properties": {},
+  "gun_properties": {
+    "reload_speed": 0.2
+  },
   "load_type": "magazine",
   "clip_size": 20
 }

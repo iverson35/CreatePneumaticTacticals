@@ -21,11 +21,35 @@ public final class GunAnimations {
 
     private GunAnimations() {}
 
-    /** does this animation file contain the named animation */
-    public static boolean hasAnimation(net.minecraft.resources.ResourceLocation animationFile, String name) {
+    /**
+     * Resolves the code-side bare animation name ("reload") to the key in
+     * the baked file. Blockbench exports animations with a full name
+     * ("animation.mak_1_receiver.reload"), so when the bare name is absent,
+     * fall back to a unique ".<name>" suffix match. Ambiguous suffixes
+     * (e.g. both "reload" and "reload_round" would match ".reload" if the
+     * file had "a.reload") resolve to the first match in file order.
+     */
+    @org.jetbrains.annotations.Nullable
+    public static String resolve(net.minecraft.resources.ResourceLocation animationFile, String bareName) {
         software.bernie.geckolib.loading.object.BakedAnimations baked =
                 software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(animationFile);
-        return baked != null && baked.getAnimation(name) != null;
+        return baked == null ? null : resolve(baked, bareName);
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public static String resolve(software.bernie.geckolib.loading.object.BakedAnimations baked, String bareName) {
+        if (baked.getAnimation(bareName) != null) return bareName;
+        // Blockbench full names: "<anything>.<bareName>"
+        String suffix = "." + bareName;
+        for (String key : baked.animations().keySet()) {
+            if (key.endsWith(suffix)) return key;
+        }
+        return null;
+    }
+
+    /** does this animation file contain the named animation */
+    public static boolean hasAnimation(net.minecraft.resources.ResourceLocation animationFile, String name) {
+        return resolve(animationFile, name) != null;
     }
 
     /**
@@ -85,10 +109,11 @@ public final class GunAnimations {
     public static RawAnimation filterExisting(RawAnimation anim, net.minecraft.resources.ResourceLocation animationFile) {
         RawAnimation out = null;
         for (RawAnimation.Stage stage : anim.getAnimationStages()) {
-            if (!hasAnimation(animationFile, stage.animationName())) continue;
+            String resolved = resolve(animationFile, stage.animationName());
+            if (resolved == null) continue;
             out = out == null
-                    ? RawAnimation.begin().then(stage.animationName(), stage.loopType())
-                    : out.then(stage.animationName(), stage.loopType());
+                    ? RawAnimation.begin().then(resolved, stage.loopType())
+                    : out.then(resolved, stage.loopType());
         }
         return out;
     }

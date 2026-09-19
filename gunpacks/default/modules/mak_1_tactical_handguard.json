@@ -2,7 +2,7 @@
   "name": "createpneumatictacticals:mak_1_tactical_handguard",
   "module_type": "handguard",
   "gun_properties": {
-    "ergonomics": 0.05
+    "ergonomics": -0.1
   },
   "attachment_points": [
     "top",

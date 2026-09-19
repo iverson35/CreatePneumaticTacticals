@@ -6,6 +6,7 @@
   ],
   "gun_properties": {
     "recoil_multiplier": -0.15,
-    "hipfire_accuracy_multiplier": 0.1
+    "hipfire_accuracy_multiplier": 0.1,
+    "ergonomics": 0.1
   }
 }

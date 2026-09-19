@@ -9,6 +9,7 @@ import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
 import software.bernie.geckolib.util.GeckoLibUtil;
@@ -80,12 +81,13 @@ public class GeoGunItem extends GunItem implements GeoItem {
             // no idle authored -> stay silent instead of spamming the log
             net.minecraft.world.item.ItemStack stack =
                     state.getData(software.bernie.geckolib.constant.DataTickets.ITEMSTACK);
-            if (stack != null && !dev.ignis.createpneumatictacticals.client.render.GunAnimations
-                    .hasAnimation(dev.ignis.createpneumatictacticals.client.render.GunAssets
-                            .forStack(stack).animation(), "idle")) {
-                return software.bernie.geckolib.core.object.PlayState.STOP;
-            }
-            state.setAndContinue(GunAnimations.IDLE);
+            if (stack == null) return software.bernie.geckolib.core.object.PlayState.STOP;
+            String idle = GunAnimations.resolve(
+                    dev.ignis.createpneumatictacticals.client.render.GunAssets
+                            .forStack(stack).animation(), "idle");
+            // no idle authored -> stay silent instead of spamming the log
+            if (idle == null) return software.bernie.geckolib.core.object.PlayState.STOP;
+            state.setAndContinue(RawAnimation.begin().thenLoop(idle));
             return PlayState.CONTINUE;
         }));
         // one-shot anim controller (fire/reload/bolt), driven by GunAnimationDriver.
