@@ -7,6 +7,7 @@ import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
+import dev.ignis.createpneumatictacticals.gun.PosePenalties;
 import dev.ignis.createpneumatictacticals.item.PodItem;
 import dev.ignis.createpneumatictacticals.module.GunType;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
@@ -65,20 +66,10 @@ public final class GunFireHandler {
         if (last != null) {
             bloom *= Math.max(0, 1 - (now - last) / (double) BLOOM_DECAY_TICKS);
         }
-        double raw = ext.spread * posePenalty(player) + bloom;
+        double raw = ext.spread * PosePenalties.posePenalty(player) + bloom;
         return Math.max(0, raw / Math.max(0.1, stats.hipfireAccuracyMultiplier));
     }
 
-    private static double posePenalty(ServerPlayer player) {
-        // base hipfire pose penalties doubled (standing 2, walking/air 6,
-        // crouch 1.6, sprint 16) — hip was too accurate for all poses
-        // sprint-fire (high-ergonomics guns only) is wildly inaccurate
-        if (player.isSprinting() || player.isFallFlying()) return 16.0;
-        if (!player.onGround()) return 6.0;
-        if (player.isCrouching()) return 1.6;
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02) return 6.0; // walking
-        return 2.0;
-    }
 
     private static void addBloom(ServerPlayer player, AmmoExtension ext) {
         String key = player.getStringUUID();

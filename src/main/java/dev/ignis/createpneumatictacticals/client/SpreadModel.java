@@ -1,6 +1,6 @@
 package dev.ignis.createpneumatictacticals.client;
-
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
+import dev.ignis.createpneumatictacticals.gun.PosePenalties;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -30,7 +30,7 @@ public final class SpreadModel {
 
     /** pose penalty interpolated to now; retargets when the pose changed */
     private static double currentPenalty(Player player, long now) {
-        double target = posePenalty(player);
+        double target = PosePenalties.posePenalty(player);
         if (target != penaltyTarget) {
             penaltyFrom = penaltyAt(now);
             penaltyTarget = target;
@@ -57,21 +57,6 @@ public final class SpreadModel {
         return spread * (1.0 - p);
     }
 
-    private static double posePenalty(Player player) {
-        // base hipfire pose penalties doubled (standing 2, walking/air 6,
-        // crouch 1.6, sprint 16) — hip was too accurate for all poses.
-        // Keep in sync with GunFireHandler.posePenalty (server-authoritative).
-        // sprint-fire (high-ergonomics guns only) is wildly inaccurate
-        if (player.isSprinting() || player.isFallFlying()) return 16.0;
-        if (!player.onGround()) return 6.0;
-        if (player.isCrouching()) return 1.6;
-        // walking: velocity OR the per-tick walkDist increment (walkDist is
-        // the animation driver, guaranteed populated client-side; deltaMovement
-        // alone proved unreliable in some setups)
-        if (player.getDeltaMovement().horizontalDistanceSqr() > 0.02
-                || player.walkDist - player.walkDistO > 0.02f) return 6.0;
-        return 2.0;
-    }
 
     public static void addBloom(AmmoExtension ext) {
         bloom = Math.min(2.5 * ext.spread, bloom + 0.15 * ext.spread);
