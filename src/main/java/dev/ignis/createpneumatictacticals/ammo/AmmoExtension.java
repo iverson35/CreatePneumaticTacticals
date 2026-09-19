@@ -52,8 +52,60 @@ public final class AmmoExtension {
     /** live extension table; keyed by potato projectile type id */
     private static final Map<String, AmmoExtension> TABLE = new HashMap<>();
 
+    /**
+     * Built-in caliber classification for every Create potato projectile
+     * type (design constants — the four-caliber system). Datapack entries
+     * override these, so gunpack authors can reclassify. Rules:
+     * <ul>
+     *   <li>SHOTGUN (highest priority): type splits into multiple pellets
+     *       (sweet_berry 3, glow_berry 2, chocolate_berry 3)</li>
+     *   <li>HEAVY: low fire rate / high damage (melon_block, blaze_cake,
+     *       cake, golden_carrot)</li>
+     *   <li>LIGHT: high fire rate / low damage (beetroot, melon_slice,
+     *       glistering_melon, carrot)</li>
+     *   <li>MEDIUM: everything else (balanced)</li>
+     * </ul>
+     * In-code (not datapack) because Create's jar ships its own JSONs for
+     * the same resource folder — resource-pack order would silently drop
+     * our gun_type overrides. Gun packs may still override via JSON.
+     */
+    private static final Map<String, GunType> BUILTIN_CALIBERS = Map.ofEntries(
+            Map.entry("create:sweet_berry", GunType.SHOTGUN),
+            Map.entry("create:glow_berry", GunType.SHOTGUN),
+            Map.entry("create:chocolate_berry", GunType.SHOTGUN),
+            Map.entry("create:melon_block", GunType.HEAVY),
+            Map.entry("create:blaze_cake", GunType.HEAVY),
+            Map.entry("create:cake", GunType.HEAVY),
+            Map.entry("create:golden_carrot", GunType.HEAVY),
+            Map.entry("create:beetroot", GunType.LIGHT),
+            Map.entry("create:melon_slice", GunType.LIGHT),
+            Map.entry("create:glistering_melon", GunType.LIGHT),
+            Map.entry("create:carrot", GunType.LIGHT),
+            Map.entry("create:potato", GunType.MEDIUM),
+            Map.entry("create:baked_potato", GunType.MEDIUM),
+            Map.entry("create:poison_potato", GunType.MEDIUM),
+            Map.entry("create:chorus_fruit", GunType.MEDIUM),
+            Map.entry("create:apple", GunType.MEDIUM),
+            Map.entry("create:honeyed_apple", GunType.MEDIUM),
+            Map.entry("create:golden_apple", GunType.MEDIUM),
+            Map.entry("create:enchanted_golden_apple", GunType.MEDIUM),
+            Map.entry("create:pumpkin_block", GunType.MEDIUM),
+            Map.entry("create:pumpkin_pie", GunType.MEDIUM),
+            Map.entry("create:fish", GunType.MEDIUM),
+            Map.entry("create:pufferfish", GunType.MEDIUM),
+            Map.entry("create:suspicious_stew", GunType.MEDIUM));
+
     public static AmmoExtension get(String ammoId) {
-        return TABLE.getOrDefault(ammoId, DEFAULTS);
+        AmmoExtension ext = TABLE.get(ammoId);
+        if (ext != null) return ext;
+        // no datapack entry: use the built-in caliber when classified
+        GunType caliber = BUILTIN_CALIBERS.get(ammoId);
+        if (caliber != null) {
+            AmmoExtension def = new AmmoExtension();
+            def.gunType = caliber;
+            return def;
+        }
+        return DEFAULTS;
     }
 
     public static void put(String ammoId, AmmoExtension ext) {

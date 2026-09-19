@@ -40,8 +40,8 @@
   "stat.createpneumatictacticals.gas_suppression": "Gas Suppression",
   "stat.createpneumatictacticals.aim_zoom": "Zoom",
   "stat.createpneumatictacticals.tactical_aim_zoom": "Tac Zoom",
-  "stat.createpneumatictacticals.gun_type": "Type",
-  "gun_type.createpneumatictacticals.light": "Light",
+  "stat.createpneumatictacticals.gun_type": "Caliber",
+  "gun_type.createpneumatictacticals.light": "Small Caliber",
   "gui.createpneumatictacticals.reject.missing_dependency": "Missing prerequisite module",
   "gui.createpneumatictacticals.reject.wrong_type": "This slot rejects the module",
   "gui.createpneumatictacticals.reject.gun_type_mismatch": "Barrel type doesn't match receiver",
@@ -65,8 +65,8 @@
   "gui.createpneumatictacticals.fail.no_pod": "No matching pod in inventory",
   "gui.createpneumatictacticals.fail.no_pressurized_pod": "Cartridge supply needs pressurized pods (pod + pressurized air vial)",
   "gui.createpneumatictacticals.fail.ammo_type_mismatch": "Ammo type incompatible with receiver",
-  "gun_type.createpneumatictacticals.medium": "Medium",
-  "gun_type.createpneumatictacticals.heavy": "Heavy",
+  "gun_type.createpneumatictacticals.medium": "Medium Caliber",
+  "gun_type.createpneumatictacticals.heavy": "Large Caliber",
   "fire_mode.createpneumatictacticals.semi": "Semi",
   "fire_mode.createpneumatictacticals.auto": "Auto",
   "fire_mode.createpneumatictacticals.burst": "Burst",
@@ -81,5 +81,6 @@
   "hg_pos.createpneumatictacticals.bottom": " (bottom)",
   "hg_pos.createpneumatictacticals.left": " (left)",
   "hg_pos.createpneumatictacticals.right": " (right)",
-  "gui.createpneumatictacticals.hud.reloading": "Reloading"
+  "gui.createpneumatictacticals.hud.reloading": "Reloading",
+  "gun_type.createpneumatictacticals.shotgun": "Shotgun"
 }

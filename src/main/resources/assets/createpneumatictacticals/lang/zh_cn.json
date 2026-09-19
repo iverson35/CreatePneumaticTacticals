@@ -39,9 +39,9 @@
   "stat.createpneumatictacticals.gas_suppression": "气体抑制",
   "stat.createpneumatictacticals.aim_zoom": "瞄准",
   "stat.createpneumatictacticals.tactical_aim_zoom": "侧瞄",
-  "stat.createpneumatictacticals.gun_type": "类型",
-  "gun_type.createpneumatictacticals.light": "轻型",
-  "gun_type.createpneumatictacticals.medium": "中型",
+  "stat.createpneumatictacticals.gun_type": "口径",
+  "gun_type.createpneumatictacticals.light": "小口径弹药",
+  "gun_type.createpneumatictacticals.medium": "中口径弹药",
   "gui.createpneumatictacticals.reject.missing_dependency": "缺少前置模块",
   "gui.createpneumatictacticals.reject.wrong_type": "该槽位不接受此模块",
   "gui.createpneumatictacticals.reject.gun_type_mismatch": "枪管类型与机匣不匹配",
@@ -65,7 +65,7 @@
   "gui.createpneumatictacticals.fail.no_pod": "背包中没有匹配的封装弹",
   "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（封装弹+加压气动瓶合成）",
   "gui.createpneumatictacticals.fail.ammo_type_mismatch": "该弹种与机匣类型不兼容",
-  "gun_type.createpneumatictacticals.heavy": "重型",
+  "gun_type.createpneumatictacticals.heavy": "大口径弹药",
   "fire_mode.createpneumatictacticals.semi": "半自动",
   "fire_mode.createpneumatictacticals.auto": "全自动",
   "fire_mode.createpneumatictacticals.burst": "三连发",
@@ -80,5 +80,6 @@
   "hg_pos.createpneumatictacticals.bottom": "(下)",
   "hg_pos.createpneumatictacticals.left": "(左)",
   "hg_pos.createpneumatictacticals.right": "(右)",
-  "gui.createpneumatictacticals.hud.reloading": "装填中"
+  "gui.createpneumatictacticals.hud.reloading": "装填中",
+  "gun_type.createpneumatictacticals.shotgun": "霰弹弹药"
 }

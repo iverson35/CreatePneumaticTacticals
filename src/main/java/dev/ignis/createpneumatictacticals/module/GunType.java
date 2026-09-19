@@ -3,20 +3,21 @@ package dev.ignis.createpneumatictacticals.module;
 import net.minecraft.util.StringRepresentable;
 
 /**
- * Receiver class. Heavy receivers accept heavy/medium/light ammo; medium accepts
- * medium/light; light accepts light only.
+ * Ammo/receiver caliber class. Each receiver fires EXACTLY its own caliber
+ * (no downward compatibility). SHOTGUN types split into multiple pellets
+ * per shot; the shotgun rule takes priority over any other consideration
+ * when classifying a potato projectile type.
  */
 public enum GunType implements StringRepresentable {
-    HEAVY("heavy", 0),
-    MEDIUM("medium", 1),
-    LIGHT("light", 2);
+    HEAVY("heavy"),
+    MEDIUM("medium"),
+    LIGHT("light"),
+    SHOTGUN("shotgun");
 
     private final String name;
-    private final int tier;
 
-    GunType(String name, int tier) {
+    GunType(String name) {
         this.name = name;
-        this.tier = tier;
     }
 
     @Override
@@ -24,8 +25,9 @@ public enum GunType implements StringRepresentable {
         return name;
     }
 
+    /** strict match: a receiver only accepts its own caliber */
     public boolean accepts(GunType ammoType) {
-        return ammoType.tier >= this.tier;
+        return this == ammoType;
     }
 
     public static GunType byName(String name, GunType fallback) {
