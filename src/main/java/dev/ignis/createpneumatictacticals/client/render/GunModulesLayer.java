@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import software.bernie.geckolib.cache.GeckoLibCache;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.constant.DataTickets;
@@ -201,18 +202,17 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                     }
                     return;
                 }
-                // legacy fallback (no port bone): front face from the cubes.
-                // GeoCube pivots/sizes are px-space model units; the device
-                // extends along -Z_world with its rear at the mount, so the
-                // max-z face is the rear — closest cheap approximation for
-                // devices authored without a loc_muzzle bone.
-                float maxZ = Float.NEGATIVE_INFINITY;
+                // fallback (no port bone): true front face from baked cube
+                // vertices. Vertices are already block units (constructCube
+                // divides origin/vertexSize by 16); the device extends along
+                // -Z_world, so the front face is the MINIMUM z. Cube pivots
+                // are parent-relative px (RenderUtils divides by 16 at draw
+                // time), so sum the bone-chain pivots before adding them.
+                float minZ = Float.POSITIVE_INFINITY;
                 for (software.bernie.geckolib.cache.object.GeoBone bone : mm.topLevelBones()) {
-                    for (software.bernie.geckolib.cache.object.GeoCube cube : bone.getCubes()) {
-                        maxZ = Math.max(maxZ, (float) (cube.pivot().z + cube.size().z / 2));
-                    }
+                    minZ = Math.min(minZ, frontZ(bone, 0, 0, 0));
                 }
-                if (maxZ != Float.NEGATIVE_INFINITY) tip.set(0, 0, maxZ);
+                if (minZ != Float.POSITIVE_INFINITY) tip.set(0, 0, minZ);
             }
         }
         MuzzleAnchor.capture(poseStack, tip, mc().player.getUUID());
@@ -220,6 +220,29 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
 
     private static net.minecraft.client.Minecraft mc() {
         return net.minecraft.client.Minecraft.getInstance();
+    }
+
+    /**
+     * Minimum bone-space z over the bone's cubes and children (device front
+     * face, block units). Bone pivots are parent-relative px; the running sum
+     * is only converted to blocks at the leaf so integer px chains stay exact.
+     */
+    private static float frontZ(GeoBone bone, float px, float py, float pz) {
+        float bx = px + bone.getPivotX(), by = py + bone.getPivotY(), bz = pz + bone.getPivotZ();
+        float minZ = Float.POSITIVE_INFINITY;
+        for (software.bernie.geckolib.cache.object.GeoCube cube : bone.getCubes()) {
+            for (software.bernie.geckolib.cache.object.GeoQuad quad : cube.quads()) {
+                for (software.bernie.geckolib.cache.object.GeoVertex v : quad.vertices()) {
+                    // cube vertices are relative to the cube pivot: sum the
+                    // px-space cube pivot too (RenderUtils /16 at draw time)
+                    minZ = Math.min(minZ, (float) v.position().z + (float) cube.pivot().z / 16f);
+                }
+            }
+        }
+        for (GeoBone child : bone.getChildBones()) {
+            minZ = Math.min(minZ, frontZ(child, bx, by, bz));
+        }
+        return minZ;
     }
 
     private static void driveAnimation(ModuleAnimatable ma, long instanceId, float partialTick) {

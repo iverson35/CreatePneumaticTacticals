@@ -116,13 +116,21 @@ public class ModuleItem extends Item implements GeoItem {
         ));
     }
 
+    /**
+     * Stats where a lower value is better; everything else reads green when
+     * it increases. recoil_multiplier scales kick/shake directly, so a
+     * negative modifier is the improvement.
+     */
+    private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of("recoil_multiplier");
+
     private static void addStatLines(List<Component> tooltip, Map<String, Double> stats) {
         for (Map.Entry<String, Double> e : stats.entrySet()) {
             double v = e.getValue();
             if (v == 0) continue;
             String fmt = formatStat(v);
             String sign = v > 0 ? "+" : "";
-            ChatFormatting color = v > 0 ? ChatFormatting.GREEN : ChatFormatting.RED;
+            boolean better = LOWER_IS_BETTER.contains(e.getKey()) ? v < 0 : v > 0;
+            ChatFormatting color = better ? ChatFormatting.GREEN : ChatFormatting.RED;
             tooltip.add(Component.translatable("stat.createpneumatictacticals." + e.getKey())
                     .append(": ").append(sign + fmt).withStyle(color));
         }

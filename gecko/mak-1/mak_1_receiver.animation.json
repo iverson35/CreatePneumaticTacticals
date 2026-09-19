@@ -6,16 +6,114 @@
 			"bones": {
 				"bolt": {
 					"position": {
+						"vector": [0, 0, 0]
+					}
+				},
+				"main": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [0, 0, -7.5],
+							"easing": "easeOutBack"
+						},
+						"1.5": {
+							"vector": [0, 0, -7.5],
+							"easing": "easeOutBack"
+						},
+						"1.75": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [0.5, -1, 0],
+							"easing": "easeOutBack"
+						},
+						"1.5": {
+							"vector": [0.5, -1, 0],
+							"easing": "easeOutBack"
+						},
+						"1.75": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					}
+				}
+			}
+		},
+		"animation.mak_1_receiver.fire": {
+			"animation_length": 0.125,
+			"bones": {
+				"bolt": {
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 3]
+						},
+						"0.125": {
+							"vector": [0, 0, 0],
+							"easing": "easeInQuad"
+						}
+					}
+				}
+			}
+		},
+		"animation.mak_1_receiver.bolt": {
+			"animation_length": 0.5,
+			"bones": {
+				"main": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [-2.5, 0, 0],
+							"easing": "easeOutBack"
+						},
+						"0.375": {
+							"vector": [-2.5, 0, 0],
+							"easing": "easeOutBack"
+						},
+						"0.5": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [0, 0, 0.5],
+							"easing": "easeOutBack"
+						},
+						"0.375": {
+							"vector": [0, 0, 0.5],
+							"easing": "easeOutBack"
+						},
+						"0.5": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					}
+				},
+				"bolt": {
+					"position": {
 						"0.0": {
 							"vector": [0, 0, 0]
 						},
 						"0.25": {
 							"vector": [0, 0, 4]
 						},
-						"1.5": {
+						"0.375": {
 							"vector": [0, 0, 4]
 						},
-						"1.75": {
+						"0.5": {
 							"vector": [0, 0, 0]
 						}
 					}
