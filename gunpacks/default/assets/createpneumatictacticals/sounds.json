@@ -1,0 +1,5 @@
+{
+  "gun.mak_1.fire": {
+    "sounds": [{"name": "minecraft:entity.goat.horn_break", "type": "event"}]
+  }
+}

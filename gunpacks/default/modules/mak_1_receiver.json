@@ -10,7 +10,7 @@
     "semi",
     "auto"
   ],
-  "fire_sound": "minecraft:entity.goat.horn_break",
+  "fire_sound": "createpneumatictacticals:gun.mak_1.fire",
   "base_recoil_pitch": 1.2,
   "base_recoil_yaw": 0.3,
   "gun_name": "gun.createpneumatictacticals.mak_1"

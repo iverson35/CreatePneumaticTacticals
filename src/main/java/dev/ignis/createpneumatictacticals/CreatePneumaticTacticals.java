@@ -25,6 +25,7 @@ public class CreatePneumaticTacticals {
         // gunpacks before network: the channel protocol version is the
         // gunpack content hash
         dev.ignis.createpneumatictacticals.gunpack.GunPacks.init();
+        dev.ignis.createpneumatictacticals.gunpack.GunpackSounds.scan();
         CptNetwork.init();
         modBus.addListener(this::commonSetup);
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(

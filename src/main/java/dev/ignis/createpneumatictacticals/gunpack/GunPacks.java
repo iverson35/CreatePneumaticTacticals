@@ -68,6 +68,7 @@ public final class GunPacks {
             "default/assets/createpneumatictacticals/textures/gun/mak_1_grip.png",
             "default/assets/createpneumatictacticals/animations/gun/mak_1_receiver.animation.json",
             "default/assets/createpneumatictacticals/animations/gun/mak_1_ammo_20.animation.json",
+            "default/assets/createpneumatictacticals/sounds.json",
             "default/assets/createpneumatictacticals/lang/zh_cn.json",
             "default/assets/createpneumatictacticals/lang/en_us.json",
     };
