@@ -15,6 +15,10 @@ public final class ReadyPoseTransform {
     /**
      * Applies the ready pose scaled by eased progress.
      * Call first-person only, before the geckolib render.
+     *
+     * @param highMix 0 = low ready, 1 = high ready; low and high are
+     *                cross-faded per DOF so switching poses mid-run blends
+     *                smoothly instead of snapping
      */
     // runtime-tunable via /cptpose (defaults = the original hand-tuned pose);
     // X/Y/Z are block offsets, PITCH/YAW/ROLL are degrees
@@ -25,21 +29,22 @@ public final class ReadyPoseTransform {
     public static float LOW_X = -0.7f,  LOW_Y = -0.09f, LOW_Z = 0f;
     public static float LOW_PITCH = -15f, LOW_YAW = 45f, LOW_ROLL = 0f;
 
-    public static void apply(PoseStack poseStack, boolean high, float progress) {
+    public static void apply(PoseStack poseStack, float highMix, float progress) {
         if (progress <= 0.001f) return;
         float p = progress * progress * (3f - 2f * progress); // smoothstep, same as ADS
+        // per-DOF lerp between the low and high ready poses
+        float m = highMix * highMix * (3f - 2f * highMix);   // smoothstep the cross-fade too
+        float roll  = LOW_ROLL  + (HIGH_ROLL  - LOW_ROLL)  * m;
+        float yaw   = LOW_YAW   + (HIGH_YAW   - LOW_YAW)   * m;
+        float pitch = LOW_PITCH + (HIGH_PITCH - LOW_PITCH) * m;
+        float x = LOW_X + (HIGH_X - LOW_X) * m;
+        float y = LOW_Y + (HIGH_Y - LOW_Y) * m;
+        float z = LOW_Z + (HIGH_Z - LOW_Z) * m;
         // rotations in ZYX order (roll applied first in model space, then
         // yaw, then pitch) so each axis can be tuned independently
-        if (high) {
-            poseStack.mulPose(Axis.ZP.rotationDegrees(HIGH_ROLL * p));
-            poseStack.mulPose(Axis.YP.rotationDegrees(HIGH_YAW * p));
-            poseStack.mulPose(Axis.XP.rotationDegrees(HIGH_PITCH * p));
-            poseStack.translate(HIGH_X * p, HIGH_Y * p, HIGH_Z * p);
-        } else {
-            poseStack.mulPose(Axis.ZP.rotationDegrees(LOW_ROLL * p));
-            poseStack.mulPose(Axis.YP.rotationDegrees(LOW_YAW * p));
-            poseStack.mulPose(Axis.XP.rotationDegrees(LOW_PITCH * p));
-            poseStack.translate(LOW_X * p, LOW_Y * p, LOW_Z * p);
-        }
+        poseStack.mulPose(Axis.ZP.rotationDegrees(roll * p));
+        poseStack.mulPose(Axis.YP.rotationDegrees(yaw * p));
+        poseStack.mulPose(Axis.XP.rotationDegrees(pitch * p));
+        poseStack.translate(x * p, y * p, z * p);
     }
 }

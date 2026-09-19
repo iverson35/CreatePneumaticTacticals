@@ -21,23 +21,43 @@ import net.minecraft.world.entity.player.Player;
  */
 public final class ReadyModel {
 
-    /** pose-in duration (ms); pose-out takes readyDelayMs by spec */
     private static final float HOLSTER_MS = 150f;
     private static final float TICK_MS = 50f;
+
+    /** cross-fade duration between low and high ready (ms) */
+    private static final float POSE_MIX_MS = 150f;
+
+    /** view pitch thresholds: below -15 degrees look up -> high ready,
+     * above +15 degrees look down -> low ready; the +-15 degree band in
+     * between keeps the current pose (hysteresis against jitter) */
+    private static final float PITCH_TRIGGER = 15f;
 
     private static float progress = 0f;     // 0 = firing stance, 1 = ready pose
     private static float prevProgress = 0f;
     private static boolean stowed = false;
+    private static boolean highReady = false;
+    /** 0 = low, 1 = high; eased blend between the two ready poses */
+    private static float highMix = 0f;
+    private static float prevHighMix = 0f;
 
     private ReadyModel() {}
-
     public static void tick(Player player, boolean holdingGun) {
+        prevProgress = progress;
+        prevHighMix = highMix;
         prevProgress = progress;
         double ergo = holdingGun
                 ? dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(player.getMainHandItem())
                 : 1.0;
         boolean sprintFire = ergo > dev.ignis.createpneumatictacticals.gun.GunStats.SPRINT_FIRE_ERGO;
-        boolean sprintStow = player.isSprinting();
+        // Releasing aim while still holding the sprint key: vanilla drops the
+        // sprint flag for a couple of ticks, so isSprinting() alone would let
+        // the gun fall ALL the way to hipfire before the ready pose kicks
+        // back in — a visible down-then-up jerk, worst in high ready. Treat
+        // the sprint key held + moving forward as sprint intent while the ADS
+        // fade-out still runs, so the ready overlay takes over seamlessly.
+        boolean sprintIntent = Minecraft.getInstance().options.keySprint.isDown()
+                && Minecraft.getInstance().options.keyUp.isDown();
+        boolean sprintStow = player.isSprinting() || sprintIntent;
         if (sprintStow && sprintFire) {
             // sprint-fire guns sit in the ready pose while running too, but
             // engaging raises the gun: holding attack (or a shot within the
@@ -54,7 +74,22 @@ public final class ReadyModel {
                         || MuzzleClearance.isBlocked()
                         || sprintStow);
         if (stowed) {
-            progress = Math.min(1f, progress + TICK_MS / HOLSTER_MS);
+            // pose follows the view pitch: looking up raises the muzzle
+            // (high ready), looking down dips it (low ready); inside the
+            // hysteresis band the current pose is kept
+            if (player.getXRot() < -PITCH_TRIGGER) highReady = true;
+            else if (player.getXRot() > PITCH_TRIGGER) highReady = false;
+            highMix = Mth.clamp(highMix + (highReady ? 1 : -1) * TICK_MS / POSE_MIX_MS, 0f, 1f);
+            // releasing ADS straight into the ready pose: hold progress at 1
+            // while the ADS fade-out still runs. The decaying ADS alignment
+            // then reveals the full ready pose instead of the two overlays
+            // both sitting at half strength mid-transition, which dipped the
+            // gun through hipfire (down-then-up, very visible in high ready)
+            if (AimHandler.aimProgress(1f) > 0f) {
+                progress = 1f;
+            } else {
+                progress = Math.min(1f, progress + TICK_MS / HOLSTER_MS);
+            }
         } else {
             // ergonomics shortens the sprint->fire recovery delay: recovery
             // takes readyDelayMs / ergo, clamped to 1/3..4x the base delay
@@ -76,5 +111,16 @@ public final class ReadyModel {
     /** currently in the ready pose (sprinting / flying with gun out) */
     public static boolean isStowed() {
         return stowed;
+    }
+
+    /** which ready pose: true = high (muzzle up), driven by view pitch */
+    public static boolean isHighReady() {
+        return highReady;
+    }
+
+    /** render interpolation of the low<->high cross-fade
+     * (0 = fully low ready, 1 = fully high ready) */
+    public static float highMix(float partialTick) {
+        return Mth.lerp(partialTick, prevHighMix, highMix);
     }
 }

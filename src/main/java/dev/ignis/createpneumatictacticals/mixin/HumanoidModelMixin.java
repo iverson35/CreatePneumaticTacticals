@@ -46,8 +46,11 @@ public abstract class HumanoidModelMixin {
         ReadyArmPoseTuning.BlendResult blend =
                 ReadyArmPoseTuning.update(entity.getId(), ready, pose == PoseBroadcastPacket.Pose.HIGH_READY);
         if (blend.ease() > 0) {
-            ReadyArmPoseTuning.ArmOffset r = blend.high() ? ReadyArmPoseTuning.HIGH_RIGHT : ReadyArmPoseTuning.LOW_RIGHT;
-            ReadyArmPoseTuning.ArmOffset l = blend.high() ? ReadyArmPoseTuning.HIGH_LEFT : ReadyArmPoseTuning.LOW_LEFT;
+            // cross-fade low<->high arm offsets instead of picking one
+            ReadyArmPoseTuning.ArmOffset r = ReadyArmPoseTuning.ArmOffset.lerp(
+                    ReadyArmPoseTuning.LOW_RIGHT, ReadyArmPoseTuning.HIGH_RIGHT, blend.highMix());
+            ReadyArmPoseTuning.ArmOffset l = ReadyArmPoseTuning.ArmOffset.lerp(
+                    ReadyArmPoseTuning.LOW_LEFT, ReadyArmPoseTuning.HIGH_LEFT, blend.highMix());
             cpt$apply(rightArm, r, blend.ease());
             cpt$apply(leftArm, l, blend.ease());
         }

@@ -23,6 +23,7 @@ public final class ReadyArmPoseTuning {
         float value;    // 0 = firing stance, 1 = ready stance
         long lastMs;
         boolean high;   // last ready style, kept while blending out
+        float highMix;  // eased cross-fade between low and high ready
     }
 
     private static final java.util.Map<Integer, Blend> ADS_BLENDS = new java.util.concurrent.ConcurrentHashMap<>();
@@ -51,7 +52,9 @@ public final class ReadyArmPoseTuning {
 
     /**
      * Advances the per-entity ready-pose blend and returns the eased factor
-     * (smoothstep 0..1) plus the style to apply.
+     * (smoothstep 0..1) plus the eased high-pose mix (0 = low, 1 = high):
+     * low and high cross-fade over RAMP_MS so a mid-run pose switch blends
+     * smoothly instead of snapping.
      */
     public static BlendResult update(int entityId, boolean ready, boolean high) {
         Blend b = BLENDS.computeIfAbsent(entityId, k -> new Blend());
@@ -60,15 +63,35 @@ public final class ReadyArmPoseTuning {
         long dt = Math.min(100L, now - b.lastMs);
         b.lastMs = now;
         b.value = net.minecraft.util.Mth.clamp(b.value + (ready ? dt : -dt) / RAMP_MS, 0f, 1f);
+        // cross-fade the pose style at the same 150ms rate as the first-
+        // person POSE_MIX_MS so both view passes stay in sync
+        float target = b.high ? 1f : 0f;
+        b.highMix = net.minecraft.util.Mth.clamp(
+                b.highMix + Math.signum(target - b.highMix) * dt / RAMP_MS, 0f, 1f);
+        if (b.highMix != target && Math.abs(target - b.highMix) < dt / RAMP_MS) b.highMix = target;
         if (!ready && b.value == 0f) BLENDS.remove(entityId, b);
         float e = b.value * b.value * (3 - 2 * b.value);
-        return new BlendResult(e, b.high);
+        float m = b.highMix * b.highMix * (3 - 2 * b.highMix);
+        return new BlendResult(e, m);
     }
 
-    public record BlendResult(float ease, boolean high) {}
+    /** eased 0..1 ready blend + eased 0..1 high-pose mix */
+    public record BlendResult(float ease, float highMix) {}
     public static final class ArmOffset {
         public float xRot, yRot, zRot;
         public float x, y, z;
+
+        /** linear per-DOF interpolation between two arm offsets */
+        public static ArmOffset lerp(ArmOffset a, ArmOffset b, float m) {
+            ArmOffset o = new ArmOffset();
+            o.xRot = a.xRot + (b.xRot - a.xRot) * m;
+            o.yRot = a.yRot + (b.yRot - a.yRot) * m;
+            o.zRot = a.zRot + (b.zRot - a.zRot) * m;
+            o.x = a.x + (b.x - a.x) * m;
+            o.y = a.y + (b.y - a.y) * m;
+            o.z = a.z + (b.z - a.z) * m;
+            return o;
+        }
     }
 
     // ================= LOW READY (枪口朝下) =================

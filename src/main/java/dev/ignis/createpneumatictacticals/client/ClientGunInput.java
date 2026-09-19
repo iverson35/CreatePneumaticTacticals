@@ -151,7 +151,7 @@ public final class ClientGunInput {
                     ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.TACTICAL
                     : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.ADS;
         } else if (ReadyModel.isStowed()) {
-            pose = Config.readyPose == Config.ReadyPose.HIGH
+            pose = ReadyModel.isHighReady()
                     ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIGH_READY
                     : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.LOW_READY;
         } else {

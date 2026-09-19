@@ -20,11 +20,7 @@ public class Config {
             .comment("Delay in ms before the gun can fire after leaving low/high ready pose")
             .defineInRange("readyDelayMs", 250, 0, 2000);
 
-    public static final ForgeConfigSpec.EnumValue<ReadyPose> READY_POSE = CLIENT_BUILDER
-            .comment("Ready pose while sprinting or elytra flying with a gun")
-            .defineEnum("readyPose", ReadyPose.LOW);
 
-    public enum ReadyPose { LOW, HIGH }
 
     public static final ForgeConfigSpec.BooleanValue HITMARKER_ENABLED = CLIENT_BUILDER
             .comment("Show hitmarker on successful hits")
@@ -50,19 +46,18 @@ public class Config {
 
     public static boolean recoilViewReset;
     public static int readyDelayMs;
-    public static ReadyPose readyPose;
     public static boolean hitmarkerEnabled;
     public static boolean gunHudEnabled;
     public static boolean gunCrosshairEnabled;
     public static int gunHudOffsetX;
     public static int gunHudOffsetY;
 
+
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == CLIENT_SPEC) {
             recoilViewReset = RECOIL_VIEW_RESET.get();
             readyDelayMs = READY_DELAY_MS.get();
-            readyPose = READY_POSE.get();
             hitmarkerEnabled = HITMARKER_ENABLED.get();
             gunHudEnabled = GUN_HUD_ENABLED.get();
             gunCrosshairEnabled = GUN_CROSSHAIR_ENABLED.get();
