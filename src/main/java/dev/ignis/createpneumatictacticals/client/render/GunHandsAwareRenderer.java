@@ -14,8 +14,11 @@ import dev.ignis.createpneumatictacticals.item.GeoGunItem;
  */
 public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
 
+    private static GunGeoModel activeModel;
+
     public GunHandsAwareRenderer(GunGeoModel model) {
         super(model);
+        activeModel = model;
         addRenderLayer(new GunHandsLayer(this));
         addRenderLayer(new GunModulesLayer(this));
     }
@@ -26,6 +29,9 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         boolean firstPerson = context == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
                 || context == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
         GunHandsLayer.isFirstPersonPass = firstPerson;
+        GunModulesLayer.animationsEnabled = firstPerson
+                || context == ItemDisplayContext.THIRD_PERSON_LEFT_HAND
+                || context == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
         ((GunGeoModel) getGeoModel()).setStack(stack);
         if (context == ItemDisplayContext.GUI) {
             // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display"
@@ -43,5 +49,11 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         }
         super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
         GunHandsLayer.isFirstPersonPass = false;
+        GunModulesLayer.animationsEnabled = false;
+    }
+
+    /** the live gun model — used by GunAnimationDriver to pin animation resolution context */
+    public static GunGeoModel activeModel() {
+        return activeModel;
     }
 }

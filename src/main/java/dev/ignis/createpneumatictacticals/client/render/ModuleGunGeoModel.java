@@ -32,6 +32,14 @@ public final class ModuleGunGeoModel extends GeoModel<ModuleAnimatable> {
         return textureId(animatable.moduleId());
     }
 
+    /** snaps a module's bones back to rest (used when an animation is interrupted) */
+    public void resetPose(ResourceLocation moduleId) {
+        ResourceLocation id = modelId(moduleId);
+        if (!software.bernie.geckolib.cache.GeckoLibCache.getBakedModels().containsKey(id)) return;
+        getBakedModel(id); // activates this module's bones on the shared processor
+        GunAnimations.resetToRestPose(this);
+    }
+
     @Override
     public ResourceLocation getAnimationResource(ModuleAnimatable animatable) {
         return ModuleAnimatable.animationId(animatable.moduleId());

@@ -45,6 +45,21 @@ public class GeoGunItem extends GunItem implements GeoItem {
         });
     }
 
+    /**
+     * Every gun stack gets a unique GeckoLibID (server-side, synced via NBT).
+     * Without it GeoItem.getId falls back to Long.MAX_VALUE for ALL stacks:
+     * every gun would share one animation manager, so two guns would play
+     * each other's animations (driver/layer key module animations by this id).
+     */
+    @Override
+    public void inventoryTick(net.minecraft.world.item.ItemStack stack, net.minecraft.world.level.Level level,
+                              net.minecraft.world.entity.Entity entity, int slot, boolean selected) {
+        super.inventoryTick(stack, level, entity, slot, selected);
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            GeoItem.getOrAssignId(stack, serverLevel);
+        }
+    }
+
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
         registrar.add(new AnimationController<>(this, "main", 5, state -> {

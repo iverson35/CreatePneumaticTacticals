@@ -92,8 +92,13 @@ public final class GunAnimationDriver {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
         RawAnimation filtered = GunAnimations.filterExisting(anim,
                 dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation());
+        long id = GeoItem.getId(gun);
         if (filtered == null) return; // receiver omits this animation: silent
-        triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(GeoItem.getId(gun)), filtered);
+        // Animation names resolve via GunGeoModel.getAnimationResource, which
+        // follows the last-rendered stack; pin it to this gun or the lookup
+        // can land on another gun / the placeholder (silent no-op stubs)
+        dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel()
+                .withStack(gun, () -> triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(id), filtered));
     }
 
     private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId) {
@@ -102,12 +107,53 @@ public final class GunAnimationDriver {
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
         triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered);
     }
-
     private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim) {
         if (manager == null) return;
         AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
         if (controller == null) return;
         controller.forceAnimationReset();
         controller.setAnimation(anim);
+    }
+
+    /**
+     * Hard interrupt (slot switch / screen opened mid-reload): stops the
+     * one-shot controller on the receiver and every installed module, then
+     * snaps all poses back to rest. forceAnimationReset + a zero-length wait
+     * is the clean stop: stop() alone gets revived by the CONTINUE predicate
+     * and a bare forceAnimationReset replays the queued animation.
+     */
+    public static void interrupt(ItemStack gun) {
+        if (!(gun.getItem() instanceof GeoGunItem item)) return;
+        long gunId = GeoItem.getId(gun);
+        stopOn(item.getAnimatableInstanceCache().getManagerForId(gunId));
+        dev.ignis.createpneumatictacticals.client.render.GunGeoModel gunModel =
+                dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel();
+        if (gunModel != null) {
+            gunModel.withStack(gun, () -> {
+                gunModel.getBakedModel(gunModel.getModelResource(item)); // activate receiver bones
+                GunAnimations.resetToRestPose(gunModel);
+            });
+        }
+        for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
+            if (def.type != ModuleType.RECEIVER) interruptModule(def.id, gunId);
+        }
+        for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
+            interruptModule(def.id, gunId);
+        }
+    }
+
+    private static void interruptModule(ResourceLocation moduleId, long gunId) {
+        stopOn(ModuleAnimatable.of(moduleId).getAnimatableInstanceCache().getManagerForId(gunId));
+        dev.ignis.createpneumatictacticals.client.render.ModuleGunGeoModel.INSTANCE.resetPose(moduleId);
+    }
+
+    private static final RawAnimation STOP = RawAnimation.begin().thenWait(0);
+
+    private static void stopOn(AnimatableManager<? extends GeoAnimatable> manager) {
+        if (manager == null) return;
+        AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
+        if (controller == null) return;
+        controller.forceAnimationReset();
+        controller.setAnimation(STOP);
     }
 }

@@ -33,6 +33,28 @@ public final class GunAnimations {
      * nothing survives. Guns are allowed to omit animations — a missing one
      * must stay silent instead of spamming "Unable to find animation".
      */
+    /**
+     * Snaps every registered bone back to its baked rest pose. Needed when
+     * animations are suppressed (inventory icons, dropped guns) or cancelled
+     * mid-play: GeckoLib leaves animated bone values in the shared baked
+     * model, so without a reset the last animated pose sticks forever.
+     */
+    public static void resetToRestPose(software.bernie.geckolib.model.GeoModel<?> model) {
+        for (software.bernie.geckolib.core.animatable.model.CoreGeoBone bone
+                : model.getAnimationProcessor().getRegisteredBones()) {
+            software.bernie.geckolib.core.state.BoneSnapshot snap = bone.getInitialSnapshot();
+            bone.setPosX(snap.getOffsetX());
+            bone.setPosY(snap.getOffsetY());
+            bone.setPosZ(snap.getOffsetZ());
+            bone.setRotX(snap.getRotX());
+            bone.setRotY(snap.getRotY());
+            bone.setRotZ(snap.getRotZ());
+            bone.setScaleX(snap.getScaleX());
+            bone.setScaleY(snap.getScaleY());
+            bone.setScaleZ(snap.getScaleZ());
+        }
+    }
+
     public static RawAnimation filterExisting(RawAnimation anim, net.minecraft.resources.ResourceLocation animationFile) {
         RawAnimation out = null;
         for (RawAnimation.Stage stage : anim.getAnimationStages()) {

@@ -44,6 +44,14 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Set<String> WARNED = new HashSet<>();
 
+    /**
+     * Set by GunHandsAwareRenderer around each render pass: module animations
+     * only play while the gun is in a hand (first/third person). Inventory
+     * icons, dropped guns etc. still render the modules but hold the rest
+     * pose (plan: 物品栏图标无动画).
+     */
+    public static boolean animationsEnabled = false;
+
     public GunModulesLayer(GeoRenderer<GeoGunItem> renderer) {
         super(renderer);
     }
@@ -86,7 +94,11 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             return;
         }
         BakedGeoModel model = ModuleGunGeoModel.INSTANCE.getBakedModel(modelId); // activates bones on the shared processor
-        driveAnimation(ModuleAnimatable.of(def.id), ctx.animId, ctx.partialTick);
+        if (animationsEnabled) {
+            driveAnimation(ModuleAnimatable.of(def.id), ctx.animId, ctx.partialTick);
+        } else {
+            GunAnimations.resetToRestPose(ModuleGunGeoModel.INSTANCE);
+        }
 
         ctx.poseStack.pushPose();
         applyBoneChain(loc, ctx.poseStack);

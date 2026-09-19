@@ -58,7 +58,7 @@ public final class ClientGunInput {
         if (player == null) return;
         if (mc.screen != null) {
             // opening any screen mid-reload interrupts it (magazine: fails; round: batch lost)
-            reloading = false;
+            cancelReload();
             return;
         }
 
@@ -66,7 +66,7 @@ public final class ClientGunInput {
         boolean holdingGun = gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem;
         if (!holdingGun) {
             wasFiring = false;
-            reloading = false;
+            cancelReload();
             return;
         }
 
@@ -74,7 +74,13 @@ public final class ClientGunInput {
 
         // --- fire ---
         if (mc.options.keyAttack.isDown()) {
-            tryFire(player, gun, stats);
+            if (reloading) {
+                // firing is locked while reloading (no fire-to-cancel); mark the
+                // click consumed so semi-auto doesn't fire on reload end
+                wasFiring = true;
+            } else {
+                tryFire(player, gun, stats);
+            }
         } else {
             wasFiring = false;
         }
@@ -231,15 +237,16 @@ public final class ClientGunInput {
      * Interruption semantics: magazine reload fails outright (no packet = no
      * ammo); round reload applies per-batch — each finished batch sends its own
      * packet, an interruption only loses the in-flight batch. A single R press
-     * keeps loading round-by-round until the magazine is full; firing,
-     * switching slots or opening a screen interrupts it. The gun stack reference
-     * doubles as the "same gun" check: switching slots / dropping / stowing
-     * replaces it.
+     * keeps loading round-by-round until the magazine is full; switching slots
+     * or opening a screen interrupts it (firing is locked, NOT an interrupt).
+     * The gun stack reference doubles as the "same gun" check: switching
+     * slots / dropping / stowing replaces it.
      */
     private static void tickReload(Player player, ItemStack gun, GunStats stats) {
         if (!reloading) return;
-        if (gun != reloadingGun || mc_attackDown()) {
-            reloading = false;
+        if (gun != reloadingGun) {
+            // switching slots / dropping the gun interrupts the reload
+            cancelReload();
             return;
         }
         if (System.currentTimeMillis() < reloadEndMs) return;
@@ -254,7 +261,10 @@ public final class ClientGunInput {
         }
     }
 
-    private static boolean mc_attackDown() {
-        return Minecraft.getInstance().options.keyAttack.isDown();
+    /** ends the reload state and stops the reload animation on the gun */
+    private static void cancelReload() {
+        if (!reloading) return;
+        reloading = false;
+        GunAnimationDriver.interrupt(reloadingGun);
     }
 }

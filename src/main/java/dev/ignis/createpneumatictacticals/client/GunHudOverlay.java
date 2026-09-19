@@ -113,7 +113,7 @@ public final class GunHudOverlay implements IGuiOverlay {
             g.fill(cx, cy - gap - ARM_LEN, cx + 1, cy - gap, CROSSHAIR_COLOR); // top
             g.fill(cx, cy + gap + 1, cx + 1, cy + gap + 1 + ARM_LEN, CROSSHAIR_COLOR); // bottom
         }
-        g.fill(cx, cy, cx + 1, cy + 1, CROSSHAIR_COLOR); // center dot
+        if (p < 1f) g.fill(cx, cy, cx + 1, cy + 1, CROSSHAIR_COLOR); // center dot; hidden when fully aimed
         RenderSystem.disableBlend();
     }
 
