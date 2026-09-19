@@ -88,7 +88,14 @@ public final class ReadyArmPoseTuning {
         LOW_RIGHT.yRot = -0.5f;
         LOW_LEFT.xRot = 0.7f;
         LOW_LEFT.yRot = -0.3f;
-        HIGH_RIGHT.xRot = -0.7f; // arm raised, muzzle up
+        HIGH_RIGHT.xRot = -0.6f; // arm raised, muzzle up
+        HIGH_RIGHT.yRot = 0.3f;
+        HIGH_LEFT.xRot = -0.4f;
+        HIGH_LEFT.yRot = 0.3f;
+        ADS_RIGHT.xRot = -0.1f; // forward hold onto the gun
+        ADS_RIGHT.yRot = 0.2f;
+        ADS_LEFT.xRot = -0.1f;
+        ADS_LEFT.yRot = 0.1f;
     }
 
     private ReadyArmPoseTuning() {}
