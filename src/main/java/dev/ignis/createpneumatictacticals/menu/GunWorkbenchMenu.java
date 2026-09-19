@@ -268,6 +268,29 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             }
         }
 
+        // dye colors travel WITH the module item: slot stacks carry their
+        // own Colors NBT (workbench-dyed), the gun keeps a per-module copy
+        // for rendering. Merge both directions here: slot stack colors win
+        // (the item is the source of truth a player can dye and trade);
+        // a stack WITHOUT colors inherits the gun's stored colors so
+        // taking a module out and re-installing never loses a paid dye.
+        for (int i = 0; i < MODULE_COUNT; i++) {
+            ItemStack slotStack = this.container.getItem(SLOT_GUN + 1 + i);
+            ModuleDefinition def = slotStack.isEmpty() ? null : definitionOf(slotStack);
+            if (def == null || def.type != SLOT_TYPES[i]) continue;
+            int[] itemColors = dev.ignis.createpneumatictacticals.item.ModuleItem.getDyeColors(slotStack);
+            if (itemColors != null) {
+                GunNbt.setColor(gun, def.id, 0, itemColors[0]);
+                GunNbt.setColor(gun, def.id, 1, itemColors[1]);
+                GunNbt.setColor(gun, def.id, 2, itemColors[2]);
+            } else {
+                int[] gunColors = GunNbt.getColors(gun, def.id);
+                if (gunColors != null) {
+                    copyColorsToItem(slotStack, def.id, gunColors);
+                }
+            }
+        }
+
         // rebuild NBT from slots; handguard attachments are position-bound
         Map<ModuleType, ModuleDefinition> installed = new EnumMap<>(ModuleType.class);
         Map<HandguardPosition, ModuleDefinition> hgAttachments = new EnumMap<>(HandguardPosition.class);
@@ -285,6 +308,14 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         }
         GunNbt.writeModules(gun, installed, hgAttachments);
         this.container.setChanged();
+    }
+
+    /** writes a module's dye colors onto the item stack's own Colors NBT */
+    private static void copyColorsToItem(ItemStack stack, ResourceLocation moduleId, int[] colors) {
+        net.minecraft.nbt.CompoundTag root = stack.getOrCreateTag();
+        net.minecraft.nbt.CompoundTag colorTag = root.getCompound(dev.ignis.createpneumatictacticals.item.ModuleItem.TAG_COLORS);
+        colorTag.putIntArray(moduleId.toString(), colors);
+        root.put(dev.ignis.createpneumatictacticals.item.ModuleItem.TAG_COLORS, colorTag);
     }
 
     private void eject(int slotIndex, Player player) {

@@ -111,12 +111,17 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         ctx.poseStack.pushPose();
         try {
             applyBoneChain(loc, ctx.poseStack);
-            RenderType type = RenderType.entityCutoutNoCull(ModuleGunGeoModel.textureId(def.id));
+            // dye regions: bake the module's NBT colors (or the pack's
+            // defaults) into a cached dynamic texture when a companion
+            // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
+            ResourceLocation texture = ModuleGunGeoModel.textureId(def.id);
+            texture = DyedTextures.resolve(texture, dyeColors(ctx.stack, def));
+            RenderType type = RenderType.entityCutoutNoCull(texture);
             getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
                     ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay, 1, 1, 1, 1);
             // fullbright emissive pass for modules with a <name>_glowmask.png
             GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
-                    ctx.partialTick, ModuleGunGeoModel.textureId(def.id), getRenderer());
+                    ctx.partialTick, texture, getRenderer());
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
             if (def.type == ModuleType.BARREL) {
@@ -146,6 +151,17 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             ctx.poseStack.popPose();
             if (saved != null) GunAnimations.restoreBones(saved);
         }
+    }
+
+    /**
+     * The module's dye-region colors as stored on the gun stack (per-slot,
+     * set by the workbench dyeing), falling back to the module json's
+     * appearance defaults. Null when neither exists — no dyeing.
+     */
+    private static int[] dyeColors(ItemStack gun, ModuleDefinition def) {
+        int[] stored = dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, def.id);
+        if (stored != null && stored.length >= 3) return stored;
+        return def.defaultColors;
     }
 
     /**

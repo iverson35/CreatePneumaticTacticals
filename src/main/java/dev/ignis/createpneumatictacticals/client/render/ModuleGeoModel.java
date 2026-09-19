@@ -35,7 +35,11 @@ public final class ModuleGeoModel extends GeoModel<ModuleItem> {
 
     @Override
     public ResourceLocation getTextureResource(ModuleItem animatable) {
-        return resolve("textures/gun/%s.png", PLACEHOLDER_TEXTURE);
+        ResourceLocation base = resolve("textures/gun/%s.png", PLACEHOLDER_TEXTURE);
+        // dye regions live on the module item's own NBT (set by the
+        // workbench dyeing) — same bake as the on-gun path (DyedTextures)
+        int[] colors = ModuleItem.getDyeColors(currentStack);
+        return colors != null ? DyedTextures.resolve(base, colors) : base;
     }
 
     @Override
