@@ -22,6 +22,7 @@ public class CreatePneumaticTacticals {
         ModBlocks.register(modBus);
         CptMenuTypes.register(modBus);
         ModRecipes.register(modBus);
+        dev.ignis.createpneumatictacticals.client.particle.ModParticles.register(modBus);
         // gunpacks before network: the channel protocol version is the
         // gunpack content hash
         dev.ignis.createpneumatictacticals.gunpack.GunPacks.init();

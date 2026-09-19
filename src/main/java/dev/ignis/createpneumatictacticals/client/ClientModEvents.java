@@ -21,4 +21,11 @@ public final class ClientModEvents {
         event.register(ModKeybinds.AIM_STANCE);
         event.register(ModKeybinds.CYCLE_AMMO);
     }
+
+    @SubscribeEvent
+    public static void onRegisterParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
+        net.minecraft.core.particles.ParticleType<?> type = dev.ignis.createpneumatictacticals.client.particle.ModParticles.MUZZLE_SMOKE.get();
+        event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType) type,
+                dev.ignis.createpneumatictacticals.client.particle.MuzzleSmokeParticle.Provider::new);
+    }
 }

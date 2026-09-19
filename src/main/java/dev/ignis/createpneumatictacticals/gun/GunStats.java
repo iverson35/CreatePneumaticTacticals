@@ -21,6 +21,8 @@ public final class GunStats {
     public double bulletSpeed = 1.0;
     public double recoilMultiplier = 1.0;
     public double recoilRecovery = 1.0;
+    /** total muzzle gas suppression, clamped -10..10; smoke = (1 - v/20) * base */
+    public double gasSuppression = 0;
     public double aimZoom = 1.25;
     public double tacticalAimZoom = 1.25;
     @Nullable public ModuleDefinition receiver;
@@ -51,6 +53,7 @@ public final class GunStats {
             s.bulletSpeed += def.bulletSpeed;
             s.recoilMultiplier += def.recoilMultiplier;
             s.recoilRecovery += def.recoilRecovery;
+            s.gasSuppression += def.gasSuppression;
         }
         s.receiver = installed.get(ModuleType.RECEIVER);
         s.feed = installed.get(ModuleType.FEED);
@@ -75,6 +78,7 @@ public final class GunStats {
         s.bulletSpeed = Math.max(0.1, s.bulletSpeed);
         s.recoilMultiplier = Mth.clamp(s.recoilMultiplier, 0.1, 3.0);
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);
+        s.gasSuppression = Mth.clamp(s.gasSuppression, -10, 10);
     }
 
     public boolean isComplete() {

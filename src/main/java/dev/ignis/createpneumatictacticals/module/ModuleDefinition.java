@@ -30,6 +30,8 @@ public final class ModuleDefinition {
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
             recoilMultiplier, recoilRecovery;
+    /** muzzle: -10..10 gas suppression; -10 = double smoke, +10 = none */
+    public final double gasSuppression;
     /** receiver/barrel: gun type; barrel must match the installed receiver's */
     @Nullable public final GunType gunType;
     @Nullable public final List<FireMode> fireModes;
@@ -65,6 +67,7 @@ public final class ModuleDefinition {
         this.bulletSpeed = b.bulletSpeed;
         this.recoilMultiplier = b.recoilMultiplier;
         this.recoilRecovery = b.recoilRecovery;
+        this.gasSuppression = b.gasSuppression;
         this.gunType = b.gunType;
         this.fireModes = b.fireModes == null ? null : List.copyOf(b.fireModes);
         this.fireSound = b.fireSound;
@@ -122,6 +125,10 @@ public final class ModuleDefinition {
         b.bulletSpeed = GsonHelper.getAsDouble(props, "bullet_speed", 0);
         b.recoilMultiplier = GsonHelper.getAsDouble(props, "recoil_multiplier", 0);
         b.recoilRecovery = GsonHelper.getAsDouble(props, "recoil_recovery", 0);
+        if (type == ModuleType.MUZZLE) {
+            b.gasSuppression = net.minecraft.util.Mth.clamp(
+                    GsonHelper.getAsDouble(props, "gas_suppression", 0), -10, 10);
+        }
         // receiver
         if (type == ModuleType.RECEIVER || type == ModuleType.BARREL) {
             if (!json.has("gun_type")) throw new IllegalArgumentException(type.getSerializedName() + " requires gun_type: " + id);
@@ -210,6 +217,7 @@ public final class ModuleDefinition {
         private double reloadSpeed, damageMultiplier, fireRateMultiplier,
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
                 recoilMultiplier, recoilRecovery;
+        private double gasSuppression;
         @Nullable private GunType gunType;
         @Nullable private List<FireMode> fireModes;
         @Nullable private String fireSound;

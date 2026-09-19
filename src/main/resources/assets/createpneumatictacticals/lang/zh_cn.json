@@ -36,6 +36,7 @@
   "stat.createpneumatictacticals.bullet_speed": "初速",
   "stat.createpneumatictacticals.recoil_multiplier": "后座",
   "stat.createpneumatictacticals.recoil_recovery": "回正",
+  "stat.createpneumatictacticals.gas_suppression": "气体抑制",
   "stat.createpneumatictacticals.aim_zoom": "瞄准",
   "stat.createpneumatictacticals.tactical_aim_zoom": "侧瞄",
   "stat.createpneumatictacticals.gun_type": "类型",

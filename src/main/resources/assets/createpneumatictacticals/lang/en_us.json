@@ -37,6 +37,7 @@
   "stat.createpneumatictacticals.bullet_speed": "Muzzle Vel.",
   "stat.createpneumatictacticals.recoil_multiplier": "Recoil",
   "stat.createpneumatictacticals.recoil_recovery": "Recovery",
+  "stat.createpneumatictacticals.gas_suppression": "Gas Suppression",
   "stat.createpneumatictacticals.aim_zoom": "Zoom",
   "stat.createpneumatictacticals.tactical_aim_zoom": "Tac Zoom",
   "stat.createpneumatictacticals.gun_type": "Type",

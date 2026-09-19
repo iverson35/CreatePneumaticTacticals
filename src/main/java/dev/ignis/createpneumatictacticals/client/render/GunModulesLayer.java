@@ -116,6 +116,22 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
             if (def.type == ModuleType.BARREL) {
+                // capture the muzzle tip for MuzzleSmoke: push, walk the
+                // barrel model's root->loc_muzzle_attachment chain (the
+                // recursive mount below pops its own pose, so it cannot
+                // leave that space for us), sample, then pop. Works bare
+                // (muzzle module absent -> tip at the locator) or with a
+                // device (front face computed from its cubes).
+                ctx.poseStack.pushPose();
+                try {
+                    CoreGeoBone muzzleLoc = model.getBone("loc_muzzle_attachment").orElse(null);
+                    if (muzzleLoc != null) {
+                        applyBoneChain(muzzleLoc, ctx.poseStack);
+                        captureMuzzleAnchor(ctx, ctx.poseStack, ctx.modules.get(ModuleType.MUZZLE));
+                    }
+                } finally {
+                    ctx.poseStack.popPose();
+                }
                 mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx);
             } else if (def.type == ModuleType.HANDGUARD && !ctx.hgAttachments.isEmpty()) {
                 for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
@@ -145,6 +161,44 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             RenderUtils.prepMatrixForBone(poseStack, b);
         }
         RenderUtils.translateToPivotPoint(poseStack, locator);
+    }
+
+    /**
+     * Muzzle smoke anchor: sample the muzzle mount's render transform into
+     * world/view space. With a muzzle device installed, the anchor sits at
+     * its front face: muzzle modules extend along module +Z (module origin
+     * at loc_muzzle_attachment, barrel points toward -Z_world, and the
+     * suppressor cube spans z [-3.5, 0] with its face at z=0), so the front
+     * is max(pivot.z + size.z/2) over the device's cubes — GeoCube pivots
+     * and sizes are already in block units (baked /16 by GeckoLib). Bare
+     * barrel falls back to the mount locator itself (its pivot already sits
+     * at the barrel tip).
+     */
+    private static void captureMuzzleAnchor(Ctx ctx, PoseStack poseStack, @Nullable ModuleDefinition muzzleDef) {
+        if (!animationsEnabled) return; // GUI/dropped: no world truth
+        if (mc().player == null) return;
+        if (ctx.stack != mc().player.getMainHandItem()) return;
+        org.joml.Vector3f tip = new org.joml.Vector3f(0, 0, 0);
+        if (muzzleDef != null) {
+            float maxZ = Float.NEGATIVE_INFINITY;
+            software.bernie.geckolib.cache.object.BakedGeoModel mm = null;
+            try {
+                mm = ModuleGunGeoModel.INSTANCE.getBakedModel(ModuleGunGeoModel.modelId(muzzleDef.id));
+            } catch (Exception ignored) {}
+            if (mm != null) {
+                for (software.bernie.geckolib.cache.object.GeoBone bone : mm.topLevelBones()) {
+                    for (software.bernie.geckolib.cache.object.GeoCube cube : bone.getCubes()) {
+                        maxZ = Math.max(maxZ, (float) (cube.pivot().z + cube.size().z / 2));
+                    }
+                }
+            }
+            if (maxZ != Float.NEGATIVE_INFINITY) tip.set(0, 0, maxZ);
+        }
+        MuzzleAnchor.capture(poseStack, tip, mc().player.getUUID());
+    }
+
+    private static net.minecraft.client.Minecraft mc() {
+        return net.minecraft.client.Minecraft.getInstance();
     }
 
     private static void driveAnimation(ModuleAnimatable ma, long instanceId, float partialTick) {

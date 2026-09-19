@@ -122,6 +122,18 @@ public final class GunFireHandler {
             return;
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
+        // fire rate = the ammo's own potato-cannon cadence (reload_ticks),
+        // scaled by the gun's fire_rate_multiplier — multiplier 1 is exactly
+        // Create-cannon parity. Resolved and gated BEFORE any consumption so
+        // spam clicks never drain air or ammo.
+        Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
+        if (typeOpt.isEmpty()) return;
+        PotatoCannonProjectileType type = typeOpt.get();
+        long intervalTicks = Math.max(1,
+                (long) (type.reloadTicks() / stats.fireRateMultiplier));
+        Long last = LAST_SHOT.get(key);
+        if (last != null && now - last < intervalTicks) return;
+        LAST_SHOT.put(key, now);
 
         // --- backpack feed bypasses count; others need rounds in magazine ---
         boolean backpack = feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
@@ -160,17 +172,6 @@ public final class GunFireHandler {
         }
 
         // --- spawn projectile (mirrors PotatoCannonItem.use) ---
-        Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
-        if (typeOpt.isEmpty()) return;
-        PotatoCannonProjectileType type = typeOpt.get();
-        // fire rate = the ammo's own potato-cannon cadence (reload_ticks),
-        // scaled by the gun's fire_rate_multiplier — multiplier 1 is exactly
-        // Create-cannon parity
-        long intervalTicks = Math.max(1,
-                (long) (type.reloadTicks() / stats.fireRateMultiplier));
-        Long last = LAST_SHOT.get(key);
-        if (last != null && now - last < intervalTicks) return;
-        LAST_SHOT.put(key, now);
         double spreadDeg = spreadDegrees(player, ext, stats);
 
         // spread cone apexes at the EYE: sample the angular offset first,
@@ -235,14 +236,14 @@ public final class GunFireHandler {
             GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
         }
 
-        // --- sound from receiver definition; the shooter already heard it
-        // client-side (instant feedback), so exclude them from the broadcast ---
-        if (receiver.fireSound != null) {
-            SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(receiver.fireSound));
-            if (sound != null) {
-                player.level().playSound(player, player.getX(), player.getY(), player.getZ(),
-                        sound, SoundSource.PLAYERS, 1.0f, 1.0f);
-            }
+        // --- sound: receiver-defined, defaulting to the potato cannon's
+        // FWOOMP; the shooter already heard it client-side (instant
+        // feedback), so exclude them from the broadcast ---
+        String soundId = receiver.fireSound != null ? receiver.fireSound : "create:fwoomp";
+        SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(soundId));
+        if (sound != null) {
+            player.level().playSound(player, player.getX(), player.getY(), player.getZ(),
+                    sound, SoundSource.PLAYERS, 1.0f, 1.0f);
         }
     }
 

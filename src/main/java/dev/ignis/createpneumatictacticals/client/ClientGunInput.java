@@ -29,6 +29,8 @@ import net.minecraftforge.fml.common.Mod;
 public final class ClientGunInput {
 
     private static boolean wasFiring = false;
+    /** ammo type resolved during tryFire; read by MuzzleSmoke for puff scaling */
+    private static PotatoCannonProjectileType currentType;
     private static long lastLocalShotMs = 0;
 
     // --- client reload state machine: R starts it, completion sends the result packet ---
@@ -38,6 +40,11 @@ public final class ClientGunInput {
     private static long reloadBatchMs = 0;
     private static int reloadBatch = 0;
     private static ItemStack reloadingGun = ItemStack.EMPTY;
+
+    /** reload ticks of the ammo behind the latest fire attempt; 0 = unknown */
+    public static int currentAmmoReloadTicks() {
+        return currentType == null ? 0 : currentType.reloadTicks();
+    }
 
     private ClientGunInput() {}
 
@@ -181,12 +188,12 @@ public final class ClientGunInput {
         // mirror of the server gate: ammo reload_ticks / multiplier, in ms
         // (client lookups are best-effort — the server validates anyway)
         long interval;
-        PotatoCannonProjectileType type = PotatoCannonProjectileType
+        currentType = PotatoCannonProjectileType
                 .getTypeForItem(player.level().registryAccess(),
                         AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId))
                 .map(ref -> ref.value()).orElse(null);
-        if (type != null) {
-            interval = (long) (50 * Math.max(1, type.reloadTicks() / stats.fireRateMultiplier));
+        if (currentType != null) {
+            interval = (long) (50 * Math.max(1, currentType.reloadTicks() / stats.fireRateMultiplier));
         } else {
             interval = 50; // unknown type: 10/s fallthrough, server will gate
         }
@@ -195,12 +202,12 @@ public final class ClientGunInput {
 
         // burst: single request per click for now (server sequences the burst)
         CptNetwork.CHANNEL.sendToServer(new FireRequestPacket());
-        // instant local fire sound; the server broadcast excludes the shooter
-        if (stats.receiver.fireSound != null) {
-            var fireSoundEvent = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS
-                    .getValue(net.minecraft.resources.ResourceLocation.tryParse(stats.receiver.fireSound));
-            if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, 1.0f);
-        }
+        // instant local fire sound (default: potato-cannon FWOOMP); the
+        // server broadcast excludes the shooter
+        String soundId = stats.receiver.fireSound != null ? stats.receiver.fireSound : "create:fwoomp";
+        var fireSoundEvent = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS
+                .getValue(net.minecraft.resources.ResourceLocation.tryParse(soundId));
+        if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, 1.0f);
         lastLocalShotMs = now;
         wasFiring = true;
 
@@ -210,6 +217,10 @@ public final class ClientGunInput {
         RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw, recoilMult, aiming,
                 stats.recoilRecovery);
         SpreadModel.addBloom(ext);
+        // muzzle smoke: purely client-side (never synced per-particle);
+        // representative ammo item for the item puffs
+        MuzzleSmoke.onFire(player, new ItemStack(
+                AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId)));
         GunAnimationDriver.onFire(gun);
     }
 

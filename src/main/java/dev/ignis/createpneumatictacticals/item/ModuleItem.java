@@ -111,7 +111,8 @@ public class ModuleItem extends Item implements GeoItem {
                 "ergonomics", def.ergonomics,
                 "bullet_speed", def.bulletSpeed,
                 "recoil_multiplier", def.recoilMultiplier,
-                "recoil_recovery", def.recoilRecovery
+                "recoil_recovery", def.recoilRecovery,
+                "gas_suppression", def.gasSuppression
         ));
     }
 
