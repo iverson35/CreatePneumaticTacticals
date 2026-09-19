@@ -48,7 +48,7 @@ public abstract class HumanoidModelMixin {
             cpt$apply(leftArm, l, blend.ease());
         }
         boolean ads = pose == PoseBroadcastPacket.Pose.ADS || pose == PoseBroadcastPacket.Pose.TACTICAL;
-        float adsEase = ReadyArmPoseTuning.updateAds(entity.getId(), ads);
+        float adsEase = ReadyArmPoseTuning.updateAds(entity.getId(), ads, entity.getMainHandItem());
         if (adsEase > 0) {
             cpt$apply(rightArm, ReadyArmPoseTuning.ADS_RIGHT, adsEase);
             cpt$apply(leftArm, ReadyArmPoseTuning.ADS_LEFT, adsEase);

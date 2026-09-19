@@ -27,15 +27,22 @@ public final class ReadyArmPoseTuning {
 
     private static final java.util.Map<Integer, Blend> ADS_BLENDS = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static final float ADS_RAMP_MS = 180f; // matches AimHandler.AIM_TIME_SECONDS
+    /** ADS arm ramp at ergonomics 1; matches AimHandler.AIM_TIME_SECONDS */
+    private static final float ADS_RAMP_MS = 180f;
 
-    /** same as {@link #update} but for the aiming arm pose (ADS + tactical share one offset set) */
-    public static float updateAds(int entityId, boolean ads) {
+    /**
+     * Same as {@link #update} but for the aiming arm pose (ADS + tactical
+     * share one offset set). The ramp is scaled by the entity's gun
+     * ergonomics so third-person arms stay in sync with the first-person
+     * ADS transition; non-gun holders fall back to the base 180ms.
+     */
+    public static float updateAds(int entityId, boolean ads, net.minecraft.world.item.ItemStack gun) {
         Blend b = ADS_BLENDS.computeIfAbsent(entityId, k -> new Blend());
         long now = System.currentTimeMillis();
         long dt = Math.min(100L, now - b.lastMs);
         b.lastMs = now;
-        b.value = net.minecraft.util.Mth.clamp(b.value + (ads ? dt : -dt) / ADS_RAMP_MS, 0f, 1f);
+        float rampMs = (float) (ADS_RAMP_MS / AimHandler.ergoScaleOf(gun));
+        b.value = net.minecraft.util.Mth.clamp(b.value + (ads ? dt : -dt) / rampMs, 0f, 1f);
         if (!ads && b.value == 0f) ADS_BLENDS.remove(entityId, b);
         return b.value * b.value * (3 - 2 * b.value);
     }

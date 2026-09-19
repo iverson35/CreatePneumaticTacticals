@@ -76,7 +76,10 @@ public final class GunStats {
         s.damageMultiplier = Math.max(0.1, s.damageMultiplier);
         s.fireRateMultiplier = Math.max(0.1, s.fireRateMultiplier);
         s.hipfireAccuracyMultiplier = Math.max(0.1, s.hipfireAccuracyMultiplier);
-        s.ergonomics = Math.max(0.1, s.ergonomics);
+        // ergonomics feeds handling-speed ratios downstream (aim/stance/ready
+        // recovery) that re-clamp to [0.25, 3] there; the 5.0 cap here keeps the
+        // workbench display honest instead of showing silly sums
+        s.ergonomics = Mth.clamp(s.ergonomics, 0.1, 5.0);
         s.bulletSpeed = Math.max(0.1, s.bulletSpeed);
         s.recoilMultiplier = Mth.clamp(s.recoilMultiplier, 0.1, 3.0);
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);

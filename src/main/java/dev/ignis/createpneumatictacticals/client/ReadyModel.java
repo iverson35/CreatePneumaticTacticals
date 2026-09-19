@@ -31,7 +31,11 @@ public final class ReadyModel {
         if (stowed) {
             progress = Math.min(1f, progress + TICK_MS / HOLSTER_MS);
         } else {
-            progress = Math.max(0f, progress - TICK_MS / Math.max(1, Config.readyDelayMs));
+            // ergonomics shortens the sprint->fire recovery delay: recovery
+            // takes readyDelayMs / ergo, clamped to 1/3..4x the base delay
+            double ergo = holdingGun ? AimHandler.ergoScaleOf(player.getMainHandItem()) : 1.0;
+            float recoveryMs = (float) (Config.readyDelayMs / ergo);
+            progress = Math.max(0f, progress - TICK_MS / Math.max(1f, recoveryMs));
         }
     }
 

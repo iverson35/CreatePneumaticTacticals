@@ -34,12 +34,24 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = CreatePneumaticTacticals.MODID, value = Dist.CLIENT)
 public final class AimHandler {
 
-    /** seconds for a full hip -> ADS (or ADS -> hip) transition */
+    /** seconds for a full hip -> ADS (or ADS -> hip) transition at ergonomics 1 */
     private static final float AIM_TIME_SECONDS = 0.18f;
-    /** seconds for a main-sight <-> tactical-sight switch */
+    /** seconds for a main-sight <-> tactical-sight switch at ergonomics 1 */
     private static final float STANCE_SWITCH_SECONDS = 0.25f;
-    /** movement speed factor while fully aiming */
+    /** movement speed factor while fully aiming at ergonomics 1 */
     private static final float AIM_WALK_FACTOR = 0.4f;
+    /** handling-speed ratio bounds applied to the gun's ergonomics */
+    private static final double ERGO_MIN = 0.25, ERGO_MAX = 3.0;
+
+    /**
+     * Ergonomics-scaled handling factor shared by aim/stance/ready recovery:
+     * 1 = base feel, clamped to {@link #ERGO_MIN}..{@link #ERGO_MAX} so no
+     * module combination produces degenerate timing.
+     */
+    public static double ergoScaleOf(ItemStack gun) {
+        if (!(gun.getItem() instanceof GeoGunItem)) return 1.0;
+        return Mth.clamp(GunStats.ofGun(gun).ergonomics, ERGO_MIN, ERGO_MAX);
+    }
 
     private static float aimProgress = 0f;
     private static float prevAimProgress = 0f;
@@ -65,8 +77,9 @@ public final class AimHandler {
 
     /**
      * Sight-stance blend, render-interpolated. 0 = main sight, 1 = tactical
-     * (canted) sight. Ramps over {@link #STANCE_SWITCH_SECONDS} after a switch
-     * so the gun slides between the two sight pictures instead of snapping.
+     * (canted) sight. Ramps over {@link #STANCE_SWITCH_SECONDS} (scaled by
+     * ergonomics) after a switch so the gun slides between the two sight
+     * pictures instead of snapping.
      */
     public static float stanceBlend(float partialTick) {
         return Mth.lerp(partialTick, prevStanceBlend, stanceBlend);
@@ -108,15 +121,19 @@ public final class AimHandler {
                     new dev.ignis.createpneumatictacticals.network.AimStatePacket(aiming));
         }
         prevAimProgress = aimProgress;
-        float step = 1f / (AIM_TIME_SECONDS * 20f);
+        Player p = Minecraft.getInstance().player;
+        ItemStack heldGun = p != null ? p.getMainHandItem() : ItemStack.EMPTY;
+        double ergo = ergoScaleOf(heldGun);
+        // ergonomics scales both directions of the hip<->ADS transition
+        float step = (float) (1f / (AIM_TIME_SECONDS * 20f) * ergo);
         aimProgress = Mth.clamp(aimProgress + (aiming ? step : -step), 0f, 1f);
         // sight-stance blend: follows the per-gun remembered stance (NBT),
-        // ramps over STANCE_SWITCH_SECONDS so X-switching slides the gun.
+        // ramps over STANCE_SWITCH_SECONDS * ergonomics so X-switching
+        // slides the gun.
         // Switching GUNS snaps instead — the two guns' camera bones differ,
         // a cross-gun blend would slide to nowhere.
         prevStanceBlend = stanceBlend;
         boolean tactical = false;
-        Player p = Minecraft.getInstance().player;
         long gunId = -1;
         if (p != null && p.getMainHandItem().getItem() instanceof GeoGunItem) {
             tactical = "tactical".equals(GunNbt.getAimStance(p.getMainHandItem()));
@@ -126,7 +143,7 @@ public final class AimHandler {
             lastStanceGunId = gunId;
             stanceBlend = prevStanceBlend = tactical ? 1f : 0f;
         }
-        float stanceStep = 1f / (STANCE_SWITCH_SECONDS * 20f);
+        float stanceStep = (float) (1f / (STANCE_SWITCH_SECONDS * 20f) * ergo);
         stanceBlend = Mth.clamp(stanceBlend + (tactical ? stanceStep : -stanceStep), 0f, 1f);
     }
 
@@ -139,7 +156,13 @@ public final class AimHandler {
     public static void onMovementInput(MovementInputUpdateEvent event) {
         float p = aimProgress; // tick-level granularity is fine for movement
         if (p <= 0f) return;
-        float factor = 1f - (1f - AIM_WALK_FACTOR) * p;
+        // ergonomics lets the shooter keep more of their stride while aiming;
+        // the penalty share itself is clamped to [0, 0.9] so a stacked build
+        // can never fully cancel the slowdown
+        ItemStack gun = event.getEntity().getMainHandItem();
+        double ergo = ergoScaleOf(gun);
+        float penalty = (float) Math.min(0.9, (1f - AIM_WALK_FACTOR) / ergo);
+        float factor = 1f - penalty * p;
         event.getInput().leftImpulse *= factor;
         event.getInput().forwardImpulse *= factor;
         event.getEntity().setSprinting(false);
