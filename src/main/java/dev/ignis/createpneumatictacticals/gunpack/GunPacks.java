@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.InputStream;
@@ -188,5 +189,26 @@ public final class GunPacks {
                 LOGGER.error("Failed to extract gunpack default {}: {}", rel, ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Reads a module's geo JSON text by the shared model-path convention
+     * (geo/gun/<module-path>.geo.json under any installed pack's assets
+     * namespace). Returns null when no pack provides the file — callers
+     * treat that as "geometry unknown" and keep legacy defaults.
+     */
+    @Nullable
+    public static String readGeoJson(net.minecraft.resources.ResourceLocation moduleId) {
+        String rel = "assets/" + moduleId.getNamespace() + "/geo/gun/" + moduleId.getPath() + ".geo.json";
+        for (Path pack : installedPacks()) {
+            Path file = pack.resolve(rel);
+            if (!Files.isRegularFile(file)) continue;
+            try {
+                return Files.readString(file, StandardCharsets.UTF_8);
+            } catch (Exception ex) {
+                LOGGER.error("Failed to read geo {}: {}", file, ex.getMessage());
+            }
+        }
+        return null;
     }
 }

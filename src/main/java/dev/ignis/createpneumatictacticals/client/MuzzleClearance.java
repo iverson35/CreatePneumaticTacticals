@@ -15,7 +15,6 @@ import net.minecraft.world.phys.BlockHitResult;
  */
 public final class MuzzleClearance {
 
-    private static final double RANGE = 0.5;
     private static final long DEBOUNCE_MS = 125;
 
     private static boolean blocked = false;
@@ -36,7 +35,10 @@ public final class MuzzleClearance {
             raw = false;
         } else {
             var eye = player.getEyePosition();
-            var end = eye.add(player.getViewVector(1.0f).scale(RANGE));
+            // dynamic gun length: a suppressor pushes the muzzle further out,
+            // so the obstruction ray must reach the actual muzzle tip
+            double range = dev.ignis.createpneumatictacticals.gun.GunLength.of(player.getMainHandItem());
+            var end = eye.add(player.getViewVector(1.0f).scale(range));
             BlockHitResult hit = player.level().clip(new ClipContext(
                     eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
             raw = hit.getType() != BlockHitResult.Type.MISS;

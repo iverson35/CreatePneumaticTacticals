@@ -223,6 +223,9 @@ public final class GunFireHandler {
         // client reproduces the true ballistics (vanilla arrows cap at ~3.0
         // for the same reason).
         double speed = Math.min(2 * type.velocityMultiplier() * stats.bulletSpeed, 3.9);
+        // dynamic muzzle distance from the assembled gun's Z-axis bone
+        // chain (GunLength; legacy 0.5 when the pack lacks the bones)
+        double muzzleDistance = dev.ignis.createpneumatictacticals.gun.GunLength.of(gun);
         for (int i = 0; i < pellets; i++) {
             PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(player.level());
             if (projectile == null) return;
@@ -247,7 +250,11 @@ public final class GunFireHandler {
                 dir = dir.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
             }
             dir = dir.normalize();
-            Vec3 launch = eye.add(dir.scale(0.5));
+            // launch at the dynamic muzzle distance (receiver->barrel->
+            // muzzle-device chain measured from the models' Z-axis bones;
+            // 0.5 legacy default when the pack lacks the bones). Cone apex
+            // stays at the eye; only the distance along the ray scales.
+            Vec3 launch = eye.add(dir.scale(muzzleDistance));
             // setPos anchors the entity ORIGIN (feet), but both the rendered
             // sprite and the hitbox are centered bbHeight/2 (0.125) above it —
             // drop the anchor so the projectile's center sits exactly on the

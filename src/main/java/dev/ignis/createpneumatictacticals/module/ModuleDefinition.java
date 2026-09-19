@@ -69,6 +69,25 @@ public final class ModuleDefinition {
     /** handguard_attachment: positions this attachment can mount to */
     public final List<HandguardPosition> positions;
 
+    // ---- Z-axis geometry (parsed from the module's geo JSON at load time;
+    // drives the dynamic launch distance and obstruction raycast) ----
+    /** barrel/receiver: loc_muzzle (barrel tip) pivot z in blocks; NaN = bone absent */
+    public final float muzzleOffsetZ;
+    /** barrel: loc_muzzle_attachment (device mount) pivot z in blocks; NaN = absent */
+    public final float muzzleAttachmentZ;
+    /** receiver: loc_barrel pivot z in blocks; NaN = absent */
+    public final float locBarrelZ;
+    /** muzzle device: minimum cube z (front face) in blocks; NaN = absent */
+    public final float frontZ;
+
+    /** mutable carrier used by GunLength.parse during definition loading */
+    public static final class GeometryZ {
+        public float locMuzzleZ = Float.NaN;
+        public float locMuzzleAttachmentZ = Float.NaN;
+        public float locBarrelZ = Float.NaN;
+        public float frontZ = Float.NaN;
+    }
+
     /** one gas-guide port of a muzzle device */
     public record GasGuide(double weight, double velocityMultiplier,
                            double spreadMultiplier, double directionX, double directionY) {}
@@ -107,6 +126,10 @@ public final class ModuleDefinition {
         this.defaultColors = b.defaultColors;
         this.attachmentPoints = List.copyOf(b.attachmentPoints);
         this.positions = List.copyOf(b.positions);
+        this.muzzleOffsetZ = b.muzzleOffsetZ;
+        this.muzzleAttachmentZ = b.muzzleAttachmentZ;
+        this.locBarrelZ = b.locBarrelZ;
+        this.frontZ = b.frontZ;
     }
 
     public static Builder builder(ResourceLocation id, ModuleType type) {
@@ -227,6 +250,22 @@ public final class ModuleDefinition {
                 b.defaultColors = arr;
             }
         }
+        // Z-axis geometry from the module's geo JSON (pack assets, same
+        // path convention as the client model); missing/unparsable file
+        // leaves the NaN sentinels and GunLength keeps the 0.5 default
+        ModuleDefinition.GeometryZ geoOut = new ModuleDefinition.GeometryZ();
+        String geoJson = dev.ignis.createpneumatictacticals.gunpack.GunPacks.readGeoJson(id);
+        if (geoJson != null) {
+            try {
+                dev.ignis.createpneumatictacticals.gun.GunLength.parse(geoJson,
+                        type == ModuleType.MUZZLE, geoOut);
+            } catch (Exception ignored) {
+                // malformed geo: NaN sentinels survive, default length
+            }
+            if (type == ModuleType.RECEIVER && !Float.isNaN(geoOut.locBarrelZ)) {
+                dev.ignis.createpneumatictacticals.gun.GunLength.noteReceiverBarrelMount(id, geoOut.locBarrelZ);
+            }
+        }
         return b.build();
     }
 
@@ -271,6 +310,10 @@ public final class ModuleDefinition {
         @Nullable private int[] defaultColors;
         private List<HandguardPosition> attachmentPoints = Collections.emptyList();
         private List<HandguardPosition> positions = Collections.emptyList();
+        private float muzzleOffsetZ = Float.NaN;
+        private float muzzleAttachmentZ = Float.NaN;
+        private float locBarrelZ = Float.NaN;
+        private float frontZ = Float.NaN;
 
         private Builder(ResourceLocation id, ModuleType type) {
             this.id = id;
