@@ -28,6 +28,7 @@ public final class AmmoExtension {
     public double damageFalloffRate = 0;     // damage loss per block beyond effective range
 
     // --- gunplay ---
+    public double damage = -1;              // <=0: use Create's type.damage()
     public double fireRate = 300;            // rpm; final rate = fireRate * fire_rate_multiplier
     public double spread = 1.0;              // degrees; S0 of the hipfire accuracy model
     public double headshotMultiplier = 1.5;

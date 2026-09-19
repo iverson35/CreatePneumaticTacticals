@@ -196,8 +196,12 @@ public final class GunFireHandler {
                 splitMotion = splitMotion.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
             }
             projectile.setDeltaMovement(splitMotion);
-            // mark gun-fired projectiles so the hit mixin can send hitmarkers
+            // mark gun-fired projectiles: the hit/bounce/explosion runtime
+            // (PotatoProjectileMixin) keys off cpt_gunshot and reads the ammo
+            // extension via cpt_ammo; cpt_dmg carries the gun's damage multiplier
             projectile.getPersistentData().putBoolean("cpt_gunshot", true);
+            projectile.getPersistentData().putString("cpt_ammo", ammoId);
+            projectile.getPersistentData().putDouble("cpt_dmg", stats.damageMultiplier);
             projectile.setOwner(player);
             player.level().addFreshEntity(projectile);
         }
