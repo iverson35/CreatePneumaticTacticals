@@ -59,13 +59,4 @@ public final class AmmoExtension {
     public static void clear() {
         TABLE.clear();
     }
-
-    /** linear damage decay beyond effective range; <=0 means full damage to self-destruct distance */
-    public double damageAt(double distance, double baseDamage) {
-        double range = effectiveRange;
-        if (distance <= range) return baseDamage;
-        double lost = (distance - range) * damageFalloffRate;
-        if (damageFalloffRate <= 0) return baseDamage;
-        return Math.max(0, baseDamage - lost);
-    }
 }

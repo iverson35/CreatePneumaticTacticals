@@ -202,6 +202,9 @@ public final class GunFireHandler {
             projectile.getPersistentData().putBoolean("cpt_gunshot", true);
             projectile.getPersistentData().putString("cpt_ammo", ammoId);
             projectile.getPersistentData().putDouble("cpt_dmg", stats.damageMultiplier);
+            // effective range = effective_range x bullet_speed; stamp it now,
+            // post-spawn velocity is polluted by drag/gravity
+            projectile.getPersistentData().putDouble("cpt_bspeed", stats.bulletSpeed);
             projectile.setOwner(player);
             player.level().addFreshEntity(projectile);
         }

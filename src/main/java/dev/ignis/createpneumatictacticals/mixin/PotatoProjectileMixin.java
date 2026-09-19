@@ -82,7 +82,7 @@ public abstract class PotatoProjectileMixin {
         if (cpt$lastPos != null) cpt$traveled += pos.distanceTo(cpt$lastPos);
         cpt$lastPos = pos;
         AmmoExtension ext = cpt$ext(self);
-        if (ext.damageFalloffRate > 0 && ext.damageAt(cpt$traveled, 1.0) <= 0) {
+        if (ext.damageFalloffRate > 0 && cpt$damageAt(self, ext, cpt$baseDamage(self, ext)) <= 0) {
             // damage fell to zero: detonate once if explosive, then die
             if (ext.affectRadius > 0) cpt$explode(self, pos, ext);
             self.kill();
@@ -105,14 +105,16 @@ public abstract class PotatoProjectileMixin {
         Entity owner = self.getOwner();
         PotatoCannonProjectileType type = self.getProjectileType();
 
-        double base = ext.damage > 0 ? ext.damage : type.damage();
-        double damage = base * self.getPersistentData().getDouble("cpt_dmg")
-                * ext.damageAt(cpt$traveled, 1.0);
+        double damage = cpt$damageAt(self, ext, cpt$baseDamage(self, ext))
+                * self.getPersistentData().getDouble("cpt_dmg");
         boolean headshot = target instanceof LivingEntity living && cpt$isHeadshot(living, hit);
         if (headshot) damage *= ext.headshotMultiplier;
 
         DamageSource source = CreateDamageSources.potatoCannon(level, self, owner);
         if (target.hurt(source, (float) damage) && target instanceof LivingEntity living) {
+            // full-auto: vanilla sets 20 ticks of hit immunity on hurt(),
+            // which would absorb most rounds at 300+ rpm - reset it
+            living.invulnerableTime = 0;
             cpt$applyEffects(living, ext.effects.direct(), 1.0);
             // knockback along the flight direction, like Create's handler
             double knockback = type.knockback();
@@ -163,12 +165,18 @@ public abstract class PotatoProjectileMixin {
 
     // --- shared bits ------------------------------------------------------------
 
-    /** head region per pointblank's HitScan: above eye height minus 12% of body height */
+    /**
+     * Head region per plan_v2 (from pointblank's HitScan.isHeadshot): the top
+     * slab of the bounding box starting at {@code height - width x 0.12},
+     * expanded horizontally by 0.301 on each side.
+     */
     @Unique
     private static boolean cpt$isHeadshot(LivingEntity entity, Vec3 hit) {
         AABB bb = entity.getBoundingBox();
-        double headStart = bb.minY + entity.getEyeHeight() - bb.getYsize() * 0.12;
-        return hit.y >= headStart && hit.y <= bb.maxY + 0.1;
+        double headStart = bb.minY + bb.getYsize() - bb.getXsize() * 0.12;
+        return hit.y >= headStart && hit.y <= bb.maxY
+                && hit.x >= bb.minX - 0.301 && hit.x <= bb.maxX + 0.301
+                && hit.z >= bb.minZ - 0.301 && hit.z <= bb.maxZ + 0.301;
     }
 
     /**
@@ -196,7 +204,8 @@ public abstract class PotatoProjectileMixin {
             if (ext.explosionKnockback != 0) {
                 Vec3 dir = e.position().subtract(center);
                 if (dir.lengthSqr() > 1.0E-6) {
-                    Vec3 push = dir.normalize().scale(ext.explosionKnockback * distScale * mult);
+                    // knockback falls off quadratically (damage is linear, per spec)
+                    Vec3 push = dir.normalize().scale(ext.explosionKnockback * distScale * distScale * mult);
                     e.push(push.x, push.y + 0.1, push.z);
                     e.hurtMarked = true;
                 }
@@ -210,6 +219,27 @@ public abstract class PotatoProjectileMixin {
             level.playSound(null, center.x, center.y, center.z, SoundEvents.GENERIC_EXPLODE,
                     SoundSource.BLOCKS, 1.5f, 0.9f + level.random.nextFloat() * 0.2f);
         }
+    }
+
+    /** base hit damage: extension override, else the Create type's damage */
+    @Unique
+    private static double cpt$baseDamage(PotatoProjectileEntity self, AmmoExtension ext) {
+        return ext.damage > 0 ? ext.damage : self.getProjectileType().damage();
+    }
+
+    /**
+     * Damage after range falloff. Effective range scales with the gun's
+     * bullet_speed (stamped as cpt_bspeed at spawn - post-spawn velocity is
+     * polluted by drag/gravity); beyond it, damage drops by
+     * damage_falloff_rate per block down to zero.
+     */
+    @Unique
+    private double cpt$damageAt(PotatoProjectileEntity self, AmmoExtension ext, double base) {
+        double bspeed = self.getPersistentData().getDouble("cpt_bspeed");
+        if (bspeed <= 0) bspeed = 1;
+        double range = ext.effectiveRange * bspeed;
+        if (cpt$traveled <= range || ext.damageFalloffRate <= 0) return base;
+        return Math.max(0, base - (cpt$traveled - range) * ext.damageFalloffRate);
     }
 
     /** fraction of sampled body points visible from the explosion center */
