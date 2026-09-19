@@ -105,7 +105,6 @@ public final class AdsTransform {
         poseStack.translate(-anchor.x, -anchor.y, -anchor.z);
     }
 
-
     /** one stance's data: eye bone position + inverse of its authored rotation */
     private record StanceCorr(Vector3f bonePos, Quaternionf invRot) {}
 

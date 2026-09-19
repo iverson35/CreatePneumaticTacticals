@@ -75,6 +75,20 @@ public final class MuzzleSmoke {
             Vec3 look = player.getLookAngle();
             location = eye.add(look.scale(1.0));
         }
+        // live gun-frame UP in world space: the render pass captured the
+        // model +Y direction through the full gun pose matrix (stance cant,
+        // recoil, animations included); undo the camera rotation like above.
+        // This carries the gun's ROLL for gas-guide ports — the plume axis
+        // stays ballistic (view ray), but the port phase follows the gun.
+        Vec3 barrelUp = null;
+        float[] upSample = MuzzleAnchor.viewUp();
+        if (upSample != null) {
+            org.joml.Quaternionf inv = new org.joml.Quaternionf()
+                    .rotationY((float) Math.toRadians(-(cam.getYRot() + 180.0f)))
+                    .rotateX((float) Math.toRadians(-cam.getXRot()));
+            org.joml.Vector3f u = new org.joml.Vector3f(upSample[0], upSample[1], upSample[2]).rotate(inv);
+            barrelUp = new Vec3(u.x, u.y, u.z);
+        }
         // smoke velocity follows the view direction (approximation: the
         // server's exact per-pellet dir is not known client-side)
         Vec3 dir = player.getLookAngle();
@@ -98,7 +112,25 @@ public final class MuzzleSmoke {
                     && RANDOM.nextDouble() >= stats.muzzle.gasPassThrough
                     ? pickGuide(stats.muzzle.gasGuides) : null;
             if (guide != null) {
-                axis = offsetDirection(dir, guide.directionX(), guide.directionY());
+                // Gas-guide ports are authored in the GUN frame, but the
+                // plume itself follows the BALLISTIC axis (the bullet leaves
+                // along the view ray — hip-fire smoke along the artistic
+                // first-person barrel direction looks wrong). The port PHASE
+                // must roll with the gun around that ballistic axis only:
+                // project the captured gun up (model +Y through the live
+                // pose matrix — carries stance cant and recoil roll) onto
+                // the plane perpendicular to the view ray first. The
+                // projection strips the hip-pose pitch component (gun
+                // tipped down while the barrel stays on the view ray) which
+                // otherwise fakes a roll phase; what survives IS the roll.
+                // No capture -> null -> offsetDirection falls back to a
+                // world-up approximation.
+                Vec3 gunUp = null;
+                if (barrelUp != null) {
+                    Vec3 projected = barrelUp.subtract(dir.scale(barrelUp.dot(dir)));
+                    if (projected.lengthSqr() > 1.0E-4) gunUp = projected.normalize();
+                }
+                axis = offsetDirection(dir, gunUp, guide.directionX(), guide.directionY());
                 speedMult = guide.velocityMultiplier();
                 spreadMult = guide.spreadMultiplier();
             }
@@ -130,11 +162,20 @@ public final class MuzzleSmoke {
         return guides.get(guides.size() - 1);
     }
 
-    /** shot direction rotated by (yawOffsetDeg, pitchOffsetDeg) relative to itself */
-    private static Vec3 offsetDirection(Vec3 dir, double yawDeg, double pitchDeg) {
-        Vec3 up = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-        Vec3 u = dir.cross(up).normalize();      // horizontal-ish right
-        Vec3 w = dir.cross(u).normalize();       // up relative to dir
+    /**
+     * Direction rotated by (yawOffsetDeg, pitchOffsetDeg) around {@code dir},
+     * in the reference frame defined by {@code frameUp} (the GUN's up —
+     * ports are authored in the gun's frame). Null frameUp falls back to a
+     * world up approximation (legacy behavior).
+     */
+    private static Vec3 offsetDirection(Vec3 dir, Vec3 frameUp, double yawDeg, double pitchDeg) {
+        Vec3 up = frameUp != null ? frameUp
+                : (Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0));
+        // right = up × forward? No: in this frame u is the horizontal-ish
+        // right; keep the original cross order for the world-up case and
+        // derive right from up for gun frames
+        Vec3 u = dir.cross(up).normalize();      // right relative to the frame's up
+        Vec3 w = dir.cross(u).normalize();       // frame up relative to dir
         // yaw: rotate around w (horizontal spread); pitch: around u
         double yaw = Math.toRadians(yawDeg);
         double pitch = Math.toRadians(pitchDeg);
