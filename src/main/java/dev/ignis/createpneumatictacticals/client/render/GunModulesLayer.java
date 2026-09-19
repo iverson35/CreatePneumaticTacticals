@@ -114,6 +114,9 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             RenderType type = RenderType.entityCutoutNoCull(ModuleGunGeoModel.textureId(def.id));
             getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
                     ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay, 1, 1, 1, 1);
+            // fullbright emissive pass for modules with a <name>_glowmask.png
+            GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
+                    ctx.partialTick, ModuleGunGeoModel.textureId(def.id), getRenderer());
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
             if (def.type == ModuleType.BARREL) {

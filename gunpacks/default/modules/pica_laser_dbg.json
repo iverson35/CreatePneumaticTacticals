@@ -1,0 +1,13 @@
+{
+  "name": "createpneumatictacticals:pica_laser_dbg",
+  "module_type": "handguard_attachment",
+  "positions": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+  ],
+  "gun_properties": {
+    "ergonomics": -0.05
+  }
+}
