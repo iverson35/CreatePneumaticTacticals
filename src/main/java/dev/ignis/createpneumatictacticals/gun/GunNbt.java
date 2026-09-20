@@ -152,7 +152,8 @@ public final class GunNbt {
     public static int[] getColors(ItemStack stack, ResourceLocation moduleId) {
         CompoundTag colors = root(stack).getCompound(KEY_COLORS);
         if (!colors.contains(moduleId.toString())) return null;
-        return colors.getIntArray(moduleId.toString());
+        int[] arr = colors.getIntArray(moduleId.toString());
+        return arr.length >= 3 ? arr : null;
     }
 
     /** Drops the gun's render copy of a module's colors (the item is the
