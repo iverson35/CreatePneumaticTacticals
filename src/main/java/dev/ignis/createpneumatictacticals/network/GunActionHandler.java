@@ -37,9 +37,7 @@ public final class GunActionHandler {
             case NEXT_AMMO -> {
                 // cycle through Create potato projectile types compatible with the receiver
                 List<String> compatible = compatibleAmmoIds(player, stats);
-                com.mojang.logging.LogUtils.getLogger().info(
-                        "NEXT_AMMO: receiver={} gunType={} compatible={} current={}",
-                        stats.receiver.id, stats.receiver.gunType, compatible, GunNbt.getAmmo(gun));
+
                 if (compatible.isEmpty()) return;
                 String current = GunNbt.getAmmo(gun);
                 int idx = current == null ? -1 : compatible.indexOf(current);

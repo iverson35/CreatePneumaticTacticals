@@ -56,34 +56,14 @@ public final class DyedTextures {
         if (argbRegions[0] == -1 && argbRegions[1] == -1 && argbRegions[2] == -1) return textureId;
 
         var rm = Minecraft.getInstance().getResourceManager();
-        if (rm.getResource(textureId).isEmpty()) {
-            diag(textureId, "base texture missing");
-            return textureId;
-        }
+        if (rm.getResource(textureId).isEmpty()) return textureId;
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);
         ResourceLocation dyedId = dyedId(textureId, argbRegions);
-        var tm = Minecraft.getInstance().getTextureManager();
-        if (tm.getTexture(dyedId, null) == null) {
-            // log only on first bake per (texture, colors) — this runs in the
-            // render loop; a per-frame log would flood latest.log
-            LOGGER.info("dye resolve: baking {} colors={} mask={}",
-                    textureId, java.util.Arrays.toString(argbRegions), maskIdFor(textureId));
-            if (!bake(textureId, maskRes, dyedId, argbRegions)) {
-                diag(textureId, "bake failed");
-                return textureId;
-            }
+        if (Minecraft.getInstance().getTextureManager().getTexture(dyedId, null) == null) {
+            if (!bake(textureId, maskRes, dyedId, argbRegions)) return textureId;
         }
         return dyedId;
     }
-
-    /** one-shot diag per (texture, reason) — resolve runs per frame */
-    private static void diag(ResourceLocation textureId, String reason) {
-        if (DIAG_SEEN.add(textureId + ":" + reason)) {
-            LOGGER.info("dye resolve: {} -> {}", textureId, reason);
-        }
-    }
-
-    private static final java.util.Set<String> DIAG_SEEN = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static boolean bake(ResourceLocation textureId, Resource maskRes,
                                 ResourceLocation dyedId, int[] colors) {

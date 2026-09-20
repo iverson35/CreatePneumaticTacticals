@@ -23,8 +23,7 @@ public final class ModuleGeoModel extends GeoModel<ModuleItem> {
             new ResourceLocation(CreatePneumaticTacticals.MODID, "animations/gun/placeholder.animation.json");
 
     private ItemStack currentStack = ItemStack.EMPTY;
-    /** diag: one log per (module, colors) pair */
-    private static final java.util.Set<String> DIAG_SEEN = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public void setStack(ItemStack stack) {
         this.currentStack = stack == null ? ItemStack.EMPTY : stack;
     }
@@ -40,17 +39,6 @@ public final class ModuleGeoModel extends GeoModel<ModuleItem> {
         // dye regions live on the module item's own NBT (set by the
         // workbench dyeing) — same bake as the on-gun path (DyedTextures)
         int[] colors = ModuleItem.getDyeColors(currentStack);
-        // one-shot diagnostic per module id — this runs per frame, a bare
-        // log would flood. Remove once dyeing is confirmed end to end.
-        if (currentStack.hasTag()) {
-            String modId = String.valueOf(ModuleItem.getModuleId(currentStack));
-            String seenKey = modId + ":" + java.util.Arrays.toString(colors);
-            if (DIAG_SEEN.add(seenKey)) {
-                com.mojang.logging.LogUtils.getLogger().info(
-                        "geoModel texture: module={} colors={} tag={}", modId,
-                        java.util.Arrays.toString(colors), currentStack.getTag());
-            }
-        }
         return colors != null ? DyedTextures.resolve(base, colors) : base;
     }
 

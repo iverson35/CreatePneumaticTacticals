@@ -167,21 +167,18 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
 
     private boolean handleDyeConfirm(Player player) {
         Level level = getLevel();
-        var log = com.mojang.logging.LogUtils.getLogger();
-        if (level == null || level.isClientSide) { log.info("dye confirm: bad level"); return false; }
+        if (level == null || level.isClientSide) return false;
         ItemStack module = blockEntity.getDyeModule();
-        if (!blockEntity.hasModule()) { log.info("dye confirm: no module (dyeModule={})", module); return false; }
+        if (!blockEntity.hasModule()) return false;
         int region = blockEntity.getRegion();
         int color = blockEntity.getChosenColor();
-        if (region < 0 || region > 2 || color < 0) { log.info("dye confirm: bad selection region={} color={}", region, color); return false; }
+        if (region < 0 || region > 2 || color < 0) return false;
         DyeItem dye = DyePalette.forIndex(color);
-        if (dye == null) { log.info("dye confirm: no dye for index {}", color); return false; }
+        if (dye == null) return false;
         boolean creative = player.isCreative();
         if (!creative && !player.getInventory().items.stream().anyMatch(s -> !s.isEmpty() && s.getItem() == dye)) {
-            log.info("dye confirm: dye {} not in inventory", dye);
             return false;
         }
-        log.info("dye confirm: OK region={} color={} module={}", region, color, module);
 
         // consume one dye from inventory (creative: free)
         if (!creative) {
@@ -202,14 +199,14 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         arr[region] = DyePalette.argbOf(color);
         colors.putIntArray(moduleId.toString(), arr);
         root.put(ModuleItem.TAG_COLORS, colors);
-        com.mojang.logging.LogUtils.getLogger().info(
-                "dye confirm post: module tag = {}", root);
+
         blockEntity.setRegion(-1);
         blockEntity.setChosenColor(-1);
         blockEntity.setDyeModule(module.copy()); // persist NBT change
         broadcastChanges();
         return true;
     }
+
     /** Server-side "clear all dyes": drop the module's Colors NBT entirely so
      *  the stack is tag-identical to a never-dyed one (mergeable again). */
     public void clearDye(Player player) {

@@ -253,7 +253,16 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                     HandguardPosition pos = hgPositionOf(i);
                     ModuleDefinition nbtDef = pos != null ? nbtHg.get(pos) : nbt.get(type);
                     if (nbtDef != null) {
-                        this.container.setItem(idx, ModuleItem.of(nbtDef.id));
+                        ItemStack virtual = ModuleItem.of(nbtDef.id);
+                        // the gun's dye copy travels INTO the virtual item —
+                        // taking the module out must keep its paid dye, and
+                        // with item-as-authority that transfer must happen
+                        // at materialization, never per-syncGun
+                        int[] gunColors = GunNbt.getColors(gun, nbtDef.id);
+                        if (gunColors != null && gunColors.length >= 3) {
+                            dev.ignis.createpneumatictacticals.item.ModuleItem.setDyeColors(virtual, gunColors);
+                        }
+                        this.container.setItem(idx, virtual);
                     }
                 }
             }
@@ -268,12 +277,13 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
             }
         }
 
-        // dye colors travel WITH the module item: slot stacks carry their
-        // own Colors NBT (workbench-dyed), the gun keeps a per-module copy
-        // for rendering. Merge both directions here: slot stack colors win
-        // (the item is the source of truth a player can dye and trade);
-        // a stack WITHOUT colors inherits the gun's stored colors so
-        // taking a module out and re-installing never loses a paid dye.
+        // The module ITEM is the sole color authority. The gun keeps a copy
+        // for rendering only. A dyed item overwrites the gun's copy; an
+        // UNDYED item clears the gun's stale copy — installing a fresh
+        // module must never inherit the color of the module it replaced.
+        // (Dye never gets lost on take-out: materialization below copies
+        // the gun's colors into the virtual slot item once, and the item
+        // carries them from then on.)
         for (int i = 0; i < MODULE_COUNT; i++) {
             ItemStack slotStack = this.container.getItem(SLOT_GUN + 1 + i);
             ModuleDefinition def = slotStack.isEmpty() ? null : definitionOf(slotStack);
@@ -284,10 +294,7 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
                 GunNbt.setColor(gun, def.id, 1, itemColors[1]);
                 GunNbt.setColor(gun, def.id, 2, itemColors[2]);
             } else {
-                int[] gunColors = GunNbt.getColors(gun, def.id);
-                if (gunColors != null) {
-                    copyColorsToItem(slotStack, def.id, gunColors);
-                }
+                GunNbt.clearColors(gun, def.id);
             }
         }
 
@@ -308,14 +315,6 @@ public class GunWorkbenchMenu extends AbstractContainerMenu {
         }
         GunNbt.writeModules(gun, installed, hgAttachments);
         this.container.setChanged();
-    }
-
-    /** writes a module's dye colors onto the item stack's own Colors NBT */
-    private static void copyColorsToItem(ItemStack stack, ResourceLocation moduleId, int[] colors) {
-        net.minecraft.nbt.CompoundTag root = stack.getOrCreateTag();
-        net.minecraft.nbt.CompoundTag colorTag = root.getCompound(dev.ignis.createpneumatictacticals.item.ModuleItem.TAG_COLORS);
-        colorTag.putIntArray(moduleId.toString(), colors);
-        root.put(dev.ignis.createpneumatictacticals.item.ModuleItem.TAG_COLORS, colorTag);
     }
 
     private void eject(int slotIndex, Player player) {

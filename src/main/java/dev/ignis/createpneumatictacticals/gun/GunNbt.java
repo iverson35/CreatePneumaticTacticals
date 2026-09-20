@@ -155,6 +155,15 @@ public final class GunNbt {
         return colors.getIntArray(moduleId.toString());
     }
 
+    /** Drops the gun's render copy of a module's colors (the item is the
+     *  authority — an undyed module must clear any stale gun-side color). */
+    public static void clearColors(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_COLORS)) return;
+        CompoundTag colors = root.getCompound(KEY_COLORS);
+        colors.remove(moduleId.toString());
+        if (colors.isEmpty()) root.remove(KEY_COLORS);
+    }
     // --- assembly validation ---
 
     /**

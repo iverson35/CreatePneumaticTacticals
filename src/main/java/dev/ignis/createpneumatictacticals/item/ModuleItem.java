@@ -93,6 +93,16 @@ public class ModuleItem extends Item implements GeoItem {
         return arr.length >= 3 ? arr : null;
     }
 
+    /** Writes dye-region colors onto the stack's Colors NBT (used when the
+     *  workbench gun materializes virtual module items). */
+    public static void setDyeColors(ItemStack stack, int[] colors) {
+        ResourceLocation id = getModuleId(stack);
+        if (id == null || colors == null || colors.length < 3) return;
+        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag colorTag = tag.getCompound(TAG_COLORS);
+        colorTag.putIntArray(id.toString(), colors);
+        tag.put(TAG_COLORS, colorTag);
+    }
     public static ItemStack of(ResourceLocation moduleId) {
         ItemStack stack = new ItemStack(dev.ignis.createpneumatictacticals.item.ModItems.MODULE.get());
         stack.getOrCreateTag().putString(TAG_MODULE_ID, moduleId.toString());
