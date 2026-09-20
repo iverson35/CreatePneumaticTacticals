@@ -67,23 +67,14 @@ public final class ModCreativeTabs {
             output.accept(ModuleItem.of(def.id));
         }
 
-        // --- per receiver: complete sample gun + compatible ammo pods ---
-        java.util.Set<String> podAmmoDone = new java.util.HashSet<>();
+        // --- per receiver: complete sample gun (no ammo pods in the tab:
+        // users fill pods from ammo items, the pod pairs only clutter) ---
         for (ModuleDefinition receiver : ModuleManager.all().values()) {
             if (receiver.type != ModuleType.RECEIVER) continue;
             List<Holder<com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType>> compatible =
                     compatibleTypes(params, receiver);
             ItemStack gun = sampleGun(receiver, compatible);
             if (gun != null) output.accept(gun);
-            for (Holder<com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType> type : compatible) {
-                String ammoKey = type.unwrapKey().orElseThrow().location().toString();
-                if (!podAmmoDone.add(ammoKey)) continue; // shared calibers: once
-                Item content = type.value().items().size() > 0
-                        ? type.value().items().get(0).value() : null;
-                if (content == null) continue;
-                output.accept(PodItem.ofContent(content, ModItems.POD.get()));
-                output.accept(PodItem.ofContent(content, ModItems.PRESSURIZED_POD.get()));
-            }
         }
     }
 

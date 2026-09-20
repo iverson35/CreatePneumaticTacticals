@@ -42,14 +42,34 @@ public class PodItem extends Item {
         return ResourceLocation.tryParse(pod.getTag().getString(KEY_CONTENT));
     }
 
+    /** the content item, or null if unset/unregistered */
+    @Nullable
+    public static Item contentItem(ItemStack pod) {
+        ResourceLocation contentId = contentId(pod);
+        if (contentId == null) return null;
+        return net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(contentId);
+    }
+
     /**
      * Resolve the potato projectile type for this pod's content, if any.
      */
     public static Optional<PotatoCannonProjectileType> projectileType(Level level, ItemStack pod) {
-        ResourceLocation contentId = contentId(pod);
-        if (contentId == null) return Optional.empty();
-        var item = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ITEM).get(contentId);
+        Item item = contentItem(pod);
+        if (item == null) return Optional.empty();
         return PotatoCannonProjectileType.getTypeForItem(level.registryAccess(), item).map(ref -> ref.value());
+    }
+
+    /**
+     * The content item's display-name component. Uses the ITEM's own
+     * name resolution (Item.getName) instead of the raw
+     * {@code item.<ns>.<path>} lang key: block-items like pumpkin carry
+     * their translated name under {@code block.<ns>.<path>}, so the raw
+     * item key would render as literal "item.minecraft.pumpkin".
+     */
+    private Component contentName(ItemStack pod) {
+        Item item = contentItem(pod);
+        return item != null ? item.getName(new ItemStack(item))
+                : Component.translatable("createpneumatictacticals.unknown_content");
     }
 
     @Override
@@ -57,7 +77,7 @@ public class PodItem extends Item {
         ResourceLocation content = contentId(stack);
         if (content != null) {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.pod_content",
-                    Component.translatable(content.toLanguageKey("item"))));
+                    contentName(stack)));
         }
         super.appendHoverText(stack, level, tooltip, flag);
     }
@@ -66,8 +86,12 @@ public class PodItem extends Item {
     public Component getName(ItemStack stack) {
         ResourceLocation content = contentId(stack);
         if (content != null) {
-            return Component.translatable("item.createpneumatictacticals.pod.named",
-                    Component.translatable(content.toLanguageKey("item")));
+            // pod vs pressurized pod have separate name templates so a
+            // pressurized pod doesn't show up as plain "Pod [...]"
+            String key = stack.getItem() == dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
+                    ? "item.createpneumatictacticals.pressurized_pod.named"
+                    : "item.createpneumatictacticals.pod.named";
+            return Component.translatable(key, contentName(stack));
         }
         return super.getName(stack);
     }

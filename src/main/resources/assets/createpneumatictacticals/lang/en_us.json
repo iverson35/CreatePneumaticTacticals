@@ -83,5 +83,6 @@
   "hg_pos.createpneumatictacticals.left": " (left)",
   "hg_pos.createpneumatictacticals.right": " (right)",
   "gui.createpneumatictacticals.hud.reloading": "Reloading",
-  "gun_type.createpneumatictacticals.shotgun": "Shotgun"
+  "gun_type.createpneumatictacticals.shotgun": "Shotgun",
+  "item.createpneumatictacticals.pressurized_pod.named": "Pressurized Pod [%s]"
 }

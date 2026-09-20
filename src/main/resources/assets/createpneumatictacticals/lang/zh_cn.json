@@ -82,5 +82,6 @@
   "hg_pos.createpneumatictacticals.left": "(左)",
   "hg_pos.createpneumatictacticals.right": "(右)",
   "gui.createpneumatictacticals.hud.reloading": "装填中",
-  "gun_type.createpneumatictacticals.shotgun": "霰弹弹药"
+  "gun_type.createpneumatictacticals.shotgun": "霰弹弹药",
+  "item.createpneumatictacticals.pressurized_pod.named": "加压封装弹 [%s]"
 }
