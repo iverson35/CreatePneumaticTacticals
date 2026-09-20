@@ -58,6 +58,34 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
             }
         });
 
+        // BE region/chosenColor are plain fields with NO network sync —
+        // the client GUI showed a stale selection forever (e.g. region stays
+        // highlighted after a confirm that reset it server-side, and every
+        // later confirm failed silently with "bad selection"). DataSlots
+        // sync these two ints with the menu's own change detection.
+        this.addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return blockEntity.getRegion();
+            }
+
+            @Override
+            public void set(int value) {
+                // client receives the authoritative selection
+                blockEntity.setRegion(value);
+            }
+        });
+        this.addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return blockEntity.getChosenColor();
+            }
+
+            @Override
+            public void set(int value) {
+                blockEntity.setChosenColor(value);
+            }
+        });
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInv, 9 + row * 9 + col, 8 + col * 18, 123 + row * 18));
@@ -173,8 +201,8 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         if (arr.length < 3) arr = new int[]{-1, -1, -1}; // undyed slots: -1 = keep original
         arr[region] = DyePalette.argbOf(color);
         colors.putIntArray(moduleId.toString(), arr);
-        root.put(ModuleItem.TAG_COLORS, colors);
-
+        com.mojang.logging.LogUtils.getLogger().info(
+                "dye confirm post: module tag = {}", root);
         blockEntity.setRegion(-1);
         blockEntity.setChosenColor(-1);
         blockEntity.setDyeModule(module.copy()); // persist NBT change
@@ -182,6 +210,21 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         return true;
     }
 
+    /** Server-side "clear all dyes": rewrite the module's Colors NBT to all -1. */
+    public void clearDye(Player player) {
+        Level level = getLevel();
+        if (level == null || level.isClientSide) return;
+        ItemStack module = blockEntity.getDyeModule();
+        if (!blockEntity.hasModule()) return;
+        ResourceLocation moduleId = ModuleItem.getModuleId(module);
+        if (moduleId == null) return;
+        CompoundTag root = module.getTag();
+        if (root != null && root.contains(ModuleItem.TAG_COLORS, CompoundTag.TAG_COMPOUND)) {
+            root.getCompound(ModuleItem.TAG_COLORS).putIntArray(moduleId.toString(), new int[]{-1, -1, -1});
+            blockEntity.setDyeModule(module.copy());
+            broadcastChanges();
+        }
+    }
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);
@@ -193,11 +236,16 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
                 return ItemStack.EMPTY;
             }
         } else {
-            // shift-click a module into the empty dye slot (single)
+            // shift-click a module into the empty dye slot (single).
+            // IMPORTANT: go through the container, NOT Slot.set — Slot.set
+            // assigns the field directly, SimpleContainer.setChanged never
+            // fires, syncFromContainer never runs, and the BE's dyeModule
+            // field desyncs from the slot. Dye NBT then lands on a stack
+            // object the player can never take out (mergeable with undyed).
             if (stack.getItem() instanceof ModuleItem && !this.slots.get(DYE_SLOT).hasItem()) {
                 ItemStack single = stack.copy();
                 single.setCount(1);
-                this.slots.get(DYE_SLOT).set(single);
+                this.blockEntity.getDyeContainer().setItem(0, single);
                 stack.shrink(1);
                 this.broadcastChanges();
                 return original;

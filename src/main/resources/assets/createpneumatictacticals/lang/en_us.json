@@ -27,6 +27,7 @@
   "gui.createpneumatictacticals.pick_color": "Pick a color",
   "gui.createpneumatictacticals.craft": "Craft",
   "gui.createpneumatictacticals.dye": "Apply Dye",
+  "gui.createpneumatictacticals.clear_dye": "Clear Dyes",
   "gui.createpneumatictacticals.tab_craft": "Crafting",
   "gui.createpneumatictacticals.tab_dye": "Dyeing",
   "stat.createpneumatictacticals.damage_multiplier": "Damage",

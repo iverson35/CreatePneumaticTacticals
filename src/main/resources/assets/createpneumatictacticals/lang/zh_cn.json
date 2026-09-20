@@ -26,6 +26,7 @@
   "gui.createpneumatictacticals.pick_color": "点击选择颜色",
   "gui.createpneumatictacticals.craft": "制作",
   "gui.createpneumatictacticals.dye": "确认染色",
+  "gui.createpneumatictacticals.clear_dye": "清除染色",
   "gui.createpneumatictacticals.tab_craft": "制作",
   "gui.createpneumatictacticals.tab_dye": "染色",
   "stat.createpneumatictacticals.damage_multiplier": "伤害",

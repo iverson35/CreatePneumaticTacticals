@@ -53,6 +53,8 @@ public final class DyedTextures {
         if (argbRegions == null || argbRegions.length < 3) return textureId;
         // -1 = undyed slot (no defaults anymore); all-undyed = original
         if (argbRegions[0] < 0 && argbRegions[1] < 0 && argbRegions[2] < 0) return textureId;
+        LOGGER.info("dye resolve: texture={} colors={} -> mask={}",
+                textureId, java.util.Arrays.toString(argbRegions), maskIdFor(textureId));
         var rm = Minecraft.getInstance().getResourceManager();
         if (rm.getResource(textureId).isEmpty()) return textureId;
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);

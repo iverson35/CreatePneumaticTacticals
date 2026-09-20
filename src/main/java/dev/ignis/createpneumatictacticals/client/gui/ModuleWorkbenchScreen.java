@@ -67,6 +67,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     private boolean dyeTab;
     private Button craftButton;
     private Button dyeButton;
+    private Button clearButton;
 
     public ModuleWorkbenchScreen(ModuleWorkbenchMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
@@ -97,6 +98,10 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                         b -> dyeConfirm())
                 .bounds(this.leftPos + BTN_X, this.topPos + BTN_Y, BTN_W, BTN_H)
                 .build());
+        clearButton = addRenderableWidget(Button.builder(Component.translatable("gui.createpneumatictacticals.clear_dye"),
+                        b -> sendClearDye())
+                .bounds(this.leftPos + BTN_X, this.topPos + BTN_Y + BTN_H + 2, BTN_W, BTN_H)
+                .build());
         // scroll arrows in the recipe panel header
         addRenderableWidget(Button.builder(Component.literal("<"),
                         b -> scrollOffset = Math.max(0, scrollOffset - 1))
@@ -115,8 +120,14 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         applyTab();
     }
 
+    private void sendClearDye() {
+        CptNetwork.CHANNEL.sendToServer(new WorkbenchActionPacket(
+                WorkbenchActionPacket.Action.DYE_CLEAR, null, -1));
+    }
+
     private void applyTab() {
         craftButton.visible = !dyeTab;
+        clearButton.visible = dyeTab;
         dyeButton.visible = dyeTab;
     }
 
