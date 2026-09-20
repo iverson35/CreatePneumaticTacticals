@@ -32,6 +32,8 @@ public final class GunNbt {
     public static final String KEY_MODULES = "Modules";
     public static final String KEY_AMMO = "Ammo";
     public static final String KEY_AMMO_COUNT = "AmmoCount";
+    /** ammo selected while the magazine still held rounds: applied at the next reload */
+    public static final String KEY_PENDING_AMMO = "PendingAmmo";
     public static final String KEY_FIRE_MODE = "FireMode";
     public static final String KEY_AIM_STANCE = "AimStance";
     public static final String KEY_COLORS = "Colors";
@@ -100,6 +102,16 @@ public final class GunNbt {
     public static void setAmmo(ItemStack stack, @Nullable String ammoId) {
         if (ammoId == null) root(stack).remove(KEY_AMMO);
         else root(stack).putString(KEY_AMMO, ammoId);
+    }
+
+    @Nullable
+    public static String getPendingAmmo(ItemStack stack) {
+        return root(stack).contains(KEY_PENDING_AMMO) ? root(stack).getString(KEY_PENDING_AMMO) : null;
+    }
+
+    public static void setPendingAmmo(ItemStack stack, @Nullable String ammoId) {
+        if (ammoId == null) root(stack).remove(KEY_PENDING_AMMO);
+        else root(stack).putString(KEY_PENDING_AMMO, ammoId);
     }
 
     public static int getAmmoCount(ItemStack stack) {

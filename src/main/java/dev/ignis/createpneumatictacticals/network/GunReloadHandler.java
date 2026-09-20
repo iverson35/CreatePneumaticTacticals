@@ -26,6 +26,13 @@ public final class GunReloadHandler {
         if (!completed) return; // aborted: nothing to validate
 
         if (stats.feed.feedType == FeedType.ROUND || stats.feed.feedType == FeedType.MAGAZINE) {
+            // deferred ammo pick (cycle while the magazine held rounds):
+            // the reload fills with the NEW type, so promote it now
+            String pending = GunNbt.getPendingAmmo(gun);
+            if (pending != null) {
+                GunNbt.setPendingAmmo(gun, null);
+                GunNbt.setAmmo(gun, pending);
+            }
             int current = GunNbt.getAmmoCount(gun);
             int max = stats.feed.clipSize;
             int wanted = stats.feed.feedType == FeedType.ROUND

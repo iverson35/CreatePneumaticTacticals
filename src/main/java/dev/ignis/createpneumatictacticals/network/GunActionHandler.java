@@ -41,7 +41,18 @@ public final class GunActionHandler {
                 if (compatible.isEmpty()) return;
                 String current = GunNbt.getAmmo(gun);
                 int idx = current == null ? -1 : compatible.indexOf(current);
-                GunNbt.setAmmo(gun, compatible.get((idx + 1) % compatible.size()));
+                String next = compatible.get((idx + 1) % compatible.size());
+                // magazine still holds rounds of the CURRENT type: defer —
+                // write the pick as pending, applied at the next reload.
+                // Backpack feed has no magazine state, switches instantly.
+                boolean backpack = stats.feed != null
+                        && stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
+                if (!backpack && GunNbt.getAmmoCount(gun) > 0) {
+                    GunNbt.setPendingAmmo(gun, next);
+                } else {
+                    GunNbt.setPendingAmmo(gun, null);
+                    GunNbt.setAmmo(gun, next);
+                }
                 // per plan: never auto-switch when the selected ammo runs out
             }
             case CYCLE_AIM_STANCE -> {
