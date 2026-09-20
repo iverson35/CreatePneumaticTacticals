@@ -64,6 +64,10 @@ public final class ModuleDefinition {
     /** receiver-only: lang key for the auto-created gun's display name */
     @Nullable public final String gunName;
     public final double baseRecoilPitch, baseRecoilYaw;
+    /** receiver-only: true = the fire sound ignores the ammo's sound_pitch
+     * (Create potato projectile type) and always plays at the sound's own
+     * pitch; false (default) = the shot's pitch follows the ammo */
+    public final boolean ignoreAmmoPitch;
     /** feed-only fields */
     @Nullable public final FeedType feedType;
     public final int loadAmount, clipSize;
@@ -123,6 +127,7 @@ public final class ModuleDefinition {
         this.gunName = b.gunName;
         this.baseRecoilPitch = b.baseRecoilPitch;
         this.baseRecoilYaw = b.baseRecoilYaw;
+        this.ignoreAmmoPitch = b.ignoreAmmoPitch;
         this.feedType = b.feedType;
         this.loadAmount = b.loadAmount;
         this.clipSize = b.clipSize;
@@ -224,6 +229,7 @@ public final class ModuleDefinition {
             b.gunName = GsonHelper.getAsString(json, "gun_name", null);
             b.baseRecoilPitch = GsonHelper.getAsDouble(json, "base_recoil_pitch", 0);
             b.baseRecoilYaw = GsonHelper.getAsDouble(json, "base_recoil_yaw", 0);
+            b.ignoreAmmoPitch = GsonHelper.getAsBoolean(json, "ignore_ammo_pitch", false);
         }
         // feed
         if (type == ModuleType.FEED) {
@@ -302,6 +308,7 @@ public final class ModuleDefinition {
         @Nullable private List<FireMode> fireModes;
         @Nullable private String fireSound;
         private double baseRecoilPitch, baseRecoilYaw;
+        private boolean ignoreAmmoPitch;
         @Nullable private String gunName;
         @Nullable private FeedType feedType;
         private int loadAmount, clipSize;

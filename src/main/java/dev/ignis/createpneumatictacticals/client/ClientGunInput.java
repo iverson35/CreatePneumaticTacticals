@@ -254,11 +254,17 @@ public final class ClientGunInput {
         CptNetwork.CHANNEL.sendToServer(new FireRequestPacket(
                 player.getEyePosition(1.0f), punchDir));
         // instant local fire sound (default: potato-cannon FWOOMP); the
-        // server broadcast excludes the shooter
+        // server broadcast excludes the shooter. Pitch follows the ammo's
+        // sound_pitch (Create potato projectile type — same variable-pitch
+        // behavior as the potato cannon) unless the receiver opts out via
+        // ignore_ammo_pitch; currentType is null only for unknown ammo, and
+        // Create's fallback pitch there is 1 anyway
         String soundId = stats.receiver.fireSound != null ? stats.receiver.fireSound : "create:fwoomp";
+        float pitch = stats.receiver.ignoreAmmoPitch ? 1.0f
+                : (currentType != null ? currentType.soundPitch() : 1.0f);
         var fireSoundEvent = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS
                 .getValue(net.minecraft.resources.ResourceLocation.tryParse(soundId));
-        if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, 1.0f);
+        if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, pitch);
         lastLocalShotMs = now;
         wasFiring = true;
         // fire animation occupancy: the controller is busy for fire length +

@@ -278,12 +278,15 @@ public final class GunFireHandler {
 
         // --- sound: receiver-defined, defaulting to the potato cannon's
         // FWOOMP; the shooter already heard it client-side (instant
-        // feedback), so exclude them from the broadcast ---
+        // feedback), so exclude them from the broadcast. Pitch follows the
+        // ammo's sound_pitch (Create potato projectile type) unless the
+        // receiver opts out via ignore_ammo_pitch ---
         String soundId = receiver.fireSound != null ? receiver.fireSound : "create:fwoomp";
         SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(soundId));
         if (sound != null) {
+            float pitch = receiver.ignoreAmmoPitch ? 1.0f : type.soundPitch();
             player.level().playSound(player, player.getX(), player.getY(), player.getZ(),
-                    sound, SoundSource.PLAYERS, 1.0f, 1.0f);
+                    sound, SoundSource.PLAYERS, 1.0f, pitch);
         }
     }
 
