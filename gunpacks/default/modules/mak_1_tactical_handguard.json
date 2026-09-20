@@ -8,5 +8,8 @@
     "top",
     "bottom",
     "left"
+  ],
+  "module_affected": [
+    { "module_type": "handguard_attachment", "mode": "include", "value": ["REGEX=pica.+"] }
   ]
 }

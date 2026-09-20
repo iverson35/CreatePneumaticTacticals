@@ -16,5 +16,12 @@
   "fire_sound": "createpneumatictacticals:gun.mak_1.fire",
   "base_recoil_pitch": 3.6,
   "base_recoil_yaw": 0.9,
-  "gun_name": "gun.createpneumatictacticals.mak_1"
+  "gun_name": "gun.createpneumatictacticals.mak_1",
+  "module_affected": [
+    { "module_type": "sight",  "mode": "include", "value": ["REGEX=pica_sight_small.+"] },
+    { "module_type": "barrel", "mode": "include", "value": ["REGEX=mak_1.+"] },
+    { "module_type": "stock",  "mode": "include", "value": ["REGEX=mak_1.+"] },
+    { "module_type": "feed",   "mode": "include", "value": ["REGEX=mak_1.+"] },
+    { "module_type": "supply", "mode": "include", "value": ["REGEX=mak_1.+"] }
+  ]
 }
