@@ -41,22 +41,71 @@ public final class DyedTextures {
     }
 
     /**
-     * The texture to render: the dyed bake when the module has a companion
-     * mask and non-default colors, otherwise the original texture id.
-     * {@code argbRegions} = the module's 3 region colors (from item/gun NBT).
+     * The texture to render: the dyed bake when the module has region
+     * colors, otherwise the original texture id. {@code argbRegions} = the
+     * module's 3 region colors (item/gun NBT or pack defaults).
+     *
+     * <p>A module WITHOUT a companion mask dyes its ENTIRE texture as
+     * region 1 (mask == null -> every pixel is region 1; fully transparent
+     * pixels still keep their alpha, so cutouts are unaffected).
      */
     public static ResourceLocation resolve(ResourceLocation textureId, int[] argbRegions) {
         if (argbRegions == null || argbRegions.length < 3) return textureId;
         var rm = Minecraft.getInstance().getResourceManager();
         if (rm.getResource(textureId).isEmpty()) return textureId;
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);
-        if (maskRes == null) return textureId; // module has no dye regions
         ResourceLocation dyedId = dyedId(textureId, argbRegions);
         var tm = Minecraft.getInstance().getTextureManager();
         if (tm.getTexture(dyedId, null) == null) {
             if (!bake(textureId, maskRes, dyedId, argbRegions)) return textureId;
         }
         return dyedId;
+    }
+
+    private static boolean bake(ResourceLocation textureId, Resource maskRes,
+                                ResourceLocation dyedId, int[] colors) {
+        try (InputStream baseIn = Minecraft.getInstance().getResourceManager()
+                        .getResource(textureId).orElseThrow().open();
+             InputStream maskIn = maskRes == null ? null : maskRes.open()) {
+            NativeImage base = NativeImage.read(baseIn);
+            NativeImage mask = maskIn == null ? null : NativeImage.read(maskIn);
+            if (mask != null
+                    && (mask.getWidth() != base.getWidth() || mask.getHeight() != base.getHeight())) {
+                LOGGER.warn("dye mask size mismatch for {}: mask {}x{}, base {}x{} — treating as no mask",
+                        textureId, mask.getWidth(), mask.getHeight(), base.getWidth(), base.getHeight());
+                mask = null;
+            }
+            int w = base.getWidth();
+            int h = base.getHeight();
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int b = base.getPixelRGBA(x, y);
+                    int region = regionOf(mask, x, y); // -1 = keep original
+                    if (region >= 0) {
+                        base.setPixelRGBA(x, y, dye(b, colors[region]));
+                    }
+                }
+            }
+            Minecraft.getInstance().getTextureManager()
+                    .register(dyedId, new DynamicTexture(base));
+            return true;
+        } catch (IOException | RuntimeException e) {
+            LOGGER.warn("dye bake failed for {}: {}", textureId, e.toString());
+            return false;
+        }
+    }
+
+    /**
+     * Dye region for a pixel: no mask -> the WHOLE texture is region 1
+     * (design rule: maskless modules dye entirely with the region-1
+     * color); with a mask, brightness picks the region and 192+ keeps
+     * the original color.
+     */
+    private static int regionOf(@org.jetbrains.annotations.Nullable NativeImage mask, int x, int y) {
+        if (mask == null) return 0;
+        int m = mask.getPixelRGBA(x, y) & 0xFF;
+        if (m >= 192) return -1;
+        return m < 64 ? 0 : m < 128 ? 1 : 2;
     }
 
     /**
@@ -71,51 +120,24 @@ public final class DyedTextures {
                         colors[1] & 0xFFFFFFFFL, colors[2] & 0xFFFFFFFFL));
     }
 
-    /**
-     * Bakes the dyed texture and registers it under {@code dyedId}.
-     * Returns false when loading fails (caller falls back to the original).
-     */
-    private static boolean bake(ResourceLocation textureId, Resource maskRes,
-                                ResourceLocation dyedId, int[] colors) {
-        try (InputStream baseIn = Minecraft.getInstance().getResourceManager()
-                .getResource(textureId).orElseThrow().open();
-             InputStream maskIn = maskRes.open()) {
-            NativeImage base = NativeImage.read(baseIn);
-            NativeImage mask = NativeImage.read(maskIn);
-            if (mask.getWidth() != base.getWidth() || mask.getHeight() != base.getHeight()) {
-                LOGGER.warn("dye mask size mismatch for {}: mask {}x{}, base {}x{} — using original",
-                        textureId, mask.getWidth(), mask.getHeight(), base.getWidth(), base.getHeight());
-                return false;
-            }
-            int w = base.getWidth();
-            int h = base.getHeight();
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    int b = base.getPixelRGBA(x, y);
-                    int m = mask.getPixelRGBA(x, y) & 0xFF; // mask red channel
-                    if (m >= 192) continue; // untouched region
-                    base.setPixelRGBA(x, y, dye(b, colors[m < 64 ? 0 : m < 128 ? 1 : 2]));
-                }
-            }
-            Minecraft.getInstance().getTextureManager()
-                    .register(dyedId, new DynamicTexture(base));
-            return true;
-        } catch (IOException | RuntimeException e) {
-            LOGGER.warn("dye bake failed for {}: {}", textureId, e.toString());
-            return false;
-        }
-    }
 
-    /** grayscale(base) * color, preserving alpha */
-    private static int dye(int base, int color) {
-        int a = base & 0xFF000000;
-        int r = (base >>> 16) & 0xFF;
-        int g = (base >>> 8) & 0xFF;
-        int bl = base & 0xFF;
-        int lum = (r * 77 + g * 151 + bl * 28) >> 8;
-        int cr = (color >>> 16) & 0xFF;
-        int cg = (color >>> 8) & 0xFF;
-        int cb = color & 0xFF;
-        return a | ((lum * cr / 255) << 16) | ((lum * cg / 255) << 8) | (lum * cb / 255);
+    /**
+     * grayscale(base) * color, preserving alpha.
+     *
+     * <p>CHANNEL ORDER MISMATCH IS REAL: NativeImage pixels are ABGR
+     * (bit0=R, bit16=B), while the stored dye colors are ARGB (bit16=R,
+     * bit0=B). Swapping them dyed #9C7C4C brown into a blue-gray — decode
+     * the base in ABGR, apply the color in ARGB, re-encode ABGR.
+     */
+    private static int dye(int baseAbgr, int colorArgb) {
+        int a = baseAbgr & 0xFF000000;
+        int r = baseAbgr & 0xFF;               // ABGR: red is the LOW byte
+        int g = (baseAbgr >>> 8) & 0xFF;
+        int b = (baseAbgr >>> 16) & 0xFF;
+        int lum = (r * 77 + g * 151 + b * 28) >> 8;
+        int cr = (colorArgb >>> 16) & 0xFF;     // ARGB: red is bits 16-23
+        int cg = (colorArgb >>> 8) & 0xFF;
+        int cb = colorArgb & 0xFF;
+        return a | (lum * cb / 255) | ((lum * cg / 255) << 8) | ((lum * cr / 255) << 16);
     }
 }
