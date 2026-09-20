@@ -20,6 +20,7 @@ public class CreatePneumaticTacticals {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         ModItems.register(modBus);
         ModBlocks.register(modBus);
+        dev.ignis.createpneumatictacticals.item.ModCreativeTabs.register(modBus);
         dev.ignis.createpneumatictacticals.sound.ModSoundEvents.register(modBus);
         CptMenuTypes.register(modBus);
         ModRecipes.register(modBus);

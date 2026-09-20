@@ -8,6 +8,7 @@
     "right"
   ],
   "gun_properties": {
-    "ergonomics": -0.05
+    "ergonomics": -0.05,
+    "hipfire_accuracy_multiplier": 0.3
   }
 }

@@ -2,13 +2,13 @@
   "gun.mak_1.fire": {
     "sounds": [{"name": "minecraft:entity.goat.horn_break", "type": "event"}]
   },
-  "gun.rifle.open": {
+  "gun.bb_rifle.open": {
     "sounds": ["createpneumatictacticals:bb_rifile_open"]
   },
-  "gun.rifle.shoot": {
+  "gun.bb_rifle.shoot": {
     "sounds": ["createpneumatictacticals:bb_rifile_shoot"]
   },
-  "gun.pistol.silenced": {
+  "gun.pistol_silenced.shoot": {
     "sounds": ["createpneumatictacticals:pistol_shot_silenced"]
   }
 }

@@ -5,6 +5,7 @@
     "recoil_multiplier": -0.3,
     "gas_suppression": -2,
     "gas_pass_through": 0.2,
+    "ergonomics": -0.2,
     "gas_guides": [
       {
         "weight": 1,

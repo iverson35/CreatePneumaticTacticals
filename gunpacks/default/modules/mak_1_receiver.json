@@ -5,7 +5,7 @@
     "reload_speed": 0.0,
     "fire_rate_multiplier": 1.0,
     "damage_multiplier": -0.5,
-    "bullet_speed": 1.0
+    "bullet_speed": 0.3
   },
   "gun_type": "medium",
   "burst_count": 3,
@@ -13,7 +13,7 @@
     "semi",
     "auto"
   ],
-  "fire_sound": "createpneumatictacticals:gun.mak_1.fire",
+  "fire_sound": "createpneumatictacticals:gun.bb_rifle.shoot",
   "base_recoil_pitch": 3.6,
   "base_recoil_yaw": 0.9,
   "ignore_ammo_pitch": false,
