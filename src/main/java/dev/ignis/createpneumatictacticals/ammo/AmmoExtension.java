@@ -108,6 +108,10 @@ public final class AmmoExtension {
         return DEFAULTS;
     }
 
+    /** Built-in caliber for an ammo id, or null when unclassified. */
+    static GunType builtinCaliber(String ammoId) {
+        return BUILTIN_CALIBERS.get(ammoId);
+    }
     public static void put(String ammoId, AmmoExtension ext) {
         TABLE.put(ammoId, ext);
     }

@@ -45,7 +45,7 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         for (Map.Entry<ResourceLocation, JsonElement> entry : files.entrySet()) {
             ResourceLocation id = entry.getKey();
             try {
-                AmmoExtension.put(id.toString(), parse(entry.getValue().getAsJsonObject()));
+                AmmoExtension.put(id.toString(), parse(id, entry.getValue().getAsJsonObject()));
             } catch (Exception ex) {
                 LOGGER.error("Failed to parse ammo extension {}: {}", id, ex.getMessage());
             }
@@ -53,7 +53,7 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         LOGGER.info("Loaded {} ammo extensions", files.size());
     }
 
-    static AmmoExtension parse(JsonObject json) {
+    static AmmoExtension parse(ResourceLocation id, JsonObject json) {
         AmmoExtension ext = new AmmoExtension();
         ext.affectRadius = optDouble(json, "affect_radius", ext.affectRadius);
         ext.explosionKnockback = optDouble(json, "explosion_knockback", ext.explosionKnockback);
@@ -70,6 +70,12 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         ext.headshotMultiplier = optDouble(json, "headshot_multiplier", ext.headshotMultiplier);
         if (json.has("gun_type")) {
             ext.gunType = GunType.byName(json.get("gun_type").getAsString(), ext.gunType);
+        } else {
+            // Create's own type jsons carry no gun_type; without this the
+            // loaded entry (default LIGHT) shadows the built-in caliber map
+            // in AmmoExtension.get and medium/heavy receivers match nothing
+            GunType builtin = AmmoExtension.builtinCaliber(id.toString());
+            if (builtin != null) ext.gunType = builtin;
         }
         if (json.has("effects")) {
             JsonObject eff = json.getAsJsonObject("effects");

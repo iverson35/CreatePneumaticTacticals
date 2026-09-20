@@ -197,7 +197,12 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         gfx.drawString(this.font,
                 Component.translatable("gui.createpneumatictacticals.dyeing"), 8, 20, 0xFFD080, false);
         ModuleWorkbenchBlockEntity be = this.menu.getBlockEntity();
-        ModuleDefinition def = definitionOf(be.getDyeModule());
+        // read the synced MENU SLOT stack, not the client BE field — the
+        // server writes dye NBT and broadcasts slot contents; the client
+        // BE's dyeModule field never syncs, so the old path showed a
+        // stale (pre-dye) module
+        ItemStack slotStack = this.menu.getSlot(ModuleWorkbenchMenu.DYE_SLOT).getItem();
+        ModuleDefinition def = definitionOf(slotStack);
         // module slot box (the item itself is drawn by the container at 16,32)
         gfx.renderOutline(15, 31, 18, 18, 0xFF8B8B8B);
         // region rows
@@ -206,7 +211,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
             gfx.drawString(this.font,
                     Component.translatable("gui.createpneumatictacticals.region", r + 1),
                     REGION_X, y + 2, 0xE0E0E0, false);
-            int cur = currentColor(be, def, r);
+            int cur = currentColor(def, slotStack, r);
             gfx.fill(REGION_BOX_X, y, REGION_BOX_X + 10, y + 10, 0xFF000000 | cur);
             if (be.getRegion() == r) {
                 gfx.renderOutline(REGION_BOX_X - 1, y - 1, 12, 12, 0xFFFFFFFF);
@@ -258,10 +263,9 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         return -1;
     }
 
-    private int currentColor(ModuleWorkbenchBlockEntity be, ModuleDefinition def, int region) {
-        ItemStack module = be.getDyeModule();
-        if (!module.isEmpty()) {
-            int[] colors = GunNbtColorAccess.getColors(module, ModuleItem.getModuleId(module));
+    private int currentColor(ModuleDefinition def, ItemStack slotStack, int region) {
+        if (!slotStack.isEmpty()) {
+            int[] colors = GunNbtColorAccess.getColors(slotStack, ModuleItem.getModuleId(slotStack));
             if (colors != null && colors.length >= 3 && colors[region] >= 0) return colors[region];
         }
         return 0xFF8B8B8B; // neutral placeholder for undyed slots
