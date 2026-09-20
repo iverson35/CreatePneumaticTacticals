@@ -237,10 +237,10 @@ public final class GunNbt {
                 if (rule.type() != candidate.type) continue;
                 switch (rule.mode()) {
                     case EXCLUDE -> {
-                        if (rule.value().contains(candidate.id)) return "excluded_by";
+                        if (rule.matches(candidate.id)) return "excluded_by";
                     }
                     case INCLUDE -> {
-                        if (!rule.value().contains(candidate.id)) return "not_included_by";
+                        if (!rule.matches(candidate.id)) return "not_included_by";
                     }
                     case KEEP_EMPTY -> {
                         return "must_be_empty";
@@ -272,10 +272,10 @@ public final class GunNbt {
             ModuleDefinition existing = installed.get(rule.type());
             switch (rule.mode()) {
                 case EXCLUDE -> {
-                    if (existing != null && rule.value().contains(existing.id)) return "excludes_installed";
+                    if (existing != null && rule.matches(existing.id)) return "excludes_installed";
                 }
                 case INCLUDE -> {
-                    if (existing != null && !rule.value().contains(existing.id)) return "requires_other";
+                    if (existing != null && !rule.matches(existing.id)) return "requires_other";
                 }
                 case KEEP_EMPTY -> {
                     if (existing != null) return "requires_empty";
@@ -293,12 +293,12 @@ public final class GunNbt {
         switch (rule.mode()) {
             case EXCLUDE -> {
                 for (ModuleDefinition att : hgAttachments) {
-                    if (rule.value().contains(att.id)) return "excludes_installed";
+                    if (rule.matches(att.id)) return "excludes_installed";
                 }
             }
             case INCLUDE -> {
                 for (ModuleDefinition att : hgAttachments) {
-                    if (!rule.value().contains(att.id)) return "requires_other";
+                    if (!rule.matches(att.id)) return "requires_other";
                 }
             }
             case KEEP_EMPTY -> {

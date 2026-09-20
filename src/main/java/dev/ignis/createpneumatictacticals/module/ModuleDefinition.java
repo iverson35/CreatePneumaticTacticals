@@ -20,7 +20,18 @@ public final class ModuleDefinition {
         EXCLUDE, INCLUDE, KEEP_EMPTY, NOT_EMPTY
     }
 
-    public record Affected(ModuleType type, AffectedMode mode, List<ResourceLocation> value) {
+    public record Affected(ModuleType type, AffectedMode mode, List<ResourceLocation> value,
+                           @Nullable List<java.util.regex.Pattern> regex) {
+        /** id membership: exact list OR any regex matches (REGEX= entries). */
+        public boolean matches(ResourceLocation moduleId) {
+            if (value.contains(moduleId)) return true;
+            if (regex == null) return false;
+            String s = moduleId.toString();
+            for (java.util.regex.Pattern p : regex) {
+                if (p.matcher(s).find()) return true;
+            }
+            return false;
+        }
     }
 
     public final ResourceLocation id;
@@ -149,12 +160,22 @@ public final class ModuleDefinition {
                     default -> mode = AffectedMode.EXCLUDE;
                 }
                 List<ResourceLocation> value = new ArrayList<>();
+                List<java.util.regex.Pattern> regex = null;
                 if (o.has("value")) {
                     for (JsonElement v : o.getAsJsonArray("value")) {
-                        value.add(ResourceLocation.tryParse(v.getAsString()));
+                        String entry = v.getAsString();
+                        // "REGEX=<pattern>" entries: id match against the
+                        // pattern via Affected.matches (find, not matches);
+                        // anything else is an exact module id
+                        if (entry.startsWith("REGEX=")) {
+                            if (regex == null) regex = new ArrayList<>();
+                            regex.add(java.util.regex.Pattern.compile(entry.substring("REGEX=".length())));
+                        } else {
+                            value.add(ResourceLocation.tryParse(entry));
+                        }
                     }
                 }
-                b.addAffected(t, mode, value);
+                b.addAffected(t, mode, value, regex);
             }
         }
         JsonObject props = json.has("gun_properties") ? json.getAsJsonObject("gun_properties") : new JsonObject();
@@ -300,8 +321,9 @@ public final class ModuleDefinition {
             this.type = type;
         }
 
-        public Builder addAffected(ModuleType t, AffectedMode mode, List<ResourceLocation> value) {
-            affected.add(new Affected(t, mode, value));
+        public Builder addAffected(ModuleType t, AffectedMode mode, List<ResourceLocation> value,
+                                    @Nullable List<java.util.regex.Pattern> regex) {
+            affected.add(new Affected(t, mode, value, regex));
             return this;
         }
 
