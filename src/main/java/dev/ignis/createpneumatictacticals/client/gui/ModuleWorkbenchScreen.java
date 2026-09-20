@@ -277,7 +277,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     private int currentColor(ModuleDefinition def, ItemStack slotStack, int region) {
         if (!slotStack.isEmpty()) {
             int[] colors = GunNbtColorAccess.getColors(slotStack, ModuleItem.getModuleId(slotStack));
-            if (colors != null && colors.length >= 3 && colors[region] >= 0) return colors[region];
+            if (colors != null && colors.length >= 3 && colors[region] != -1) return colors[region];
         }
         return 0xFF8B8B8B; // neutral placeholder for undyed slots
     }

@@ -51,11 +51,15 @@ public final class DyedTextures {
      */
     public static ResourceLocation resolve(ResourceLocation textureId, int[] argbRegions) {
         if (argbRegions == null || argbRegions.length < 3) return textureId;
-        // -1 = undyed slot (no defaults anymore); all-undyed = original
-        if (argbRegions[0] < 0 && argbRegions[1] < 0 && argbRegions[2] < 0) return textureId;
+        // sentinel = -1; a REAL dye color is 0xFF alpha ARGB, negative as a
+        // Java int (e.g. -3975987), so "undyed" must be == -1, not < 0
+        if (argbRegions[0] == -1 && argbRegions[1] == -1 && argbRegions[2] == -1) return textureId;
 
         var rm = Minecraft.getInstance().getResourceManager();
-        if (rm.getResource(textureId).isEmpty()) return textureId;
+        if (rm.getResource(textureId).isEmpty()) {
+            diag(textureId, "base texture missing");
+            return textureId;
+        }
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);
         ResourceLocation dyedId = dyedId(textureId, argbRegions);
         var tm = Minecraft.getInstance().getTextureManager();
@@ -64,10 +68,22 @@ public final class DyedTextures {
             // render loop; a per-frame log would flood latest.log
             LOGGER.info("dye resolve: baking {} colors={} mask={}",
                     textureId, java.util.Arrays.toString(argbRegions), maskIdFor(textureId));
-            if (!bake(textureId, maskRes, dyedId, argbRegions)) return textureId;
+            if (!bake(textureId, maskRes, dyedId, argbRegions)) {
+                diag(textureId, "bake failed");
+                return textureId;
+            }
         }
         return dyedId;
     }
+
+    /** one-shot diag per (texture, reason) — resolve runs per frame */
+    private static void diag(ResourceLocation textureId, String reason) {
+        if (DIAG_SEEN.add(textureId + ":" + reason)) {
+            LOGGER.info("dye resolve: {} -> {}", textureId, reason);
+        }
+    }
+
+    private static final java.util.Set<String> DIAG_SEEN = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static boolean bake(ResourceLocation textureId, Resource maskRes,
                                 ResourceLocation dyedId, int[] colors) {
@@ -88,7 +104,7 @@ public final class DyedTextures {
                 for (int x = 0; x < w; x++) {
                     int b = base.getPixelRGBA(x, y);
                     int region = regionOf(mask, x, y); // -1 = keep original
-                    if (region >= 0 && colors[region] >= 0) {
+                    if (region >= 0 && colors[region] != -1) {
                         base.setPixelRGBA(x, y, dye(b, colors[region]));
                     }
                 }
