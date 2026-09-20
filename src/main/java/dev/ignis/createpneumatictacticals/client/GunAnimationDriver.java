@@ -35,11 +35,6 @@ public final class GunAnimationDriver {
 
     private GunAnimationDriver() {}
 
-    /** fire animation (charge handle / bolt cycle / mag feed) on all parts */
-    public static void onFire(ItemStack gun) {
-        broadcast(gun, GunAnimations.FIRE);
-    }
-
     /**
      * Reload start: picks reload vs reload_round by the installed feed
      * module's load_type; an empty magazine appends the bolt cycle (timing
@@ -60,35 +55,44 @@ public final class GunAnimationDriver {
                     .thenPlay(round ? "reload_round" : "reload")
                     .thenPlay("bolt");
         }
-        broadcast(gun, anim);
+        // play the reload chain at reloadSpeed: the lock window
+        // (GunAnimTiming.reloadBatchMs) is the same chain divided by
+        // reloadSpeed, so the animation MUST be sped up identically or the
+        // visual tail (bolt) outlives the lock and the gun fires mid-bolt
+        broadcast(gun, anim, stats.reloadSpeed);
     }
 
     /** empty-reload bolt cycle on all parts */
     public static void onBolt() {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
-        broadcast(player.getMainHandItem(), GunAnimations.BOLT);
+        broadcast(player.getMainHandItem(), GunAnimations.BOLT, 1.0);
+    }
+
+    /** fire animation (charge handle / bolt cycle / mag feed) on all parts */
+    public static void onFire(ItemStack gun) {
+        broadcast(gun, GunAnimations.FIRE, 1.0);
     }
 
     /** receiver + every installed module (each plays the animation only if it defines it) */
-    private static void broadcast(ItemStack gun, RawAnimation anim) {
-        triggerReceiver(gun, anim);
+    private static void broadcast(ItemStack gun, RawAnimation anim, double speed) {
+        triggerReceiver(gun, anim, speed);
         // per-gun-stack module animation instances (mirrors GunModulesLayer)
         long gunId = GeoItem.getId(gun);
         Set<ResourceLocation> seen = new HashSet<>();
         for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
             if (def.type != ModuleType.RECEIVER && seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId);
+                triggerModule(def.id, anim, gunId, speed);
             }
         }
         for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
             if (seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId);
+                triggerModule(def.id, anim, gunId, speed);
             }
         }
     }
 
-    private static void triggerReceiver(ItemStack gun, RawAnimation anim) {
+    private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed) {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
         RawAnimation filtered = GunAnimations.filterExisting(anim,
                 dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation());
@@ -98,19 +102,20 @@ public final class GunAnimationDriver {
         // follows the last-rendered stack; pin it to this gun or the lookup
         // can land on another gun / the placeholder (silent no-op stubs)
         dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel()
-                .withStack(gun, () -> triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(id), filtered));
+                .withStack(gun, () -> triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed));
     }
 
-    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId) {
+    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId, double speed) {
         RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
-        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered);
+        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered, speed);
     }
-    private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim) {
+    private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim, double speed) {
         if (manager == null) return;
         AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
         if (controller == null) return;
+        controller.setAnimationSpeed(Math.max(0.1, speed));
         controller.forceAnimationReset();
         controller.setAnimation(anim);
     }
