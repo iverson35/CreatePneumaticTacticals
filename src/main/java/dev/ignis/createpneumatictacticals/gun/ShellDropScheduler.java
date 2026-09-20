@@ -98,8 +98,8 @@ public final class ShellDropScheduler {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        // iterate a COPY: PriorityQueue's iterator has no heap order and
-        // its remove() is O(n); drain due entries via poll() instead
+        // drain due entries via peek/poll: the PriorityQueue's iterator
+        // has no heap order, and poll() keeps the O(log n) heap discipline
         while (!QUEUE.isEmpty() && QUEUE.peek().atTick <= QUEUE.peek().level.getGameTime()) {
             Pending p = QUEUE.poll();
             p.level.playSound(null, p.at.x, p.at.y, p.at.z,
