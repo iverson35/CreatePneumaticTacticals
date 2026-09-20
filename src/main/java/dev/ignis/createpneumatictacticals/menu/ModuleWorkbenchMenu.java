@@ -201,6 +201,7 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         if (arr.length < 3) arr = new int[]{-1, -1, -1}; // undyed slots: -1 = keep original
         arr[region] = DyePalette.argbOf(color);
         colors.putIntArray(moduleId.toString(), arr);
+        root.put(ModuleItem.TAG_COLORS, colors);
         com.mojang.logging.LogUtils.getLogger().info(
                 "dye confirm post: module tag = {}", root);
         blockEntity.setRegion(-1);
@@ -209,18 +210,16 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         broadcastChanges();
         return true;
     }
-
-    /** Server-side "clear all dyes": rewrite the module's Colors NBT to all -1. */
+    /** Server-side "clear all dyes": drop the module's Colors NBT entirely so
+     *  the stack is tag-identical to a never-dyed one (mergeable again). */
     public void clearDye(Player player) {
         Level level = getLevel();
         if (level == null || level.isClientSide) return;
-        ItemStack module = blockEntity.getDyeModule();
         if (!blockEntity.hasModule()) return;
-        ResourceLocation moduleId = ModuleItem.getModuleId(module);
-        if (moduleId == null) return;
+        ItemStack module = blockEntity.getDyeModule();
         CompoundTag root = module.getTag();
         if (root != null && root.contains(ModuleItem.TAG_COLORS, CompoundTag.TAG_COMPOUND)) {
-            root.getCompound(ModuleItem.TAG_COLORS).putIntArray(moduleId.toString(), new int[]{-1, -1, -1});
+            root.remove(ModuleItem.TAG_COLORS);
             blockEntity.setDyeModule(module.copy());
             broadcastChanges();
         }
@@ -236,16 +235,12 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
                 return ItemStack.EMPTY;
             }
         } else {
-            // shift-click a module into the empty dye slot (single).
-            // IMPORTANT: go through the container, NOT Slot.set — Slot.set
-            // assigns the field directly, SimpleContainer.setChanged never
-            // fires, syncFromContainer never runs, and the BE's dyeModule
-            // field desyncs from the slot. Dye NBT then lands on a stack
-            // object the player can never take out (mergeable with undyed).
+            // shift-click a module into the empty dye slot (single);
+            // Slot.set == container.setItem + setChanged, either path works
             if (stack.getItem() instanceof ModuleItem && !this.slots.get(DYE_SLOT).hasItem()) {
                 ItemStack single = stack.copy();
                 single.setCount(1);
-                this.blockEntity.getDyeContainer().setItem(0, single);
+                this.slots.get(DYE_SLOT).set(single);
                 stack.shrink(1);
                 this.broadcastChanges();
                 return original;
