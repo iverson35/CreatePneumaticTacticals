@@ -180,17 +180,47 @@ public class ModuleItem extends Item implements GeoItem {
      */
     private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of("recoil_multiplier");
 
-    /** "label: (top) (bottom) ..." - position list line */
+    /**
+     * Box-drawing glyph for the open-slot set: each available slot draws
+     * its arm from the center. mask = up<<3 | down<<2 | left<<1 | right.
+     */
+    private static String slotGlyph(boolean up, boolean down, boolean left, boolean right) {
+        int mask = (up ? 8 : 0) | (down ? 4 : 0) | (left ? 2 : 0) | (right ? 1 : 0);
+        return switch (mask) {
+            case 0b1111 -> "\u253C"; // \u2500\u2502 full cross: all four
+            case 0b1011 -> "\u2534"; // up + left + right
+            case 0b0111 -> "\u252C"; // down + left + right
+            case 0b1101 -> "\u251C"; // up + down + right
+            case 0b1110 -> "\u2524"; // up + down + left
+            case 0b1100 -> "\u2502"; // up + down
+            case 0b0011 -> "\u2500"; // left + right
+            case 0b1010 -> "\u2518"; // up + left
+            case 0b1001 -> "\u2514"; // up + right
+            case 0b0110 -> "\u2510"; // down + left
+            case 0b0101 -> "\u250C"; // down + right
+            case 0b1000 -> "\u2191"; // up only (no single-arm glyphs in Unicode)
+            case 0b0100 -> "\u2193"; // down only
+            case 0b0010 -> "\u2190"; // left only
+            case 0b0001 -> "\u2192"; // right only
+            default -> "\u2500";
+        };
+    }
+
+    /** "label: <glyph>" - single box-drawing glyph summarizing the slots */
     private static net.minecraft.network.chat.MutableComponent positionLine(String labelKey,
             java.util.List<dev.ignis.createpneumatictacticals.module.HandguardPosition> positions) {
-        net.minecraft.network.chat.MutableComponent line =
-                Component.translatable(labelKey).append(": ");
-        for (int i = 0; i < positions.size(); i++) {
-            if (i > 0) line.append(" ");
-            line.append("(").append(Component.translatable("hg_pos.createpneumatictacticals."
-                    + positions.get(i).getSerializedName())).append(")");
+        boolean up = false, down = false, left = false, right = false;
+        for (dev.ignis.createpneumatictacticals.module.HandguardPosition p : positions) {
+            switch (p) {
+                case TOP -> up = true;
+                case BOTTOM -> down = true;
+                case LEFT -> left = true;
+                case RIGHT -> right = true;
+            }
         }
-        return line;
+        return Component.translatable(labelKey)
+                .append(": ")
+                .append(Component.literal(slotGlyph(up, down, left, right)));
     }
 
     private static void addStatLines(List<Component> tooltip, Map<String, Double> stats) {
