@@ -197,6 +197,13 @@ dependencies {
     // the Modrinth artifact ships intermediary names which break fg.deobf)
     implementation fg.deobf("curse.maven:geckolib-388172:7553267")
 
+    // Dummmmmmy (MmmMmmMmmMmm) + its Moonlight lib: dev-runtime-only training
+    // dummy - spawn a fake player to inspect third-person poses/animations
+    // without a second client. Test tool, not a dependency: never reference
+    // its classes and keep it out of mods.toml so it never ships with the mod.
+    implementation fg.deobf("maven.modrinth:mmmmmmmmmmmm:${dummy_version}")
+    runtimeOnly fg.deobf("maven.modrinth:moonlight:${moonlight_version}")
+
     // Registrate: compile-time only; at runtime it is provided by Create's jarjar
     compileOnly fg.deobf("com.tterrag.registrate:Registrate:MC1.20-1.3.3")
     // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}")
