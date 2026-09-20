@@ -38,7 +38,6 @@ public final class ModBlocks {
         BLOCKS.register(modBus);
         BLOCK_ITEMS.register(modBus);
         dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity.register(modBus);
-        dev.ignis.createpneumatictacticals.menu.ModMenus.register(modBus);
         dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.register(modBus);
     }
 

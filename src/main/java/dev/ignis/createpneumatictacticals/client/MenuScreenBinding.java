@@ -1,10 +1,8 @@
 package dev.ignis.createpneumatictacticals.client;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
-import dev.ignis.createpneumatictacticals.client.gui.GunWorkbenchScreen;
 import dev.ignis.createpneumatictacticals.client.gui.ModuleWorkbenchScreen;
 import dev.ignis.createpneumatictacticals.menu.CptMenuTypes;
-import dev.ignis.createpneumatictacticals.menu.ModMenus;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -23,7 +21,6 @@ public final class MenuScreenBinding {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            MenuScreens.register(ModMenus.GUN_WORKBENCH.get(), GunWorkbenchScreen::new);
             MenuScreens.register(CptMenuTypes.MODULE_WORKBENCH.get(), ModuleWorkbenchScreen::new);
         });
     }

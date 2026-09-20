@@ -4,6 +4,10 @@ import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+import dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
+import dev.ignis.createpneumatictacticals.module.ModuleManager;
+import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -56,7 +60,25 @@ public final class AimHandler {
         return player != null && mc.screen == null
                 && player.getMainHandItem().getItem() instanceof GeoGunItem
                 && mc.options.keyUse.isDown()
-                && !MuzzleClearance.isBlocked();
+                && !MuzzleClearance.isBlocked()
+                && !benchFocused(mc);
+    }
+
+    /**
+     * True while the crosshair picks a 3D workbench marker or the player
+     * holds a gun/receiver and looks at a workbench block: right-click goes
+     * to the 3D assembly flow instead of aiming.
+     */
+    private static boolean benchFocused(Minecraft mc) {
+        if (BenchTargetPicker.wouldInteract()) return true;
+        if (mc.hitResult == null
+                || !(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit)) return false;
+        if (!(mc.level.getBlockState(hit.getBlockPos()).getBlock()
+                instanceof dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock)) return false;
+        ItemStack held = mc.player.getMainHandItem();
+        if (held.getItem() instanceof GeoGunItem) return true;
+        ModuleDefinition def = ModuleManager.definitionOf(held);
+        return def != null && def.type == ModuleType.RECEIVER;
     }
 
     /** Smoothed aim transition progress, render-interpolated. 0 = hip, 1 = fully aimed. */
@@ -165,8 +187,27 @@ public final class AimHandler {
     @SubscribeEvent
     public static void onClickInput(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null
-                || !(mc.player.getMainHandItem().getItem() instanceof GeoGunItem)) return;
+        if (mc.player == null) return;
+        if (event.getKeyMapping() == mc.options.keyUse) {
+            // 3D workbench: route every hand state (gun/receiver/module/empty)
+            // through the packet flow; cancel vanilla so block.use and the
+            // item-dip animation never fire for consumed workbench clicks.
+            // Gate: a marker hovered (any bench in view) OR the crosshair
+            // block is the bench itself (staging a gun/receiver).
+            boolean benchBlock = mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
+                    && mc.level.getBlockState(hit.getBlockPos()).getBlock()
+                        instanceof dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock;
+            if ((benchBlock || BenchTargetPicker.wouldInteract())
+                    && BenchTargetPicker.sendRightClick()) {
+                event.setCanceled(true);
+                event.setSwingHand(false);
+                return;
+            }
+            if (!(mc.player.getMainHandItem().getItem() instanceof GeoGunItem)) return;
+        } else if (!(mc.player.getMainHandItem().getItem() instanceof GeoGunItem)) {
+            return;
+        }
+        // gun holder: swallow use/attack (aiming owns right click, no melee)
         if (event.getKeyMapping() == mc.options.keyUse
                 || event.getKeyMapping() == mc.options.keyAttack) {
             event.setCanceled(true);

@@ -5,6 +5,10 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
+import net.minecraft.client.renderer.RenderType;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.resources.ResourceLocation;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
 
 /**
@@ -76,4 +80,54 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
     public static GunGeoModel activeModel() {
         return activeModel;
     }
+
+    // --- 3D workbench bench rendering (no hands, rest pose) ---
+
+    private static final GunHandsAwareRenderer BENCH_RENDERER = new GunHandsAwareRenderer(new GunGeoModel());
+
+    /**
+     * Renders a gun stack at rest pose in a BlockEntityRenderer context
+     * (upright on the workbench). No hands layer (isFirstPersonPass false,
+     * animationsEnabled false — GunModulesLayer takes its rest-pose branch
+     * which renders every installed module at its loc bone), no item
+     * display transforms: the caller owns the PoseStack.
+     */
+    public static void renderStandalone(ItemStack stack, PoseStack poseStack,
+                                        MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        if (!(stack.getItem() instanceof GeoGunItem gunItem)) return;
+        GunGeoModel model = (GunGeoModel) BENCH_RENDERER.getGeoModel();
+        model.setStack(stack);
+        BakedGeoModel baked = model.getBakedModel(model.getModelResource(gunItem));
+        if (baked == null) return;
+        // reRender (isReRender=true) skips two things the bench must not have:
+        // handleAnimations (the item's live idle/equip/reload state would bake
+        // itself into the staged pose) and GeoItemRenderer.preRender's
+        // (0.5, 0.51, 0.5) item-centering offset. Bones are forced to rest and
+        // restored afterwards — they are shared with the in-hand pass.
+        boolean prevFirstPerson = GunHandsLayer.isFirstPersonPass;
+        boolean prevAnimated = GunModulesLayer.animationsEnabled;
+        GunHandsLayer.isFirstPersonPass = false;
+        GunModulesLayer.animationsEnabled = false;
+        java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
+                GunAnimations.snapshotBones(model);
+        GunAnimations.resetToRestPose(model);
+        try {
+            float partialTick = net.minecraft.client.Minecraft.getInstance().getFrameTime();
+            ResourceLocation texture = model.getTextureResource(gunItem);
+            RenderType type = model.getRenderType(gunItem, texture);
+            VertexConsumer buffer = bufferSource.getBuffer(type);
+            BENCH_RENDERER.reRender(baked, poseStack, bufferSource, gunItem, type, buffer,
+                    partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);
+            // reRender does NOT run the render layers (GeckoLib only does that
+            // in defaultRender) — without this the installed modules and the
+            // emissive pass never draw on the bench
+            BENCH_RENDERER.applyRenderLayers(poseStack, gunItem, baked, type, bufferSource, buffer,
+                    partialTick, packedLight, packedOverlay);
+        } finally {
+            GunAnimations.restoreBones(saved);
+            GunHandsLayer.isFirstPersonPass = prevFirstPerson;
+            GunModulesLayer.animationsEnabled = prevAnimated;
+        }
+    }
+
 }

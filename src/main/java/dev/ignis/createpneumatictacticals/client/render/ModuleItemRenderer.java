@@ -29,6 +29,8 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
             ItemGuiTransform.apply(poseStack,
                     getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable)), flip);
         } else if (flip) {
+            // standalone item (hand/inventory/dropped): flip the upside-down
+            // bottom-only handguard attachment back upright
             poseStack.mulPose(Axis.ZP.rotationDegrees(180));
         }
         // standalone module items never animate: their baked model's bones are
@@ -46,7 +48,9 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
         // not part of the item silhouette) — restored right after the pass
         software.bernie.geckolib.core.animatable.model.CoreGeoBone beam =
                 getGeoModel().getAnimationProcessor().getBone("laser_beam");
-        if (context == ItemDisplayContext.GUI && beam != null) beam.setHidden(true);
+        if (context == ItemDisplayContext.GUI && beam != null) {
+            beam.setHidden(true);
+        }
         try {
             super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
         } finally {

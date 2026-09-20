@@ -16,6 +16,16 @@ import java.util.Map;
  * Reload: {@code /cpt reload} (server) or F3+T (client).
  */
 public final class ModuleManager {
+
+    /** the module definition a stack carries, or null (non-module / no id) */
+    public static ModuleDefinition definitionOf(net.minecraft.world.item.ItemStack stack) {
+        if (stack.getItem() instanceof dev.ignis.createpneumatictacticals.item.ModuleItem module) {
+            net.minecraft.resources.ResourceLocation id = module.getModuleId(stack);
+            return id == null ? null : get(id);
+        }
+        return null;
+    }
+
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static volatile Map<ResourceLocation, ModuleDefinition> MODULES = Map.of();

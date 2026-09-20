@@ -71,6 +71,10 @@ public final class GunHudOverlay implements IGuiOverlay {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.options.hideGui) return;
+
+        // 3D workbench: stats panel while looking at the [▼] take marker
+        renderBenchStats(g, mc, width, height);
+
         ItemStack gun = heldGun();
         if (gun == null) return;
         GunStats stats = GunStats.ofGun(gun);
@@ -84,6 +88,46 @@ public final class GunHudOverlay implements IGuiOverlay {
         if (Config.gunHudEnabled) {
             renderAmmoWidget(g, mc, player, gun, stats, width, height);
         }
+    }
+
+    // --- 3D workbench stats panel (hovering the [▼] take marker) ---
+
+    /**
+     * While the crosshair hovers the bench's take marker, draw the staged
+     * gun's core stats (damage / fire rate / ergonomics / recoil + gun
+     * type). Mirrors the removed GUI stats panel, condensed.
+     */
+    private static void renderBenchStats(GuiGraphics g, Minecraft mc, int width, int height) {
+        dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.Hover hover =
+                dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.currentHover();
+        if (hover == null || !hover.marker().isTake()) return;
+        // the staged gun lives on the bench BE (marker carries no stack)
+        if (!(mc.level.getBlockEntity(hover.benchPos())
+                instanceof dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity bench)) {
+            return;
+        }
+        ItemStack gun = bench.getGunSlot().getItem(0);
+        if (!(gun.getItem() instanceof GunItem)) return; // nothing staged
+        GunStats stats = GunStats.ofGun(gun);
+        int x = width / 2 + 12;
+        int y = height / 2 - 34;
+        g.drawString(mc.font, fmt("damage_multiplier", stats.damageMultiplier), x, y, 0xFFD0D0D0);
+        g.drawString(mc.font, fmt("fire_rate_multiplier", stats.fireRateMultiplier), x, y + 11, 0xFFD0D0D0);
+        g.drawString(mc.font, fmt("ergonomics", stats.ergonomics), x, y + 22, 0xFFD0D0D0);
+        g.drawString(mc.font, fmt("recoil_multiplier", stats.recoilMultiplier), x, y + 32, 0xFFD0D0D0);
+        if (stats.isComplete() && stats.receiver != null && stats.receiver.gunType != null) {
+            g.drawString(mc.font, net.minecraft.network.chat.Component.translatable(
+                            "stat." + CreatePneumaticTacticals.MODID + ".gun_type")
+                            .append(": ").append(net.minecraft.network.chat.Component.translatable(
+                                    "gun_type." + CreatePneumaticTacticals.MODID
+                                            + "." + stats.receiver.gunType.getSerializedName())),
+                    x, y - 12, 0xFF90C890);
+        }
+    }
+
+    private static Component fmt(String statKey, double value) {
+        return Component.translatable("stat." + CreatePneumaticTacticals.MODID + "." + statKey)
+                .append(": ").append(String.format("%.2f", value));
     }
 
     // --- crosshair ---

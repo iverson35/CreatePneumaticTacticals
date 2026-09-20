@@ -23,6 +23,13 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
+    public static void onRegisterBlockEntityRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(
+                dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity.GUN_WORKBENCH.get(),
+                dev.ignis.createpneumatictacticals.client.render.GunWorkbenchRenderer::new);
+    }
+
+    @SubscribeEvent
     public static void onRegisterParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
         net.minecraft.core.particles.ParticleType<?> type = dev.ignis.createpneumatictacticals.client.particle.ModParticles.MUZZLE_SMOKE.get();
         event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType) type,

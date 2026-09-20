@@ -57,6 +57,27 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         super(renderer);
     }
 
+    /**
+     * Bench preview: the module the player would install at this mount is
+     * drawn through the SAME mount tree as an installed module, so the ghost
+     * inherits the locator bone's chain (rotation included) exactly. Set by
+     * {@code GunWorkbenchRenderer} around the staged gun's render pass.
+     */
+    public static final ThreadLocal<Ghost> GHOST = new ThreadLocal<>();
+
+    /** mount locator to preview + the held module stack */
+    public record Ghost(ResourceLocation mountId, ItemStack stack) {}
+
+    /**
+     * World-space FX bone (laser lines): hidden on every non-world pass and
+     * excluded from the workbench bounds — its cube stretches to the beam's
+     * range, which would otherwise blow up the measured gun size.
+     */
+    public static final String BEAM_BONE = "laser_beam";
+
+    /** [+] preview tint (translucent blue) */
+    private static final float PREVIEW_R = 0.4f, PREVIEW_G = 0.6f, PREVIEW_B = 1f, PREVIEW_A = 0.5f;
+
     @Override
     public void render(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel receiverModel,
                        RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
@@ -64,34 +85,55 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         ItemStack stack = ((GunGeoModel) getRenderer().getGeoModel()).currentStack();
         if (stack == null) return;
         Map<ModuleType, ModuleDefinition> modules = GunNbt.readModules(stack);
-        if (modules.size() <= 1) return; // receiver only, or nothing
+        Ghost ghost = GHOST.get();
+        if (modules.size() <= 1 && ghost == null) return; // receiver only, or nothing
         Map<HandguardPosition, ModuleDefinition> hgAttachments = GunNbt.readHandguardAttachments(stack);
         // module animation state is isolated per gun stack (GeoItem id), so
         // two guns sharing a module definition don't play each other's anims
         Ctx ctx = new Ctx(animatable, stack, poseStack, bufferSource, partialTick, packedLight,
                 packedOverlay, modules, hgAttachments, software.bernie.geckolib.animatable.GeoItem.getId(stack));
 
-        mount(receiverModel, "loc_feed", modules.get(ModuleType.FEED), ctx);
-        mount(receiverModel, "loc_supply", modules.get(ModuleType.SUPPLY), ctx);
-        mount(receiverModel, "loc_sight", modules.get(ModuleType.SIGHT), ctx);
-        mount(receiverModel, "loc_sight_side", modules.get(ModuleType.TACTICAL_SIGHT), ctx);
-        mount(receiverModel, "loc_stock", modules.get(ModuleType.STOCK), ctx);
-        mount(receiverModel, "loc_barrel", modules.get(ModuleType.BARREL), ctx);
-        mount(receiverModel, "loc_handguard", modules.get(ModuleType.HANDGUARD), ctx);
+        mount(receiverModel, "loc_feed", modules.get(ModuleType.FEED), ctx, ghost);
+        mount(receiverModel, "loc_supply", modules.get(ModuleType.SUPPLY), ctx, ghost);
+        mount(receiverModel, "loc_sight", modules.get(ModuleType.SIGHT), ctx, ghost);
+        mount(receiverModel, "loc_sight_side", modules.get(ModuleType.TACTICAL_SIGHT), ctx, ghost);
+        mount(receiverModel, "loc_stock", modules.get(ModuleType.STOCK), ctx, ghost);
+        mount(receiverModel, "loc_barrel", modules.get(ModuleType.BARREL), ctx, ghost);
+        mount(receiverModel, "loc_handguard", modules.get(ModuleType.HANDGUARD), ctx, ghost);
+        // a preview at a receiver mount; deep mounts (muzzle port, handguard
+        // attachment) are matched during the descent below
+        if (ghost != null) {
+            mount(receiverModel, ghost.mountId().getPath(), null, ctx, ghost);
+        }
     }
 
     /** Renders one module at the parent's locator bone, then its children. */
-    private void mount(BakedGeoModel parentModel, String locator, @Nullable ModuleDefinition def, Ctx ctx) {
-        if (def == null) return;
-        if (ModuleRenderOverrides.isOverridden(ctx.stack, def.id)) return; // claimed by a custom renderer
+    private void mount(BakedGeoModel parentModel, String locator, @Nullable ModuleDefinition def, Ctx ctx,
+                       @Nullable Ghost ghost) {
+        Ghost ghostHere = null;
+        ModuleDefinition target = def;
+        if (def == null && ghost != null && ghost.mountId().getPath().equals(locator)) {
+            ModuleDefinition ghostDef = dev.ignis.createpneumatictacticals.module.ModuleManager
+                    .definitionOf(ghost.stack());
+            if (ghostDef != null) {
+                target = ghostDef;
+                ghostHere = ghost;
+            }
+        }
+        if (target == null) return;
+        if (ModuleRenderOverrides.isOverridden(ctx.stack, target.id)) return; // claimed by a custom renderer
         CoreGeoBone loc = parentModel.getBone(locator).orElse(null);
         if (loc == null) {
-            warnOnce(locator + "@" + def.id, "module {} not rendered: parent model lacks locator bone {}", def.id, locator);
+            // a ghost mount id may live on a child model (barrel's muzzle
+            // port, handguard attachments): the descent below reaches it
+            if (ghostHere == null) {
+                warnOnce(locator + "@" + target.id, "module {} not rendered: parent model lacks locator bone {}", target.id, locator);
+            }
             return;
         }
-        ResourceLocation modelId = ModuleGunGeoModel.modelId(def.id);
+        ResourceLocation modelId = ModuleGunGeoModel.modelId(target.id);
         if (!GeckoLibCache.getBakedModels().containsKey(modelId)) {
-            warnOnce("model:" + def.id, "module {} not rendered: no baked model {}", def.id, modelId);
+            warnOnce("model:" + target.id, "module {} not rendered: no baked model {}", target.id, modelId);
             return;
         }
         BakedGeoModel model = ModuleGunGeoModel.INSTANCE.getBakedModel(modelId); // activates bones on the shared processor
@@ -100,7 +142,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         // dropped gun has no beam FX; the world pass (where the laser
         // actually points) keeps it
         CoreGeoBone beam = ModuleGunGeoModel.INSTANCE.getAnimationProcessor()
-                .getBone("laser_beam");
+                .getBone(BEAM_BONE);
         boolean hideBeam = !animationsEnabled && beam != null;
         if (hideBeam) beam.setHidden(true);
         if (animationsEnabled) {
@@ -121,17 +163,23 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             // dye regions: bake the module's NBT colors (or the pack's
             // defaults) into a cached dynamic texture when a companion
             // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
-            ResourceLocation texture = ModuleGunGeoModel.textureId(def.id);
-            texture = DyedTextures.resolve(texture, dyeColors(ctx.stack, def));
-            RenderType type = RenderType.entityCutoutNoCull(texture);
+            ResourceLocation texture = ModuleGunGeoModel.textureId(target.id);
+            texture = DyedTextures.resolve(texture, dyeColors(ctx.stack, target));
+            boolean ghostPass = ghostHere != null;
+            ResourceLocation tex = texture;
+            RenderType type = ghostPass ? RenderType.entityTranslucent(tex)
+                    : RenderType.entityCutoutNoCull(tex);
             getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                    ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay, 1, 1, 1, 1);
+                    ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                    ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
+                    ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+            if (ghostPass) return; // a preview is one module, no glow pass, no children
             // fullbright emissive pass for modules with a <name>_glowmask.png
             GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
                     ctx.partialTick, texture, getRenderer());
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
-            if (def.type == ModuleType.BARREL) {
+            if (target.type == ModuleType.BARREL) {
                 // capture the muzzle tip for MuzzleSmoke: push, walk the
                 // barrel model's root->loc_muzzle_attachment chain (the
                 // recursive mount below pops its own pose, so it cannot
@@ -148,10 +196,15 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                 } finally {
                     ctx.poseStack.popPose();
                 }
-                mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx);
-            } else if (def.type == ModuleType.HANDGUARD && !ctx.hgAttachments.isEmpty()) {
+                mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx, ghost);
+            } else if (target.type == ModuleType.HANDGUARD) {
                 for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
-                    mount(model, e.getKey().locatorName(), e.getValue(), ctx);
+                    mount(model, e.getKey().locatorName(), e.getValue(), ctx, ghost);
+                }
+                // the ghost's own handguard position may be free (not in the
+                // installed map), so walk it explicitly
+                if (ghost != null && ghost.mountId().getPath().startsWith("loc_handguard_")) {
+                    mount(model, ghost.mountId().getPath(), null, ctx, ghost);
                 }
             }
         } finally {

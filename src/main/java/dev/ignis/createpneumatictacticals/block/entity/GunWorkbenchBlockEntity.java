@@ -2,12 +2,10 @@ package dev.ignis.createpneumatictacticals.block.entity;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.Connection;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.registries.DeferredRegister;
@@ -15,17 +13,17 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
 
 /**
- * Block entity for the gun assembly bench. PERSISTENTLY holds the staged gun
- * (1 slot): closing the UI keeps it, it leaves only via the UI or by breaking
- * the block. Module slots are menu-session state (rebuilt from the gun's NBT
- * on open, baked back on every edit) — persisting them too would duplicate
- * modules. Deliberately NOT a Container and exposes no IItemHandler
- * capability, so hoppers/pipes cannot touch the gun.
+ * Block entity for the 3D gun assembly bench. PERSISTENTLY holds the staged
+ * gun (1 slot): it leaves only via the [▼] take interaction or by breaking
+ * the block. Assembly state lives on the gun ItemStack NBT (GunNbt); there
+ * is no GUI and no session mirroring. Deliberately NOT a Container and
+ * exposes no IItemHandler capability, so hoppers/pipes cannot touch the gun.
+ * getUpdatePacket/getUpdateTag sync the staged gun to the client for the
+ * 3D renderer.
  */
-public class GunWorkbenchBlockEntity extends BlockEntity implements MenuProvider {
+public class GunWorkbenchBlockEntity extends BlockEntity {
 
     private final net.minecraft.world.SimpleContainer gunSlot =
             new net.minecraft.world.SimpleContainer(1) {
@@ -36,7 +34,7 @@ public class GunWorkbenchBlockEntity extends BlockEntity implements MenuProvider
         }
     };
 
-    /** the bench's persistent gun slot (menu slot 0 binds to this, server side) */
+    /** the bench's persistent gun slot (staged gun; synced to clients) */
     public net.minecraft.world.SimpleContainer getGunSlot() {
         return this.gunSlot;
     }
@@ -45,6 +43,10 @@ public class GunWorkbenchBlockEntity extends BlockEntity implements MenuProvider
     protected void saveAdditional(net.minecraft.nbt.CompoundTag tag) {
         super.saveAdditional(tag);
         net.minecraft.world.item.ItemStack gun = this.gunSlot.getItem(0);
+        // The slot state is ALWAYS recorded. An all-empty NBT is encoded as
+        // "no data" on the wire, and the client then drops the update
+        // entirely — a take would leave a stale gun rendered forever.
+        tag.putBoolean("HasGun", !gun.isEmpty());
         if (!gun.isEmpty()) {
             tag.put("Gun", gun.save(new net.minecraft.nbt.CompoundTag()));
         }
@@ -69,17 +71,44 @@ public class GunWorkbenchBlockEntity extends BlockEntity implements MenuProvider
         super(GUN_WORKBENCH.get(), pos, state);
     }
 
+    // --- client sync: the 3D renderer needs the staged gun ---
+
+    /**
+     * REQUIRED override: vanilla's default returns an empty tag, which the
+     * network layer encodes as "no data" and the client silently drops.
+     */
     @Override
-    public net.minecraft.network.chat.Component getDisplayName() {
-        return net.minecraft.network.chat.Component.translatable(
-                "container." + CreatePneumaticTacticals.MODID + ".gun_workbench");
+    public CompoundTag getUpdateTag() {
+        return this.saveWithoutMetadata();
     }
 
     @Override
-    @Nullable
-    public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
-        return new dev.ignis.createpneumatictacticals.menu.GunWorkbenchMenu(id, inventory,
-                ContainerLevelAccess.create(this.level, this.worldPosition), this.gunSlot);
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection,
+            net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket pkt) {
+        // client: replace the staged gun with the synced NBT
+        // A packet always carries the bench's full state, so "no tag" means
+        // an empty slot — never "keep whatever the client had".
+        CompoundTag tag = pkt.getTag();
+        this.load(tag != null ? tag : new CompoundTag());
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag) {
+        this.load(tag);
+    }
+
+    /** re-sync to tracking clients on any change (renderer truth) */
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (this.level != null && !this.level.isClientSide) {
+            this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
+        }
     }
 
     public static void register(IEventBus modBus) {

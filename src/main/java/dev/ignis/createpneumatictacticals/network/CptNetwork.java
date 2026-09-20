@@ -32,5 +32,6 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, PoseBroadcastPacket.class, PoseBroadcastPacket::encode, PoseBroadcastPacket::decode, PoseBroadcastPacket::handle);
         CHANNEL.registerMessage(id++, PoseUpdatePacket.class, PoseUpdatePacket::encode, PoseUpdatePacket::decode, PoseUpdatePacket::handle);
         CHANNEL.registerMessage(id++, HitConfirmPacket.class, HitConfirmPacket::encode, HitConfirmPacket::decode, HitConfirmPacket::handle);
+        CHANNEL.registerMessage(id++, Workbench3dPacket.class, Workbench3dPacket::encode, Workbench3dPacket::decode, Workbench3dPacket::handle);
     }
 }
