@@ -13,7 +13,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
@@ -60,7 +59,15 @@ public final class ShellDropScheduler {
     public static void onCartridgeShot(ServerLevel level, Player shooter) {
         // ejection port: right of the view, slightly below the eye, forward
         Vec3 look = shooter.getLookAngle();
-        Vec3 right = new Vec3(-look.z, 0, look.x).normalize();
+        // horizontal right; degenerate (looking straight up/down) falls
+        // back to the player's yaw vector — never normalize a zero vector
+        double rx = -look.z, rz = look.x;
+        if (rx * rx + rz * rz < 1.0E-6) {
+            double yawRad = Math.toRadians(shooter.getYRot());
+            rx = -Math.sin(yawRad);
+            rz = Math.cos(yawRad);
+        }
+        Vec3 right = new Vec3(rx, 0, rz).normalize();
         Vec3 origin = shooter.getEyePosition()
                 .add(look.scale(PORT_FORWARD))
                 .add(right.scale(0.15))
@@ -91,12 +98,10 @@ public final class ShellDropScheduler {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        long now = event.getServer().getTickCount();
-        Iterator<Pending> it = QUEUE.iterator();
-        while (it.hasNext()) {
-            Pending p = it.next();
-            if (p.atTick > now) break;
-            it.remove();
+        // iterate a COPY: PriorityQueue's iterator has no heap order and
+        // its remove() is O(n); drain due entries via poll() instead
+        while (!QUEUE.isEmpty() && QUEUE.peek().atTick <= QUEUE.peek().level.getGameTime()) {
+            Pending p = QUEUE.poll();
             p.level.playSound(null, p.at.x, p.at.y, p.at.z,
                     ModSoundEvents.SHELL_DROP.get(), SoundSource.PLAYERS, 0.7f, 1.0f);
         }
