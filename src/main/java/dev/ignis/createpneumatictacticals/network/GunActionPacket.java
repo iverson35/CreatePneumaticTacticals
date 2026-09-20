@@ -37,7 +37,14 @@ public class GunActionPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
-                GunActionHandler.onAction(player, msg.action);
+                try {
+                    GunActionHandler.onAction(player, msg.action);
+                } catch (Exception e) {
+                    // enqueueWork futures swallow exceptions silently — log
+                    // or a failed action just looks like "nothing happens"
+                    com.mojang.logging.LogUtils.getLogger().error(
+                            "gun action {} failed for {}", msg.action, player.getName().getString(), e);
+                }
             }
         });
         ctx.get().setPacketHandled(true);

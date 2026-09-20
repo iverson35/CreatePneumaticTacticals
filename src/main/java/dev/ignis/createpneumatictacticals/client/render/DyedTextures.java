@@ -54,23 +54,29 @@ public final class DyedTextures {
         ResourceLocation dyedId = dyedId(textureId, argbRegions);
         var tm = Minecraft.getInstance().getTextureManager();
         if (tm.getTexture(dyedId, null) == null) {
-            if (!bake(textureId, maskRes, dyedId)) return textureId;
+            if (!bake(textureId, maskRes, dyedId, argbRegions)) return textureId;
         }
         return dyedId;
     }
 
-    /** "cptdyed/ns/path.png#AARRGGBB_AARRGGBB_AARRGGBB" — one bake per color-triple */
+    /**
+     * Bake-cache id: one entry per (texture, color-triple). Colors are
+     * hex-encoded into the path (ResourceLocation paths only allow
+     * [a-z0-9/._-], so no '#' and nothing uppercase).
+     */
     private static ResourceLocation dyedId(ResourceLocation textureId, int[] colors) {
         return new ResourceLocation("cptdyed",
                 textureId.getNamespace() + "/" + textureId.getPath()
-                        + String.format("#%08x_%08x_%08x", colors[0], colors[1], colors[2]));
+                        + String.format("/%08x_%08x_%08x", colors[0] & 0xFFFFFFFFL,
+                        colors[1] & 0xFFFFFFFFL, colors[2] & 0xFFFFFFFFL));
     }
 
     /**
      * Bakes the dyed texture and registers it under {@code dyedId}.
      * Returns false when loading fails (caller falls back to the original).
      */
-    private static boolean bake(ResourceLocation textureId, Resource maskRes, ResourceLocation dyedId) {
+    private static boolean bake(ResourceLocation textureId, Resource maskRes,
+                                ResourceLocation dyedId, int[] colors) {
         try (InputStream baseIn = Minecraft.getInstance().getResourceManager()
                 .getResource(textureId).orElseThrow().open();
              InputStream maskIn = maskRes.open()) {
@@ -81,7 +87,6 @@ public final class DyedTextures {
                         textureId, mask.getWidth(), mask.getHeight(), base.getWidth(), base.getHeight());
                 return false;
             }
-            int[] colors = parseColors(dyedId);
             int w = base.getWidth();
             int h = base.getHeight();
             for (int y = 0; y < h; y++) {
@@ -99,14 +104,6 @@ public final class DyedTextures {
             LOGGER.warn("dye bake failed for {}: {}", textureId, e.toString());
             return false;
         }
-    }
-
-    /** reverse of {@link #dyedId}: pull the 3 colors back out of the id */
-    private static int[] parseColors(ResourceLocation dyedId) {
-        String[] parts = dyedId.getPath().split("#");
-        String[] hex = parts[1].split("_");
-        return new int[]{(int) Long.parseLong(hex[0], 16),
-                (int) Long.parseLong(hex[1], 16), (int) Long.parseLong(hex[2], 16)};
     }
 
     /** grayscale(base) * color, preserving alpha */
