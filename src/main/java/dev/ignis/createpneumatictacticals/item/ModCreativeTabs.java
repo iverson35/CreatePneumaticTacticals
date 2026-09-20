@@ -68,6 +68,7 @@ public final class ModCreativeTabs {
         }
 
         // --- per receiver: complete sample gun + compatible ammo pods ---
+        java.util.Set<String> podAmmoDone = new java.util.HashSet<>();
         for (ModuleDefinition receiver : ModuleManager.all().values()) {
             if (receiver.type != ModuleType.RECEIVER) continue;
             List<Holder<com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType>> compatible =
@@ -75,6 +76,8 @@ public final class ModCreativeTabs {
             ItemStack gun = sampleGun(receiver, compatible);
             if (gun != null) output.accept(gun);
             for (Holder<com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType> type : compatible) {
+                String ammoKey = type.unwrapKey().orElseThrow().location().toString();
+                if (!podAmmoDone.add(ammoKey)) continue; // shared calibers: once
                 Item content = type.value().items().size() > 0
                         ? type.value().items().get(0).value() : null;
                 if (content == null) continue;
@@ -111,9 +114,12 @@ public final class ModCreativeTabs {
         }
         ItemStack gun = new ItemStack(ModItems.GUN.get());
         GunNbt.writeModules(gun, installed, Map.of());
-        // first compatible ammo so the sample fires out of the box
+        // first compatible ammo + a full magazine so the sample really
+        // fires out of the box (survival fire gate requires ammoCount > 0)
         if (!compatible.isEmpty()) {
             GunNbt.setAmmo(gun, compatible.get(0).unwrapKey().orElseThrow().location().toString());
+            int clip = installed.get(ModuleType.FEED).clipSize;
+            if (clip > 0) GunNbt.setAmmoCount(gun, clip);
         }
         return gun;
     }
