@@ -10,11 +10,12 @@ package dev.ignis.createpneumatictacticals.client;
  * the decay/spring advance once per rendered frame instead of once per tick —
  * 20&nbsp;Hz tick integration made the recovery visibly steppy. The ODE
  * constants keep the same tuning as the old per-tick values (dt 0.05s):
- * decay 0.15/tick ≈ e^(-3.25/s), shake 0.8/tick ≈ e^(-4.46/s).
+ * old per-tick 0.15 mapped to e^(-3.25/s), halved to e^(-1.625/s)
+ * (rebound speed halved); shake 0.8/tick ≈ e^(-4.46/s).
  */
 public final class RecoilModel {
 
-    private static final double VIEW_DECAY_RATE = 3.25; // /s, scaled by recoilRecovery
+    private static final double VIEW_DECAY_RATE = 1.625; // /s, scaled by recoilRecovery (rebound halved)
     private static final double SHAKE_DECAY_RATE = 4.46; // /s
     private static final double SPRING_STIFFNESS = 300;
     private static final double SPRING_DAMPING = 20;
@@ -37,8 +38,10 @@ public final class RecoilModel {
         double scale = recoilMult * (aiming ? 0.7 : 1.0);
         // hipfire camera shake halved — full hipfire view kick was nauseating
         double viewScale = aiming ? scale : scale * 0.5;
-        pitchOffset += basePitch * viewScale;
-        yawOffset += (Math.random() * 2 - 1) * baseYaw * viewScale;
+        // new shot before the previous rebound finished: terminate that
+        // rebound (drop its leftover) — only the last kick ever rebounds
+        pitchOffset = basePitch * viewScale;
+        yawOffset = (Math.random() * 2 - 1) * baseYaw * viewScale;
         // model kick + screen shake follow the receiver's base recoil, so
         // tuning a gun's base_recoil_pitch scales the whole feel, not just
         // the view angle (constants normalized to the former fixed kick at

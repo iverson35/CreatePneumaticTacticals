@@ -61,7 +61,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                 float hipShare = 1f - aim;
                 // ADS/tactical: pure backward push only (a muzzle flip would
                 // sway the sight picture); hipfire: ~13 deg flip + 8.4 cm push
-                float rotDeg = (float) (kick * 4.7 * hipShare);
+                float rotDeg = (float) (kick * 1.175 * hipShare);
                 float push = (float) (kick * (0.006 + 0.024 * hipShare));
                 poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(rotDeg));
                 poseStack.translate(0, 0, push);
