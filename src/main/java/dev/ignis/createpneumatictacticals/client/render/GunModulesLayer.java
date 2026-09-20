@@ -96,6 +96,13 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         }
         BakedGeoModel model = ModuleGunGeoModel.INSTANCE.getBakedModel(modelId); // activates bones on the shared processor
         java.util.Map<CoreGeoBone, float[]> saved = null;
+        // beam bone (laser lines) hides on non-world passes: a GUI icon /
+        // dropped gun has no beam FX; the world pass (where the laser
+        // actually points) keeps it
+        CoreGeoBone beam = ModuleGunGeoModel.INSTANCE.getAnimationProcessor()
+                .getBone("laser_beam");
+        boolean hideBeam = !animationsEnabled && beam != null;
+        if (hideBeam) beam.setHidden(true);
         if (animationsEnabled) {
             driveAnimation(ModuleAnimatable.of(def.id), ctx.animId, ctx.partialTick);
         } else {
@@ -149,6 +156,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             }
         } finally {
             ctx.poseStack.popPose();
+            if (hideBeam) beam.setHidden(false);
             if (saved != null) GunAnimations.restoreBones(saved);
         }
     }
