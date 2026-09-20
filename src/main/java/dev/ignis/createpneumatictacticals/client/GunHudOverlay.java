@@ -184,14 +184,17 @@ public final class GunHudOverlay implements IGuiOverlay {
         g.drawString(mc.font, text, rightX - mc.font.width(text), y, color, true);
     }
 
+    private static final ResourceLocation HIT_MARKER =
+            new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/hit_marker.png");
+
+    /** four diagonal ticks in a 16x16 texture (own alpha); drawn 1:1, centered */
     private static void drawHitmarker(GuiGraphics g, int x, int y) {
-        int c = 0xFFFFFFFF;
-        int d = 4;
-        int l = 3;
-        g.fill(x - d - l, y - d - l, x - d, y - d, c);
-        g.fill(x + d, y - d - l, x + d + l, y - d, c);
-        g.fill(x - d - l, y + d, x - d, y + d + l, c);
-        g.fill(x + d, y + d, x + d + l, y + d + l, c);
+        // the plain blit path does not enable blending itself; the texture
+        // is semi-transparent, so blend is required (same pattern as the
+        // crosshair fills above)
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        g.blit(HIT_MARKER, x - 8, y - 8, 0f, 0f, 16, 16, 16, 16);
     }
 
     /** the held gun, or null */
