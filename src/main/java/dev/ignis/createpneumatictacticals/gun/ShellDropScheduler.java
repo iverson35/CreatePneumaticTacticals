@@ -28,8 +28,10 @@ import java.util.Queue;
  * {@link ClipContext.Block#COLLIDER} ray. The eject port sits at the eye
  * +0.5 blocks toward the look direction, 0.3 below the eye line, ejected
  * rightward of the view with a soft upward bias. Solves whose fall exceeds
- * {@link #MAX_FALL} blocks never play (10-block rule — a casing falling off
- * a cliff stays silent).
+ * {@link #MAX_FALL} blocks or whose flight path exceeds {@link #MAX_TRAVEL}
+ * blocks (10 m) never play — a casing off a cliff or far into the distance
+ * stays silent. The landing click plays together with a small glass-shard
+ * particle puff at the spot.
  *
  * <p>Landing times are scheduled on a single global queue in whole ticks;
  * at typical ejection speeds the flight is tens of ticks, so tick
@@ -40,6 +42,10 @@ public final class ShellDropScheduler {
 
     /** maximum fall distance (blocks) for the landing click to play */
     private static final double MAX_FALL = 10;
+    /** solve cap: flight path beyond this (blocks; 1 block = 1 m) is a lost
+     * casing — silent. Bounds the fall implicitly, but MAX_FALL stays as the
+     * explicit spec rule for readability */
+    private static final double MAX_TRAVEL = 10;
     /** ejection port: 0.5 blocks toward look, 0.3 below the eye line */
     private static final double PORT_FORWARD = 0.5, PORT_DOWN = 0.3;
     /** casing kick: sideways magnitude, plus a soft upward bias */
@@ -77,10 +83,13 @@ public final class ShellDropScheduler {
         Vec3 vel = right.scale(KICK_SIDE).add(0, KICK_UP, 0);
 
         long tick = level.getGameTime();
+        double traveled = 0;
         for (int i = 0; i < MAX_TICKS; i++) {
             vel = vel.scale(0.98);                       // item drag
             vel = vel.add(0, -0.04, 0);                  // item gravity
             Vec3 next = origin.add(vel);
+            traveled += vel.length();
+            if (traveled > MAX_TRAVEL) return;           // 10 m cap: lost casing
             BlockHitResult hit = level.clip(new ClipContext(origin, next,
                     ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, shooter));
             if (hit.getType() != BlockHitResult.Type.MISS) {
@@ -104,6 +113,11 @@ public final class ShellDropScheduler {
             Pending p = QUEUE.poll();
             p.level.playSound(null, p.at.x, p.at.y, p.at.z,
                     ModSoundEvents.SHELL_DROP.get(), SoundSource.PLAYERS, 0.7f, 1.0f);
+            // shard puff at the landing spot (glass-break look, a few pieces)
+            p.level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
+                            net.minecraft.core.particles.ParticleTypes.BLOCK,
+                            net.minecraft.world.level.block.Blocks.GLASS.defaultBlockState()),
+                    p.at.x, p.at.y, p.at.z, 8, 0.15, 0.05, 0.15, 0.1);
         }
     }
 }
