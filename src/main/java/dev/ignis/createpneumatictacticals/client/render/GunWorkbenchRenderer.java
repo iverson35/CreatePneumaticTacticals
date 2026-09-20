@@ -60,6 +60,17 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
         return new GunModulesLayer.Ghost(m.mountId(), held);
     }
 
+    /**
+     * Height (blocks) the staged gun's lowest point rests at: the workbench
+     * model's tabletop top face (16 px = 1 block) plus 1 px of vise
+     * clearance. {@link WorkbenchOverlay#gunToWorld} mirrors this and
+     * {@link #BENCH_MUZZLE_NUDGE}.
+     */
+    static final float BENCH_REST_Y = 1f + 1f / 16f;
+
+    /** How far the gun slides toward its muzzle (gun-space -Z) on the bench. */
+    static final float BENCH_MUZZLE_NUDGE = 1f / 16f;
+
     private static final java.util.WeakHashMap<CompoundTag, float[]> BOUNDS_CACHE =
             new java.util.WeakHashMap<>();
 
@@ -111,13 +122,14 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
     static void applyBenchPose(PoseStack poseStack, ItemStack gun, BlockState state) {
         float[] bb = bounds(gun);
         float minY = bb != null ? bb[1] : 0f;
-        poseStack.translate(0.5, 1.0, 0.5);
+        poseStack.translate(0.5, BENCH_REST_Y, 0.5);
         // lying flat, long axis across the bench front: the gun's local -Z is
         // the muzzle, so benchYaw(state) puts the muzzle to the left of
         // whoever faces the bench. Local +Y (rail/sights) stays up.
         poseStack.mulPose(com.mojang.math.Axis.YP.rotation(benchYaw(state)));
-        // plant the lowest gun-space point (grip/mag bottom) on the bench
-        poseStack.translate(0, -minY, 0);
+        // plant the lowest gun-space point (grip/mag bottom) on the bench,
+        // then slide it toward the muzzle (gun-space -Z, already yawed)
+        poseStack.translate(0, -minY, -BENCH_MUZZLE_NUDGE);
     }
 
     /**

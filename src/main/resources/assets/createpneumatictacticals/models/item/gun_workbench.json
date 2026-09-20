@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "createpneumatictacticals:block/gun_workbench"
-  }
+{ 
+  "parent": "createpneumatictacticals:block/gun_workbench"
 }

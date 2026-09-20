@@ -169,13 +169,17 @@ public final class WorkbenchOverlay {
         float phi = GunWorkbenchRenderer.benchYaw(bench.getBlockState());
         float cos = (float) Math.cos(phi);
         float sin = (float) Math.sin(phi);
+        // pivot-relative, after the same lift + muzzle nudge as the pose
+        float gx = (float) gunPos.x;
+        float gy = (float) (gunPos.y - minY);
+        float gz = (float) (gunPos.z - GunWorkbenchRenderer.BENCH_MUZZLE_NUDGE);
         // R_y(phi): x' = x cos + z sin, z' = -x sin + z cos
-        float x = (float) (gunPos.x * cos + gunPos.z * sin);
-        float z = (float) (-gunPos.x * sin + gunPos.z * cos);
-        float y = (float) (gunPos.y - minY);
+        float x = (float) (gx * cos + gz * sin);
+        float z = (float) (-gx * sin + gz * cos);
+        float y = gy;
         return new Vec3(
                 bench.getBlockPos().getX() + 0.5 + x,
-                bench.getBlockPos().getY() + 1.0 + y,
+                bench.getBlockPos().getY() + GunWorkbenchRenderer.BENCH_REST_Y + y,
                 bench.getBlockPos().getZ() + 0.5 + z);
     }
 }
