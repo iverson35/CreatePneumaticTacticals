@@ -262,12 +262,9 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
         ItemStack module = be.getDyeModule();
         if (!module.isEmpty()) {
             int[] colors = GunNbtColorAccess.getColors(module, ModuleItem.getModuleId(module));
-            if (colors != null && colors.length >= 3) return colors[region];
+            if (colors != null && colors.length >= 3 && colors[region] >= 0) return colors[region];
         }
-        if (def != null && def.defaultColors != null && def.defaultColors.length >= 3) {
-            return def.defaultColors[region];
-        }
-        return 0xFF8B8B8B;
+        return 0xFF8B8B8B; // neutral placeholder for undyed slots
     }
 
     private ModuleDefinition definitionOf(ItemStack stack) {
@@ -360,7 +357,12 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                     }
                 }
             }
-            return super.mouseClicked(mouseX, mouseY, button);
+            boolean consumed = super.mouseClicked(mouseX, mouseY, button);
+            // vanilla ContainerEventHandler.mouseClicked sets keyboard focus on the
+            // consumed widget; clear it or the button keeps drawing the white
+            // focus outline forever (isHoveredOrFocused includes focus)
+            this.setFocused(null);
+            return consumed;
         }
         // crafting tab: click selects, double-click crafts
         int index = hoveredRow(mouseX, mouseY);
@@ -375,6 +377,8 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
             lastClickTime = now;
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        boolean consumed = super.mouseClicked(mouseX, mouseY, button);
+        this.setFocused(null);
+        return consumed;
     }
 }

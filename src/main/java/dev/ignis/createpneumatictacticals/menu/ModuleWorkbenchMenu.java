@@ -165,13 +165,7 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
         CompoundTag root = module.getOrCreateTag();
         CompoundTag colors = root.getCompound(ModuleItem.TAG_COLORS);
         int[] arr = colors.getIntArray(moduleId.toString());
-        if (arr.length < 3) {
-            ModuleDefinition def = ModuleManager.get(moduleId);
-            int[] defColors = def != null ? def.defaultColors : null;
-            arr = defColors != null && defColors.length >= 3
-                    ? new int[]{defColors[0], defColors[1], defColors[2]}
-                    : new int[]{0xFF8B8B8B, 0xFF3A3A3A, 0xFFC0C0C0};
-        }
+        if (arr.length < 3) arr = new int[]{-1, -1, -1}; // undyed slots: -1 = keep original
         arr[region] = DyePalette.argbOf(color);
         colors.putIntArray(moduleId.toString(), arr);
         root.put(ModuleItem.TAG_COLORS, colors);

@@ -81,20 +81,16 @@ public class ModuleItem extends Item implements GeoItem {
 
     /**
      * Dye-region colors on a module item: the stack's own Colors NBT (set
-     * by workbench dyeing), falling back to the module definition's
-     * appearance defaults. Null when neither — render undyed.
+     * by workbench dyeing). Null when absent — render undyed.
      */
     @Nullable
     public static int[] getDyeColors(ItemStack stack) {
         CompoundTag tag = stack.getTag();
         ResourceLocation id = getModuleId(stack);
-        if (id == null) return null;
-        if (tag != null && tag.contains(TAG_COLORS, CompoundTag.TAG_COMPOUND)) {
-            int[] arr = tag.getCompound(TAG_COLORS).getIntArray(id.toString());
-            if (arr.length >= 3) return arr;
-        }
-        ModuleDefinition def = ModuleManager.get(id);
-        return def != null ? def.defaultColors : null;
+        if (id == null || tag == null) return null;
+        if (!tag.contains(TAG_COLORS, CompoundTag.TAG_COMPOUND)) return null;
+        int[] arr = tag.getCompound(TAG_COLORS).getIntArray(id.toString());
+        return arr.length >= 3 ? arr : null;
     }
 
     public static ItemStack of(ResourceLocation moduleId) {

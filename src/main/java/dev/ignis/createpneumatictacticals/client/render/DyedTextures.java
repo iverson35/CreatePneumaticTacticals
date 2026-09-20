@@ -51,6 +51,8 @@ public final class DyedTextures {
      */
     public static ResourceLocation resolve(ResourceLocation textureId, int[] argbRegions) {
         if (argbRegions == null || argbRegions.length < 3) return textureId;
+        // -1 = undyed slot (no defaults anymore); all-undyed = original
+        if (argbRegions[0] < 0 && argbRegions[1] < 0 && argbRegions[2] < 0) return textureId;
         var rm = Minecraft.getInstance().getResourceManager();
         if (rm.getResource(textureId).isEmpty()) return textureId;
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);
@@ -81,7 +83,7 @@ public final class DyedTextures {
                 for (int x = 0; x < w; x++) {
                     int b = base.getPixelRGBA(x, y);
                     int region = regionOf(mask, x, y); // -1 = keep original
-                    if (region >= 0) {
+                    if (region >= 0 && colors[region] >= 0) {
                         base.setPixelRGBA(x, y, dye(b, colors[region]));
                     }
                 }

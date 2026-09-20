@@ -155,13 +155,10 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
 
     /**
      * The module's dye-region colors as stored on the gun stack (per-slot,
-     * set by the workbench dyeing), falling back to the module json's
-     * appearance defaults. Null when neither exists — no dyeing.
+     * set by the workbench dyeing). Null when absent — no dyeing.
      */
     private static int[] dyeColors(ItemStack gun, ModuleDefinition def) {
-        int[] stored = dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, def.id);
-        if (stored != null && stored.length >= 3) return stored;
-        return def.defaultColors;
+        return dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, def.id);
     }
 
     /**

@@ -142,7 +142,7 @@ public final class GunNbt {
         CompoundTag colors = root(stack).getCompound(KEY_COLORS);
         String key = moduleId.toString();
         int[] arr = colors.getIntArray(key);
-        if (arr.length < 3) arr = new int[]{0xFF8B8B8B, 0xFF3A3A3A, 0xFFC0C0C0};
+        if (arr.length < 3) arr = new int[]{-1, -1, -1}; // -1 = undyed
         arr[region] = argb;
         colors.putIntArray(key, arr);
         root(stack).put(KEY_COLORS, colors);

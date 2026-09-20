@@ -84,6 +84,7 @@ public class WorkbenchActionPacket {
                         wb.getBlockEntity().setChosenColor(msg.value);
                     }
                 }
+                case DYE_CONFIRM -> wb.clickMenuButton(player, ModuleWorkbenchMenu.BTN_DYE_CONFIRM);
             }
         });
         ctx.get().setPacketHandled(true);

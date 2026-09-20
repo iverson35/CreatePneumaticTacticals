@@ -61,9 +61,7 @@ public final class ModuleDefinition {
     public final int airCapacity, airPerShot;
     /** sight-only fields */
     public final double aimZoom, tacticalAimZoom;
-    /** appearance */
-    @Nullable public final String maskPath;
-    @Nullable public final int[] defaultColors;
+
     /** handguard: exposed attachment points; empty = no attachment slots */
     public final List<HandguardPosition> attachmentPoints;
     /** handguard_attachment: positions this attachment can mount to */
@@ -122,8 +120,7 @@ public final class ModuleDefinition {
         this.airPerShot = b.airPerShot;
         this.aimZoom = b.aimZoom;
         this.tacticalAimZoom = b.tacticalAimZoom;
-        this.maskPath = b.maskPath;
-        this.defaultColors = b.defaultColors;
+
         this.attachmentPoints = List.copyOf(b.attachmentPoints);
         this.positions = List.copyOf(b.positions);
         this.muzzleOffsetZ = b.muzzleOffsetZ;
@@ -237,19 +234,7 @@ public final class ModuleDefinition {
             b.positions = parsePositions(json, "positions", id);
             if (b.positions.isEmpty()) throw new IllegalArgumentException("handguard_attachment requires positions: " + id);
         }
-        // appearance
-        if (json.has("appearance")) {
-            JsonObject appearance = json.getAsJsonObject("appearance");
-            b.maskPath = GsonHelper.getAsString(appearance, "mask", null);
-            if (appearance.has("default_colors")) {
-                JsonArray colors = appearance.getAsJsonArray("default_colors");
-                int[] arr = new int[colors.size()];
-                for (int i = 0; i < colors.size(); i++) {
-                    arr[i] = parseColor(colors.get(i).getAsString());
-                }
-                b.defaultColors = arr;
-            }
-        }
+
         // Z-axis geometry from the module's geo JSON (pack assets, same
         // path convention as the client model); missing/unparsable file
         // leaves the NaN sentinels and GunLength keeps the 0.5 default
@@ -269,10 +254,6 @@ public final class ModuleDefinition {
         return b.build();
     }
 
-    static int parseColor(String hex) {
-        String h = hex.startsWith("#") ? hex.substring(1) : hex;
-        return (int) Long.parseLong(h.length() == 6 ? "ff" + h : h, 16);
-    }
 
     private static List<HandguardPosition> parsePositions(JsonObject json, String key, ResourceLocation id) {
         List<HandguardPosition> out = new ArrayList<>();
@@ -306,8 +287,7 @@ public final class ModuleDefinition {
         @Nullable private SupplyType supplyType;
         private int airCapacity, airPerShot;
         private double aimZoom = 1.25, tacticalAimZoom = 1.0;
-        @Nullable private String maskPath;
-        @Nullable private int[] defaultColors;
+
         private List<HandguardPosition> attachmentPoints = Collections.emptyList();
         private List<HandguardPosition> positions = Collections.emptyList();
         private float muzzleOffsetZ = Float.NaN;

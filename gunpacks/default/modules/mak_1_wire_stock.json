@@ -4,12 +4,5 @@
   "gun_properties": {
     "recoil_multiplier": -0.2,
     "ergonomics": 0.2
-  },
-  "appearance": {
-    "default_colors": [
-      "#9C7C4C",
-      "#3A3A3A",
-      "#C0C0C0"
-    ]
   }
 }
