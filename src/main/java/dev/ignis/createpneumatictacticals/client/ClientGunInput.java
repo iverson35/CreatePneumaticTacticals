@@ -125,7 +125,8 @@ public final class ClientGunInput {
         if (!reloading && stats.isComplete() && stats.feed != null
                 && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
                 && GunNbt.getAmmoCount(gun) <= 0) {
-            String autoAmmoId = GunNbt.getAmmo(gun);
+            String autoAmmoId = GunNbt.getPendingAmmo(gun);
+            if (autoAmmoId == null || autoAmmoId.isEmpty()) autoAmmoId = GunNbt.getAmmo(gun);
             if (autoAmmoId != null && !autoAmmoId.isEmpty()) {
                 boolean cartridge = stats.supply != null && stats.supply.supplyType
                         == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
@@ -325,7 +326,11 @@ public final class ClientGunInput {
         if (reloading || !stats.isComplete() || stats.feed == null
                 || stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK) return;
         if (GunNbt.getAmmoCount(gun) >= stats.feed.clipSize) return; // already full
-        String ammoId = GunNbt.getAmmo(gun);
+        // a deferred ammo pick (cycled while the magazine held rounds) is what
+        // this reload fills with — check pods for THAT type, or the reload
+        // would be rejected as "no_pod" even though new-type pods exist
+        String ammoId = GunNbt.getPendingAmmo(gun);
+        if (ammoId == null || ammoId.isEmpty()) ammoId = GunNbt.getAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) {
             feedback(player, "no_ammo_selected", ModKeybinds.CYCLE_AMMO);
             return;
