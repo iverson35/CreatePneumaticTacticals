@@ -265,6 +265,12 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         AnimationState<ModuleAnimatable> state = new AnimationState<>(ma, 0, 0, partialTick, false);
         state.setData(DataTickets.TICK, ma.getTick(ma));
         ModuleGunGeoModel.INSTANCE.handleAnimations(ma, instanceId, state);
+        // capture ONLY on the local player's first-person pass (the pose
+        // they actually see); third-person, GUI and dropped passes don't
+        // own the truth (see GunAnimations.captureLivePose)
+        if (GunHandsLayer.isFirstPersonPass) {
+            GunAnimations.captureLivePose("mod:" + ma.moduleId(), ModuleGunGeoModel.INSTANCE, instanceId);
+        }
     }
 
     private static void warnOnce(String key, String msg, Object... args) {

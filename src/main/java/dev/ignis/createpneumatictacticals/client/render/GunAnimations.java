@@ -106,6 +106,61 @@ public final class GunAnimations {
         }
     }
 
+    /**
+     * Captures the live first-person bone pose, keyed by bone NAME per
+     * animatable-instance id, so it can be replayed into GeckoLib's stale
+     * snapshot table right before a new animation triggers.
+     *
+     * GeckoLib blends the start of a transition from
+     * AnimatableManager.getBoneSnapshotCollection() — a table that only
+     * updates while an animation is RUNNING. Once an animation finishes the
+     * table goes stale (it still holds the last polled mid-animation value),
+     * even though the live bones have already been reset. Triggering a new
+     * animation then blends from that dead value and the model visibly
+     * twitches. Replaying the pose the player actually sees makes the
+     * transition start from truth.
+     */
+    // scope|instanceId -> bone-name -> [pos,rot,scale]; receiver uses "recv",
+    // modules "mod:<moduleId>" — receiver and modules share the same gun
+    // instance id, so the scope keeps their captures from overwriting
+    // each other.
+    public static final java.util.Map<String, java.util.Map<String, float[]>> LIVE_POSE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** capture pose of every registered bone (call on the first-person render pass, after animations are applied) */
+    public static void captureLivePose(String scope, software.bernie.geckolib.model.GeoModel<?> model, long instanceId) {
+        java.util.Map<String, float[]> pose = new java.util.HashMap<>();
+        for (software.bernie.geckolib.core.animatable.model.CoreGeoBone bone
+                : model.getAnimationProcessor().getRegisteredBones()) {
+            pose.put(bone.getName(), new float[]{
+                    bone.getPosX(), bone.getPosY(), bone.getPosZ(),
+                    bone.getRotX(), bone.getRotY(), bone.getRotZ(),
+                    bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()});
+        }
+        LIVE_POSE.put(scope + "|" + instanceId, pose);
+    }
+
+    /**
+     * Replays the captured pose into the animatable's snapshot table, so
+     * the next transition blends from the pose the player actually saw
+     * instead of GeckoLib's stale post-animation snapshot. Call immediately
+     * before triggering a new animation.
+     */
+    public static void refreshSnapshotsFromLivePose(String scope, long instanceId,
+            software.bernie.geckolib.core.animation.AnimatableManager<? extends software.bernie.geckolib.core.animatable.GeoAnimatable> manager) {
+        java.util.Map<String, float[]> pose = LIVE_POSE.get(scope + "|" + instanceId);
+        if (pose == null || manager == null) return;
+        java.util.Map<String, software.bernie.geckolib.core.state.BoneSnapshot> table =
+                manager.getBoneSnapshotCollection();
+        for (java.util.Map.Entry<String, float[]> e : pose.entrySet()) {
+            software.bernie.geckolib.core.state.BoneSnapshot snap = table.get(e.getKey());
+            if (snap == null) continue;
+            float[] v = e.getValue();
+            snap.updateRotation(v[3], v[4], v[5]);
+            snap.updateOffset(v[0], v[1], v[2]);
+            snap.updateScale(v[6], v[7], v[8]);
+        }
+    }
+
     public static RawAnimation filterExisting(RawAnimation anim, net.minecraft.resources.ResourceLocation animationFile) {
         RawAnimation out = null;
         for (RawAnimation.Stage stage : anim.getAnimationStages()) {

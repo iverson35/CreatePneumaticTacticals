@@ -79,5 +79,12 @@ public final class GunGeoModel extends GeoModel<dev.ignis.createpneumatictactica
             return;
         }
         super.handleAnimations(animatable, instanceId, state);
+        // First-person pass is the pose the local player actually sees;
+        // capture it so the next triggered animation transitions from
+        // truth instead of GeckoLib's stale snapshot (see GunAnimations.captureLivePose)
+        if (perspective == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_LEFT_HAND
+                || perspective == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) {
+            GunAnimations.captureLivePose("recv", this, instanceId);
+        }
     }
 }

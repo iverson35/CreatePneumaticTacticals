@@ -29,6 +29,18 @@ import net.minecraftforge.fml.common.Mod;
 public final class ClientGunInput {
 
     private static boolean wasFiring = false;
+    /** controller busy with the fire animation (fire length + transition); reloads wait it out */
+    private static long fireAnimBusyUntilMs = 0;
+    /** fire animation length + 2-tick GeckoLib transition, in ms (from the receiver animation file) */
+    private static long fireAnimMs(ItemStack gun) {
+        double fireTicks = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .animLengthTicks(gun, "fire", 2.5);
+        return (long) ((fireTicks + 4) * 50.0) + 50; // +4: two 2-tick stage transitions, +1 tick slack
+    }
+    /** manual R pressed during the fire-animation window; retried next tick */
+    private static boolean reloadPending = false;
+    /** the gun the pending R press was meant for; a slot switch voids it */
+    private static ItemStack reloadPendingGun = null;
     /** ammo type resolved during tryFire; read by MuzzleSmoke for puff scaling */
     private static PotatoCannonProjectileType currentType;
     private static long lastLocalShotMs = 0;
@@ -94,8 +106,6 @@ public final class ClientGunInput {
         // --- fire ---
         if (mc.options.keyAttack.isDown()) {
             if (reloading) {
-                // firing is locked while reloading (no fire-to-cancel); mark the
-                // click consumed so semi-auto doesn't fire on reload end
                 wasFiring = true;
             } else {
                 tryFire(player, gun, stats);
@@ -107,7 +117,7 @@ public final class ClientGunInput {
         // --- reload state machine ---
         tickReload(player, gun, stats);
         if (ModKeybinds.RELOAD.consumeClick()) {
-            startReload(player, gun, stats);
+            requestReload(player, gun, stats);
         }
 
         // --- auto reload: an empty gun tries to reload on its own (silent when
@@ -120,8 +130,23 @@ public final class ClientGunInput {
                 boolean cartridge = stats.supply != null && stats.supply.supplyType
                         == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
                 if (player.isCreative() || countMatchingPods(player, cartridge, autoAmmoId) > 0) {
-                    startReload(player, gun, stats);
+                    requestReload(player, gun, stats);
                 }
+            }
+        }
+
+        // deferred manual reload: R was pressed while the fire animation was
+        // still blending; retry once the controller is free. The pending gun
+        // must still be in hand — a slot switch voids the press.
+        if (reloadPending) {
+            if (gun != reloadPendingGun) {
+                // slot switched since the press: void the pending reload
+                reloadPending = false;
+                reloadPendingGun = null;
+            } else if (!reloading && System.currentTimeMillis() >= fireAnimBusyUntilMs) {
+                reloadPending = false;
+                reloadPendingGun = null;
+                startReload(player, gun, stats);
             }
         }
 
@@ -236,7 +261,12 @@ public final class ClientGunInput {
         if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, 1.0f);
         lastLocalShotMs = now;
         wasFiring = true;
-
+        // fire animation occupancy: the controller is busy for fire length +
+        // its 2-tick transition (transitionLength is not scaled by speed, but
+        // the 1.2x playback only shortens the fire stage itself). startReload
+        // must wait this out or it snapshots the bolt mid-fire and the reload
+        // chain's stage transitions then blend from that stale pose.
+        fireAnimBusyUntilMs = now + fireAnimMs(gun);
         // local feel: recoil + bloom + fire animation
         double recoilMult = stats.recoilMultiplier;
         boolean aiming = ModKeybinds.isAiming();
@@ -266,6 +296,23 @@ public final class ClientGunInput {
             c.append(")");
         }
         player.displayClientMessage(c, true);
+    }
+    /**
+     * startReload entry: defers while the fire animation owns the controller
+     * (~fire length + 2-tick transition). Triggering the reload chain mid-fire
+     * snapshots the bolt at its mid-pull pose; the chain's stage transitions
+     * then blend from that stale snapshot and the bolt visibly teleports.
+     * Manual R is consumeClick'd (a swallowed press cannot be re-read), so a
+     * refused manual reload latches into reloadPending and retries next tick;
+     * auto-reload re-evaluates its own conditions every tick anyway.
+     */
+    private static void requestReload(Player player, ItemStack gun, GunStats stats) {
+        if (System.currentTimeMillis() < fireAnimBusyUntilMs) {
+            reloadPending = true;
+            reloadPendingGun = gun;
+            return;
+        }
+        startReload(player, gun, stats);
     }
 
     private static void startReload(Player player, ItemStack gun, GunStats stats) {
@@ -338,6 +385,12 @@ public final class ClientGunInput {
         if (System.currentTimeMillis() < reloadEndMs) return;
         // batch finished -> apply immediately
         CptNetwork.CHANNEL.sendToServer(new ReloadResultPacket(true, reloadBatch));
+        // optimistic ammo prediction: the server's authoritative NBT sync
+        // lags a tick behind the result packet, and in that window the
+        // auto-reload check still sees an empty magazine and would restart
+        // the whole reload+bolt chain from scratch (visible as the bolt
+        GunNbt.setAmmoCount(gun, Math.min(stats.feed.clipSize,
+                GunNbt.getAmmoCount(gun) + reloadBatch));
         if (reloadRoundMode && GunNbt.getAmmoCount(gun) < stats.feed.clipSize) {
             // next batch: no bolt cycle (chamber already loaded)
             reloadEndMs = System.currentTimeMillis() + dev.ignis.createpneumatictacticals.client.render
@@ -351,6 +404,8 @@ public final class ClientGunInput {
     private static void cancelReload() {
         if (!reloading) return;
         reloading = false;
+        reloadPending = false;
+        reloadPendingGun = null;
         GunAnimationDriver.interrupt(reloadingGun);
     }
 }

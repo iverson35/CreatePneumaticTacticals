@@ -28,12 +28,16 @@ public final class GunAnimTiming {
                 round ? FALLBACK_ROUND_TICKS : FALLBACK_RELOAD_TICKS);
         if (empty) {
             ticks += animLengthTicks(gun, "bolt", FALLBACK_BOLT_TICKS);
+            // two 2-tick GeckoLib stage transitions in the chain (chain start
+            // + reload->bolt): without them the lock expires before the bolt
+            // stage finishes blending and a held click truncates its tail
+            ticks += 4;
         }
         return (long) (ticks * 50.0 / Math.max(0.1, reloadSpeed));
     }
 
     /** animation length in ticks from the gun's current animation file */
-    private static double animLengthTicks(ItemStack gun, String name, double fallbackTicks) {
+    public static double animLengthTicks(ItemStack gun, String name, double fallbackTicks) {
         ResourceLocation file = GunAssets.forStack(gun).animation();
         BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(file);
         if (baked == null) return fallbackTicks;

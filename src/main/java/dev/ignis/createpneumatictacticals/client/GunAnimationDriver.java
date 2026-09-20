@@ -102,21 +102,37 @@ public final class GunAnimationDriver {
         // follows the last-rendered stack; pin it to this gun or the lookup
         // can land on another gun / the placeholder (silent no-op stubs)
         dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel()
-                .withStack(gun, () -> triggerOn(item, item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed));
+                .withStack(gun, () -> triggerOn("recv", id, item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed));
     }
 
     private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId, double speed) {
         RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
-        triggerOn(module, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered, speed);
+        triggerOn("mod:" + moduleId, gunId, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered, speed);
     }
-    private static void triggerOn(GeoAnimatable animatable, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim, double speed) {
+    private static void triggerOn(String scope, long instanceId, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim, double speed) {
         if (manager == null) return;
         AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
         if (controller == null) return;
+        // GeckoLib blends the transition start from its bone-snapshot table,
+        // which went stale the moment the previous animation finished (it
+        // only updates while an animation is RUNNING). Replay the pose the
+        // player actually saw so the transition blends from truth — without
+        // this, fire->reload visibly twitches the bolt from the stale
+        // mid-animation value before blending back to 0.
+        dev.ignis.createpneumatictacticals.client.render.GunAnimations.refreshSnapshotsFromLivePose(scope, instanceId, manager);
         controller.setAnimationSpeed(Math.max(0.1, speed));
-        controller.forceAnimationReset();
+        // forceAnimationReset only marks the controller for reload
+        // (needsAnimationReload); setAnimation still enters the normal
+        // TRANSITIONING path. It is required when REPLAYING the same
+        // animation (rapid semi-auto fire) because setAnimation would
+        // otherwise treat the equal RawAnimation as "already playing" and
+        // keep the old run. For a different animation it is skipped purely
+        // to keep the transition blending from the refreshed pose above.
+        if (anim.equals(controller.getCurrentRawAnimation())) {
+            controller.forceAnimationReset();
+        }
         controller.setAnimation(anim);
     }
 
