@@ -276,6 +276,13 @@ public final class GunFireHandler {
             GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
         }
 
+        // --- cartridge supply ejects a casing: simulate its landing and
+        // schedule the shell_drop click there (ShellDropScheduler) ---
+        if (supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE) {
+            dev.ignis.createpneumatictacticals.gun.ShellDropScheduler
+                    .onCartridgeShot((net.minecraft.server.level.ServerLevel) player.level(), player);
+        }
+
         // --- sound: receiver-defined, defaulting to the potato cannon's
         // FWOOMP; the shooter already heard it client-side (instant
         // feedback), so exclude them from the broadcast. Pitch follows the

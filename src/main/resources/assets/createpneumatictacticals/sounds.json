@@ -1,0 +1,12 @@
+{
+  "shell_drop": {
+    "subtitle": "subtitles.createpneumatictacticals.shell_drop",
+    "sounds": [
+      "createpneumatictacticals:shell_drop_1",
+      "createpneumatictacticals:shell_drop_2",
+      "createpneumatictacticals:shell_drop_3",
+      "createpneumatictacticals:shell_drop_4",
+      "createpneumatictacticals:shell_drop_5"
+    ]
+  }
+}
