@@ -277,7 +277,7 @@ public final class ClientGunInput {
         double recoilMult = stats.recoilMultiplier;
         boolean aiming = ModKeybinds.isAiming();
         RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw, recoilMult, aiming,
-                stats.recoilRecovery);
+                stats.recoilRecovery, player);
         SpreadModel.addBloom(ext);
         // muzzle smoke: purely client-side (never synced per-particle);
         // representative ammo item for the item puffs

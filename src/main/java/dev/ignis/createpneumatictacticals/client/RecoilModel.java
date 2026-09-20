@@ -6,6 +6,12 @@ package dev.ignis.createpneumatictacticals.client;
  * 2. model: gun model kick via damped spring (consumed by renderer)
  * 3. screen shake: slight shake scaled by recoilMultiplier
  *
+ * <p>A new shot before the previous rebound finished BAKES the leftover
+ * offset into the player's real rotation (the current camera pose becomes
+ * the new baseline), then injects its own kick — only the last shot's
+ * rebound ever runs, and residuals genuinely accumulate: full-auto climbs
+ * the aim point shot over shot, so recoil control is a thing.
+ *
  * <p>Integration is wall-clock based and runs lazily inside the getters, so
  * the decay/spring advance once per rendered frame instead of once per tick —
  * 20&nbsp;Hz tick integration made the recovery visibly steppy. The ODE
@@ -32,14 +38,23 @@ public final class RecoilModel {
     private RecoilModel() {}
 
     public static void onShot(double basePitch, double baseYaw, double recoilMult, boolean aiming,
-                              double recoilRecovery) {
+                              double recoilRecovery, net.minecraft.world.entity.player.Player player) {
         update();
+        // new shot before the previous rebound finished: bake the leftover
+        // offset into the REAL player rotation — the current camera pose
+        // becomes the new baseline, and only this last kick ever rebounds.
+        // Residuals thus accumulate shot over shot: full-auto genuinely
+        // climbs the aim point and recoil control becomes a thing.
+        if (player != null && (pitchOffset != 0 || yawOffset != 0)) {
+            player.setXRot(player.getXRot() - (float) pitchOffset);
+            player.setYRot(player.getYRot() - (float) yawOffset);
+        }
+        pitchOffset = 0;
+        yawOffset = 0;
         recoveryScale = Math.max(0, 1 + recoilRecovery);
         double scale = recoilMult * (aiming ? 0.7 : 1.0);
         // hipfire camera shake halved — full hipfire view kick was nauseating
         double viewScale = aiming ? scale : scale * 0.5;
-        // new shot before the previous rebound finished: terminate that
-        // rebound (drop its leftover) — only the last kick ever rebounds
         pitchOffset = basePitch * viewScale;
         yawOffset = (Math.random() * 2 - 1) * baseYaw * viewScale;
         // model kick + screen shake follow the receiver's base recoil, so
