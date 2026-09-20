@@ -7,6 +7,8 @@ import dev.ignis.createpneumatictacticals.module.GunType;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.ChatFormatting;
+import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -44,7 +46,32 @@ public class GunItem extends Item {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.loaded_ammo",
                     ammoDisplayName(stack, level, ammoId), GunNbt.getAmmoCount(stack)));
         }
+        // hold Shift: the gun workbench's default stats (caliber + the four
+        // core multipliers). The workbench stats panel is the authority for
+        // which stats are "default-visible"; keep the two in sync.
+        if (net.minecraft.client.gui.screens.Screen.hasShiftDown() && stats.isComplete()) {
+            if (stats.receiver != null && stats.receiver.gunType != null) {
+                tooltip.add(Component.translatable("stat." + CreatePneumaticTacticals.MODID + ".gun_type")
+                        .append(": ").append(Component.translatable("gun_type." + CreatePneumaticTacticals.MODID
+                                + "." + stats.receiver.gunType.getSerializedName()))
+                        .withStyle(ChatFormatting.GREEN));
+            }
+            tooltip.add(stat(stats.damageMultiplier, "damage_multiplier"));
+            tooltip.add(stat(stats.fireRateMultiplier, "fire_rate_multiplier"));
+            tooltip.add(stat(stats.ergonomics, "ergonomics"));
+            tooltip.add(stat(stats.recoilMultiplier, "recoil_multiplier"));
+        } else {
+            tooltip.add(Component.translatable("tooltip." + CreatePneumaticTacticals.MODID + ".stats_hint")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        }
         super.appendHoverText(stack, level, tooltip, flag);
+    }
+
+    /** workbench-style stat line: "Damage: 1.20" */
+    private static Component stat(double value, String statKey) {
+        return Component.translatable("stat." + CreatePneumaticTacticals.MODID + "." + statKey)
+                .append(": ").append(String.format("%.2f", value))
+                .withStyle(ChatFormatting.GRAY);
     }
 
     /**

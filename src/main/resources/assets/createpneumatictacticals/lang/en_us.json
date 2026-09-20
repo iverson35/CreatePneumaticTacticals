@@ -9,6 +9,7 @@
   "item.createpneumatictacticals.module": "Module",
   "block.createpneumatictacticals.gun_workbench": "Gun Assembly Bench",
   "block.createpneumatictacticals.module_workbench": "Module Workbench",
+  "tooltip.createpneumatictacticals.stats_hint": "Hold Shift for stats",
   "key.categories.createpneumatictacticals": "Create: Pneumatic Tacticals",
   "key.createpneumatictacticals.reload": "Reload",
   "key.createpneumatictacticals.fire_mode": "Fire Mode",

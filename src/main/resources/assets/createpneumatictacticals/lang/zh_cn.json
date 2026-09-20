@@ -9,6 +9,7 @@
   "item.createpneumatictacticals.module": "模块",
   "block.createpneumatictacticals.gun_workbench": "气动枪械装配台",
   "block.createpneumatictacticals.module_workbench": "配件加工台",
+  "tooltip.createpneumatictacticals.stats_hint": "按住 Shift 查看属性",
   "key.categories.createpneumatictacticals": "机械动力：气动战术",
   "key.createpneumatictacticals.reload": "换弹",
   "key.createpneumatictacticals.fire_mode": "切换开火模式",
