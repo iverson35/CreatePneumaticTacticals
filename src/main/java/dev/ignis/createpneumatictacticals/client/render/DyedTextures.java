@@ -138,6 +138,7 @@ public final class DyedTextures {
         int cr = (colorArgb >>> 16) & 0xFF;     // ARGB: red is bits 16-23
         int cg = (colorArgb >>> 8) & 0xFF;
         int cb = colorArgb & 0xFF;
-        return a | (lum * cb / 255) | ((lum * cg / 255) << 8) | ((lum * cr / 255) << 16);
+        // re-encode ABGR: red back to the low byte, blue to bits 16-23
+        return a | (lum * cr / 255) | ((lum * cg / 255) << 8) | ((lum * cb / 255) << 16);
     }
 }

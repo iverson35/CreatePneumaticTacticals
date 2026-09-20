@@ -70,14 +70,20 @@ public class WorkbenchActionPacket {
                     }
                 }
                 case SET_REGION -> {
-                    int v = Math.floorMod(msg.value, 4) - 1; // -1..2
-                    wb.getBlockEntity().setRegion(v);
+                    // GUI sends the region index 0..2 directly — no sentinel
+                    // encoding to undo (floorMod(v,4)-1 shifted everything
+                    // down by one: clicking region 1 stored -1 = "none",
+                    // region 2 dyed region 1, etc.)
+                    if (msg.value >= 0 && msg.value <= 2) {
+                        wb.getBlockEntity().setRegion(msg.value);
+                    }
                 }
                 case SET_COLOR -> {
-                    int v = Math.floorMod(msg.value, 17) - 1; // -1..15
-                    wb.getBlockEntity().setChosenColor(v);
+                    // palette index 0..15, sent as-is
+                    if (msg.value >= 0 && msg.value < dev.ignis.createpneumatictacticals.menu.DyePalette.SIZE) {
+                        wb.getBlockEntity().setChosenColor(msg.value);
+                    }
                 }
-                case DYE_CONFIRM -> wb.clickMenuButton(player, ModuleWorkbenchMenu.BTN_DYE_CONFIRM);
             }
         });
         ctx.get().setPacketHandled(true);
