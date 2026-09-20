@@ -84,5 +84,16 @@
   "hg_pos.createpneumatictacticals.right": " (right)",
   "gui.createpneumatictacticals.hud.reloading": "Reloading",
   "gun_type.createpneumatictacticals.shotgun": "Shotgun",
-  "item.createpneumatictacticals.pressurized_pod.named": "Pressurized Pod [%s]"
+  "item.createpneumatictacticals.pressurized_pod.named": "Pressurized Pod [%s]",
+  "stat.createpneumatictacticals.feed_type": "Feed Type",
+  "stat.createpneumatictacticals.clip_capacity": "Capacity",
+  "stat.createpneumatictacticals.supply_type": "Air Supply",
+  "stat.createpneumatictacticals.hg_slots": "Attachment Slots",
+  "stat.createpneumatictacticals.hg_positions": "Fits Slots",
+  "feed_type.createpneumatictacticals.magazine": "Magazine",
+  "feed_type.createpneumatictacticals.round": "Single Round",
+  "feed_type.createpneumatictacticals.backpack": "Backpack Feed",
+  "supply_type.createpneumatictacticals.cartridge": "Cartridge",
+  "supply_type.createpneumatictacticals.internal_tank": "Internal Tank",
+  "supply_type.createpneumatictacticals.backpack_tank": "Backpack Tank"
 }

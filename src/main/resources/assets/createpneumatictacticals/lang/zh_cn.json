@@ -83,5 +83,16 @@
   "hg_pos.createpneumatictacticals.right": "(右)",
   "gui.createpneumatictacticals.hud.reloading": "装填中",
   "gun_type.createpneumatictacticals.shotgun": "霰弹弹药",
-  "item.createpneumatictacticals.pressurized_pod.named": "加压封装弹 [%s]"
+  "item.createpneumatictacticals.pressurized_pod.named": "加压封装弹 [%s]",
+  "stat.createpneumatictacticals.feed_type": "供弹类型",
+  "stat.createpneumatictacticals.clip_capacity": "弹容量",
+  "stat.createpneumatictacticals.supply_type": "供气类型",
+  "stat.createpneumatictacticals.hg_slots": "可用槽位",
+  "stat.createpneumatictacticals.hg_positions": "兼容槽位",
+  "feed_type.createpneumatictacticals.magazine": "弹匣",
+  "feed_type.createpneumatictacticals.round": "整装弹",
+  "feed_type.createpneumatictacticals.backpack": "背包供弹",
+  "supply_type.createpneumatictacticals.cartridge": "整装气瓶",
+  "supply_type.createpneumatictacticals.internal_tank": "内置气罐",
+  "supply_type.createpneumatictacticals.backpack_tank": "背包气罐"
 }

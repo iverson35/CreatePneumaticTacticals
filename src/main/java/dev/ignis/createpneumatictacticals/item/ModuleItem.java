@@ -127,6 +127,39 @@ public class ModuleItem extends Item implements GeoItem {
                             + def.gunType.getSerializedName()))
                     .withStyle(ChatFormatting.YELLOW));
         }
+        // type-specific lines: feed type + capacity, supply type,
+        // handguard slots, attachment mount positions
+        if (def.type == dev.ignis.createpneumatictacticals.module.ModuleType.FEED
+                && def.feedType != null) {
+            var line = Component.translatable("stat.createpneumatictacticals.feed_type")
+                    .append(": ")
+                    .append(Component.translatable("feed_type.createpneumatictacticals."
+                            + def.feedType.getSerializedName()));
+            if (def.clipSize > 0) {
+                line.append(Component.literal("  (")
+                        .append(Component.translatable("stat.createpneumatictacticals.clip_capacity"))
+                        .append(": " + def.clipSize + ")"));
+            }
+            tooltip.add(line.withStyle(ChatFormatting.YELLOW));
+        }
+        if (def.type == dev.ignis.createpneumatictacticals.module.ModuleType.SUPPLY
+                && def.supplyType != null) {
+            tooltip.add(Component.translatable("stat.createpneumatictacticals.supply_type")
+                    .append(": ")
+                    .append(Component.translatable("supply_type.createpneumatictacticals."
+                            + def.supplyType.getSerializedName()))
+                    .withStyle(ChatFormatting.YELLOW));
+        }
+        if (def.type == dev.ignis.createpneumatictacticals.module.ModuleType.HANDGUARD
+                && !def.attachmentPoints.isEmpty()) {
+            tooltip.add(positionLine("stat.createpneumatictacticals.hg_slots",
+                    def.attachmentPoints).withStyle(ChatFormatting.YELLOW));
+        }
+        if (def.type == dev.ignis.createpneumatictacticals.module.ModuleType.HANDGUARD_ATTACHMENT
+                && !def.positions.isEmpty()) {
+            tooltip.add(positionLine("stat.createpneumatictacticals.hg_positions",
+                    def.positions).withStyle(ChatFormatting.YELLOW));
+        }
         addStatLines(tooltip, Map.of(
                 "reload_speed", def.reloadSpeed,
                 "damage_multiplier", def.damageMultiplier,
@@ -146,6 +179,19 @@ public class ModuleItem extends Item implements GeoItem {
      * negative modifier is the improvement.
      */
     private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of("recoil_multiplier");
+
+    /** "label: (top) (bottom) ..." - position list line */
+    private static net.minecraft.network.chat.MutableComponent positionLine(String labelKey,
+            java.util.List<dev.ignis.createpneumatictacticals.module.HandguardPosition> positions) {
+        net.minecraft.network.chat.MutableComponent line =
+                Component.translatable(labelKey).append(": ");
+        for (int i = 0; i < positions.size(); i++) {
+            if (i > 0) line.append(" ");
+            line.append("(").append(Component.translatable("hg_pos.createpneumatictacticals."
+                    + positions.get(i).getSerializedName())).append(")");
+        }
+        return line;
+    }
 
     private static void addStatLines(List<Component> tooltip, Map<String, Double> stats) {
         for (Map.Entry<String, Double> e : stats.entrySet()) {
