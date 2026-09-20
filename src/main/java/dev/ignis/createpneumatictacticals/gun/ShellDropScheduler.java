@@ -104,6 +104,14 @@ public final class ShellDropScheduler {
         // (void/large cavern) — silently drop it
     }
 
+    /** server stop: drop everything still queued — the tick clock restarts
+     * on the next boot, so old absolute-tick entries would either misfire
+     * against a fresh clock or linger forever */
+    @SubscribeEvent
+    public static void onServerStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
+        QUEUE.clear();
+    }
+
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
