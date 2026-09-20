@@ -52,6 +52,10 @@ public final class ClientGunInput {
     private static boolean reloadEmpty = false;
     private static long reloadEndMs = 0;
     private static long reloadBatchMs = 0;
+    /** empty reload: wall-clock ms when the bolt segment starts — the
+     * third-person RELOADING_EMPTY pose flips here so the arm out-phase
+     * (up-swing + tap) aligns WITH the bolt instead of playing after it */
+    private static long reloadBoltStartMs = 0;
     private static int reloadBatch = 0;
     private static ItemStack reloadingGun = ItemStack.EMPTY;
 
@@ -173,7 +177,13 @@ public final class ClientGunInput {
         dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose pose;
         if (!holdingGun) {
             pose = dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.HIP;
-        } else if (reloading) {
+        } else if (reloading && !(reloadEmpty
+                && System.currentTimeMillis() >= reloadBoltStartMs)) {
+            // the RELOADING* pose covers the magazine swap only. On an empty
+            // reload it must LEAVE when the bolt segment starts, so the
+            // observer's ReloadArmAnimation out-phase (up-swing, then the
+            // bolt-rack tap) plays WITH the bolt — falling through to the
+            // aim/ready branches below while the bolt still animates
             pose = reloadEmpty
                     ? dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING_EMPTY
                     : dev.ignis.createpneumatictacticals.network.PoseBroadcastPacket.Pose.RELOADING;
@@ -348,6 +358,9 @@ public final class ClientGunInput {
         reloadBatchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, reloadRoundMode, empty, stats.reloadSpeed);
         reloadEndMs = System.currentTimeMillis() + reloadBatchMs;
+        reloadBoltStartMs = empty ? System.currentTimeMillis()
+                + dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                        .reloadPhaseMs(gun, reloadRoundMode, stats.reloadSpeed) : 0;
         reloadBatch = reloadRoundMode ? Math.max(1, stats.feed.loadAmount) : stats.feed.clipSize;
         reloadingGun = gun;
         reloading = true;

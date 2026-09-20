@@ -23,6 +23,13 @@ public final class GunAnimTiming {
      * Duration of one reload batch in milliseconds. Round mode: one batch =
      * one reload_round animation. Empty magazine appends the bolt cycle.
      */
+    /** reload PHASE only (no bolt, no bolt transition) — when the third-person
+     * choreography should start its up-swing, aligned with the bolt start */
+    public static long reloadPhaseMs(ItemStack gun, boolean round, double reloadSpeed) {
+        double ticks = animLengthTicks(gun, round ? "reload_round" : "reload", 20);
+        return (long) (ticks * 50 / Math.max(0.1, reloadSpeed));
+    }
+
     public static long reloadBatchMs(ItemStack gun, boolean round, boolean empty, double reloadSpeed) {
         double ticks = animLengthTicks(gun, round ? "reload_round" : "reload",
                 round ? FALLBACK_ROUND_TICKS : FALLBACK_RELOAD_TICKS);
