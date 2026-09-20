@@ -31,7 +31,22 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
         } else if (flip) {
             poseStack.mulPose(Axis.ZP.rotationDegrees(180));
         }
-        super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
+        // standalone module items never animate: their baked model's bones are
+        // SHARED with the on-gun pass (same geo path = same GeckoLib cache
+        // entry), so a gun's reload/fire animation playing on those bones
+        // otherwise leaks into the inventory icon / held item. Draw at rest,
+        // then restore — restoring (not re-resetting) matters: a leftover
+        // reset would leak the rest pose into the same-frame world render
+        // (GunModulesLayer uses this exact snapshot pattern for GUI guns).
+        ((ModuleGeoModel) getGeoModel()).getBakedModel(getGeoModel().getModelResource(animatable));
+        java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
+                GunAnimations.snapshotBones(getGeoModel());
+        GunAnimations.resetToRestPose(getGeoModel());
+        try {
+            super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
+        } finally {
+            GunAnimations.restoreBones(saved);
+        }
     }
 
     /**
