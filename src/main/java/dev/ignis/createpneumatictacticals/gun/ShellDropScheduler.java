@@ -120,7 +120,7 @@ public final class ShellDropScheduler {
         while (!QUEUE.isEmpty() && QUEUE.peek().atTick <= QUEUE.peek().level.getGameTime()) {
             Pending p = QUEUE.poll();
             p.level.playSound(null, p.at.x, p.at.y, p.at.z,
-                    ModSoundEvents.SHELL_DROP.get(), SoundSource.PLAYERS, 0.7f, 1.0f);
+                    ModSoundEvents.SHELL_DROP.get(), SoundSource.PLAYERS, 0.35f, 1.0f);
             // shard puff at the landing spot (glass-break look, a few pieces)
             p.level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
                             net.minecraft.core.particles.ParticleTypes.BLOCK,
