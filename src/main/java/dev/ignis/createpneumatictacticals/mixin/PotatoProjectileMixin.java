@@ -51,6 +51,9 @@ import java.util.List;
  * <li>per-tick exterior ballistics: the gun's aggregated gravity/drag scales
  * (cpt_gravity/cpt_drag) rescale the ammo type's own values, so attachments
  * flatten or steepen the drop</li>
+ * <li>10 s fallback lifetime: a gun shot that never hits anything is removed
+ * (detonating first when the ammo is explosive), so stray projectiles cannot
+ * pile up</li>
  * </ul>
  * Plain potato-cannon projectiles keep Create's behavior untouched.
  * Traveled distance / reflect count are mixin instance state: not persisted
@@ -99,6 +102,28 @@ public abstract class PotatoProjectileMixin {
             if (ext.affectRadius > 0) cpt$explode(self, pos, ext);
             self.kill();
         }
+    }
+
+    // --- fallback lifetime -----------------------------------------------------
+
+    /**
+     * 10 s safety net for gun shots that never hit anything. Works off vanilla
+     * {@code tickCount}, which the level bumps right before each entity tick,
+     * so the count is exact and costs no extra state; it is NOT persisted in
+     * NBT, so reloading a chunk restarts it - a bullet parked in an unloaded
+     * chunk is not ticking anyway and expires 10 s after a player returns.
+     * Explosive ammo detonates, mirroring the range self-destruct.
+     */
+    private static final int cpt$LIFETIME_TICKS = 200;
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void createpneumatictacticals$lifetime(CallbackInfo ci) {
+        PotatoProjectileEntity self = cpt$self();
+        if (self.level().isClientSide() || !cpt$isGunShot(self)) return;
+        if (self.tickCount < cpt$LIFETIME_TICKS) return;
+        AmmoExtension ext = cpt$ext(self);
+        if (ext.affectRadius > 0) cpt$explode(self, self.position(), ext);
+        self.kill();
     }
 
     // --- exterior ballistics (attachment gravity/drag) ------------------------
