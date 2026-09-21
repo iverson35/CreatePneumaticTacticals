@@ -1,6 +1,8 @@
 package dev.ignis.createpneumatictacticals.gun;
 
+import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
+import dev.ignis.createpneumatictacticals.module.ModuleRoll;
 import net.minecraft.util.Mth;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import org.jetbrains.annotations.Nullable;
@@ -23,8 +25,8 @@ public final class GunStats {
      * vanilla quantizes both velocity channels per axis at +-3.9, so the true
      * launch velocity is shipped in the spawn payload (cpt_vel_*) and the
      * clamped motion sync is refused by the client replica (EntityMotionMixin).
-     * Beyond the server-side effect on time-of-flight and effective range
-     * (cpt_bspeed), bulletSpeed therefore drives the real visual speed too.
+     * It buys time-of-flight only: ammo reach is the ammo's own absolute
+     * effective_range and never scales with the gun.
      */
     public double bulletSpeed = 1.0;
     /**
@@ -82,34 +84,32 @@ public final class GunStats {
 
     /** aggregates singles + position-bound handguard attachments from the gun stack */
     public static GunStats ofGun(net.minecraft.world.item.ItemStack stack) {
-        return of(GunNbt.readModules(stack), GunNbt.readHandguardAttachments(stack).values());
+        return of(GunNbt.readModules(stack), GunNbt.readHandguardAttachments(stack),
+                GunNbt.readModuleRolls(stack));
     }
 
     public static GunStats of(Map<ModuleType, ModuleDefinition> installed) {
-        return of(installed, java.util.List.of());
+        return of(installed, java.util.Map.of(), java.util.Map.of());
     }
 
+    /**
+     * @param rolls per-slot manufacturing rolls, keyed by the same slot keys
+     *              the Modules tag uses (module type name / hg_&lt;position&gt;);
+     *              a missing entry means the module was never rolled
+     */
     public static GunStats of(Map<ModuleType, ModuleDefinition> installed,
-                              java.util.Collection<ModuleDefinition> extras) {
+                              Map<HandguardPosition, ModuleDefinition> extras,
+                              Map<String, net.minecraft.nbt.CompoundTag> rolls) {
         GunStats s = new GunStats();
-        java.util.List<ModuleDefinition> all = new java.util.ArrayList<>(installed.values());
-        all.addAll(extras);
         java.util.Set<ModuleDefinition> counted = new java.util.HashSet<>();
-        for (ModuleDefinition def : all) {
+        for (Map.Entry<ModuleType, ModuleDefinition> e : installed.entrySet()) {
             // unique modules stack no stats beyond the first copy
-            if (def.unique && !counted.add(def)) continue;
-            s.reloadSpeed += def.reloadSpeed;
-            s.damageMultiplier += def.damageMultiplier;
-            s.fireRateMultiplier += def.fireRateMultiplier;
-            s.hipfireAccuracyMultiplier += def.hipfireAccuracyMultiplier;
-            s.ergonomics += def.ergonomics;
-            s.bulletSpeed += def.bulletSpeed;
-            s.recoilVerticalMultiplier += def.recoilVerticalMultiplier;
-            s.recoilHorizontalMultiplier += def.recoilHorizontalMultiplier;
-            s.recoilRecovery += def.recoilRecovery;
-            s.gravityMultiplier += def.gravityMultiplier;
-            s.dragMultiplier += def.dragMultiplier;
-            s.gasSuppression += def.gasSuppression;
+            if (e.getValue().unique && !counted.add(e.getValue())) continue;
+            addRolled(s, e.getValue(), rolls.get(e.getKey().getSerializedName()));
+        }
+        for (Map.Entry<HandguardPosition, ModuleDefinition> e : extras.entrySet()) {
+            if (e.getValue().unique && !counted.add(e.getValue())) continue;
+            addRolled(s, e.getValue(), rolls.get(e.getKey().slotKey()));
         }
         s.receiver = installed.get(ModuleType.RECEIVER);
         s.feed = installed.get(ModuleType.FEED);
@@ -124,6 +124,23 @@ public final class GunStats {
         }
         clampAll(s);
         return s;
+    }
+
+    /** adds one module's stats, scaling the rollable ones by its roll fractions */
+    private static void addRolled(GunStats s, ModuleDefinition def,
+                                  @Nullable net.minecraft.nbt.CompoundTag rolls) {
+        s.reloadSpeed += ModuleRoll.value(def, ModuleRoll.Attr.RELOAD_SPEED, rolls);
+        s.damageMultiplier += def.damageMultiplier;              // never rolled
+        s.fireRateMultiplier += def.fireRateMultiplier;          // never rolled
+        s.hipfireAccuracyMultiplier += ModuleRoll.value(def, ModuleRoll.Attr.HIPFIRE_ACCURACY, rolls);
+        s.ergonomics += ModuleRoll.value(def, ModuleRoll.Attr.ERGONOMICS, rolls);
+        s.bulletSpeed += def.bulletSpeed;                        // never rolled
+        s.recoilVerticalMultiplier += ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_VERTICAL, rolls);
+        s.recoilHorizontalMultiplier += ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_HORIZONTAL, rolls);
+        s.recoilRecovery += ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_RECOVERY, rolls);
+        s.gravityMultiplier += def.gravityMultiplier;            // never rolled
+        s.dragMultiplier += def.dragMultiplier;                  // never rolled
+        s.gasSuppression += ModuleRoll.value(def, ModuleRoll.Attr.GAS_SUPPRESSION, rolls);
     }
 
     private static void clampAll(GunStats s) {

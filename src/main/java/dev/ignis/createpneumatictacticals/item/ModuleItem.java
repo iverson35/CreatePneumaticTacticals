@@ -2,6 +2,7 @@ package dev.ignis.createpneumatictacticals.item;
 
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
+import dev.ignis.createpneumatictacticals.module.ModuleRoll;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -77,6 +78,24 @@ public class ModuleItem extends Item implements GeoItem {
         } else {
             stack.getOrCreateTag().putString(TAG_MODULE_ID, id.toString());
         }
+    }
+
+    /**
+     * Manufacturing roll of this stack (fractions per rollable attribute);
+     * null when the stack carries none, which reads as the authored values.
+     */
+    @Nullable
+    public static CompoundTag getRolls(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(ModuleRoll.TAG_ROLLS, CompoundTag.TAG_COMPOUND)) return null;
+        CompoundTag rolls = tag.getCompound(ModuleRoll.TAG_ROLLS);
+        return rolls.isEmpty() ? null : rolls.copy();
+    }
+
+    /** writes the manufacturing roll onto the stack (null clears it) */
+    public static void setRolls(ItemStack stack, @Nullable CompoundTag rolls) {
+        if (rolls == null || rolls.isEmpty()) stack.removeTagKey(ModuleRoll.TAG_ROLLS);
+        else stack.getOrCreateTag().put(ModuleRoll.TAG_ROLLS, rolls.copy());
     }
 
     /**
@@ -163,19 +182,22 @@ public class ModuleItem extends Item implements GeoItem {
         // LinkedHashMap, not Map.of: past 10 pairs Map.of has no overload, and
         // its iteration order is salted per JVM run - the tooltip line order
         // would shuffle between launches.
+        // rollable attributes show their effective value (authored x roll);
+        // the rest are never rolled and keep the authored value
+        CompoundTag rolls = getRolls(stack);
         Map<String, Double> stats = new java.util.LinkedHashMap<>();
-        stats.put("reload_speed", def.reloadSpeed);
+        stats.put("reload_speed", ModuleRoll.value(def, ModuleRoll.Attr.RELOAD_SPEED, rolls));
         stats.put("damage_multiplier", def.damageMultiplier);
         stats.put("fire_rate_multiplier", def.fireRateMultiplier);
-        stats.put("hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier);
-        stats.put("ergonomics", def.ergonomics);
+        stats.put("hipfire_accuracy_multiplier", ModuleRoll.value(def, ModuleRoll.Attr.HIPFIRE_ACCURACY, rolls));
+        stats.put("ergonomics", ModuleRoll.value(def, ModuleRoll.Attr.ERGONOMICS, rolls));
         stats.put("bullet_speed", def.bulletSpeed);
-        stats.put("recoil_vertical_multiplier", def.recoilVerticalMultiplier);
-        stats.put("recoil_horizontal_multiplier", def.recoilHorizontalMultiplier);
-        stats.put("recoil_recovery", def.recoilRecovery);
+        stats.put("recoil_vertical_multiplier", ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_VERTICAL, rolls));
+        stats.put("recoil_horizontal_multiplier", ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_HORIZONTAL, rolls));
+        stats.put("recoil_recovery", ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_RECOVERY, rolls));
         stats.put("gravity_multiplier", def.gravityMultiplier);
         stats.put("drag_multiplier", def.dragMultiplier);
-        stats.put("gas_suppression", def.gasSuppression);
+        stats.put("gas_suppression", ModuleRoll.value(def, ModuleRoll.Attr.GAS_SUPPRESSION, rolls));
         addStatLines(tooltip, stats);
     }
 
@@ -248,6 +270,9 @@ public class ModuleItem extends Item implements GeoItem {
     private static String formatStat(double v) {
         if (Math.abs(v) >= 100) return String.valueOf((int) v);
         if (Math.abs(v) == Math.floor(Math.abs(v))) return String.valueOf((int) v);
+        // rolls land anywhere in 0..1 of the authored value, so sub-1 stats
+        // keep two decimals (one decimal would hide most of the variation)
+        if (Math.abs(v) < 1) return String.format("%.2f", v);
         return String.format("%.1f", v);
     }
 

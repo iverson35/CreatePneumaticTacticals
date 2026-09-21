@@ -269,9 +269,6 @@ public final class GunFireHandler {
             projectile.getPersistentData().putBoolean("cpt_gunshot", true);
             projectile.getPersistentData().putString("cpt_ammo", ammoId);
             projectile.getPersistentData().putDouble("cpt_dmg", stats.damageMultiplier);
-            // effective range = effective_range x bullet_speed; stamp it now,
-            // post-spawn velocity is polluted by drag/gravity
-            projectile.getPersistentData().putDouble("cpt_bspeed", stats.bulletSpeed);
             // exterior ballistics: consumed per tick by PotatoProjectileMixin
             // (scales the ammo type's gravity accel / air drag). Both are
             // also carried in addAdditionalSaveData so the client replica

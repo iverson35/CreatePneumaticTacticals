@@ -22,6 +22,10 @@ public class Config {
 
 
 
+    public static final ForgeConfigSpec.BooleanValue BLOOD_PARTICLES = CLIENT_BUILDER
+            .comment("Show blood on bullet hits; when false, hits spray green lily-pad sap instead")
+            .define("bloodParticles", true);
+
     public static final ForgeConfigSpec.BooleanValue HITMARKER_ENABLED = CLIENT_BUILDER
             .comment("Show hitmarker on successful hits")
             .define("hitmarkerEnabled", true);
@@ -44,6 +48,7 @@ public class Config {
 
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
+    public static boolean bloodParticles;
     public static boolean recoilViewReset;
     public static int readyDelayMs;
     public static boolean hitmarkerEnabled;
@@ -56,6 +61,7 @@ public class Config {
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == CLIENT_SPEC) {
+            bloodParticles = BLOOD_PARTICLES.get();
             recoilViewReset = RECOIL_VIEW_RESET.get();
             readyDelayMs = READY_DELAY_MS.get();
             hitmarkerEnabled = HITMARKER_ENABLED.get();

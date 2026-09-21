@@ -55,6 +55,11 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
 
     static AmmoExtension parse(ResourceLocation id, JsonObject json) {
         AmmoExtension ext = new AmmoExtension();
+        // built-in preset first (our design numbers for Create's roster, see
+        // BuiltinAmmo); every read below lets the datapack JSON override it
+        // field by field, so a pack entry for the same id still wins
+        BuiltinAmmo.Builder preset = BuiltinAmmo.preset(id.toString());
+        if (preset != null) preset.applyTo(ext);
         ext.affectRadius = optDouble(json, "affect_radius", ext.affectRadius);
         ext.explosionKnockback = optDouble(json, "explosion_knockback", ext.explosionKnockback);
         ext.explosionDamage = optDouble(json, "explosion_damage", ext.explosionDamage);
@@ -62,32 +67,23 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         if (json.has("max_reflect") || json.has("speed_decay")) {
             ext.maxReflect = (int) optDouble(json, "max_reflect", 10);
             ext.speedDecay = optDouble(json, "speed_decay", 0.5);
-        } else {
-            // Create's own type JSONs never carry bounce keys, so the built-in
-            // table supplies the ammo tuned by hand (see AmmoExtension)
-            AmmoExtension.Bounce bounce = AmmoExtension.builtinBounce(id.toString());
-            if (bounce != null) {
-                ext.maxReflect = bounce.maxReflect();
-                ext.speedDecay = bounce.speedDecay();
-            }
         }
         if (ext.maxReflect > 0) {
             LOGGER.info("Ammo {} bounces: max_reflect={} speed_decay={}", id, ext.maxReflect,
                     ext.speedDecay);
         }
+        // damage is the one Create-native key the built-in table overrides
+        // (Create ships damage for most types, and a plain JSON-wins read would
+        // clobber the table); unlisted ammo still reads the JSON as before
+        if (preset == null || !preset.hasDamage()) {
+            ext.damage = optDouble(json, "damage", ext.damage);
+        }
         ext.effectiveRange = optDouble(json, "effective_range", ext.effectiveRange);
         ext.damageFalloffRate = optDouble(json, "damage_falloff_rate", ext.damageFalloffRate);
-        ext.damage = optDouble(json, "damage", ext.damage);
         ext.spread = optDouble(json, "spread", ext.spread);
         ext.headshotMultiplier = optDouble(json, "headshot_multiplier", ext.headshotMultiplier);
         if (json.has("gun_type")) {
             ext.gunType = GunType.byName(json.get("gun_type").getAsString(), ext.gunType);
-        } else {
-            // Create's own type jsons carry no gun_type; without this the
-            // loaded entry (default LIGHT) shadows the built-in caliber map
-            // in AmmoExtension.get and medium/heavy receivers match nothing
-            GunType builtin = AmmoExtension.builtinCaliber(id.toString());
-            if (builtin != null) ext.gunType = builtin;
         }
         if (json.has("effects")) {
             JsonObject eff = json.getAsJsonObject("effects");

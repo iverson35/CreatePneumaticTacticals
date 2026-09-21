@@ -4,6 +4,7 @@ import dev.ignis.createpneumatictacticals.block.entity.ModuleWorkbenchBlockEntit
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
+import dev.ignis.createpneumatictacticals.module.ModuleRoll;
 import dev.ignis.createpneumatictacticals.recipe.ModRecipes;
 import dev.ignis.createpneumatictacticals.recipe.ModuleCraftingRecipe;
 import net.minecraft.nbt.CompoundTag;
@@ -158,6 +159,12 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
             consumeIngredients(player, recipe);
         }
         ItemStack result = recipe.resultStack();
+        // manufacturing roll: stats are randomized per craft (ModuleRoll);
+        // the stack keeps the fractions so the gun inherits them on install
+        ModuleDefinition def = ModuleManager.get(recipe.getModuleId());
+        if (def != null) {
+            ModuleItem.setRolls(result, ModuleRoll.toTag(ModuleRoll.roll(def, player.getRandom())));
+        }
         if (!player.getInventory().add(result)) {
             player.drop(result, false);
         }

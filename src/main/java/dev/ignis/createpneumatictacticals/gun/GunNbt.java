@@ -30,6 +30,8 @@ import java.util.Map;
 public final class GunNbt {
 
     public static final String KEY_MODULES = "Modules";
+    /** per-slot roll fractions of the installed modules: slotKey -> ModuleRoll tag */
+    public static final String KEY_MODULE_ROLLS = "ModuleRolls";
     public static final String KEY_AMMO = "Ammo";
     public static final String KEY_AMMO_COUNT = "AmmoCount";
     /** ammo selected while the magazine still held rounds: applied at the next reload */
@@ -85,6 +87,44 @@ public final class GunNbt {
             tag.putString(e.getKey().slotKey(), e.getValue().id.toString());
         }
         root(stack).put(KEY_MODULES, tag);
+        pruneModuleRolls(stack, tag);
+    }
+
+    /** drops roll data whose slot no longer exists (keeps the two tags in step) */
+    private static void pruneModuleRolls(ItemStack stack, CompoundTag modules) {
+        CompoundTag root = root(stack);
+        if (!root.contains(KEY_MODULE_ROLLS, Tag.TAG_COMPOUND)) return;
+        CompoundTag old = root.getCompound(KEY_MODULE_ROLLS);
+        CompoundTag kept = new CompoundTag();
+        for (String key : old.getAllKeys()) {
+            if (modules.contains(key)) kept.put(key, old.getCompound(key));
+        }
+        if (kept.isEmpty()) root.remove(KEY_MODULE_ROLLS);
+        else root.put(KEY_MODULE_ROLLS, kept);
+    }
+
+    /** per-slot roll fractions of the installed modules (empty when none) */
+    public static Map<String, CompoundTag> readModuleRolls(ItemStack stack) {
+        Map<String, CompoundTag> out = new java.util.HashMap<>();
+        CompoundTag root = root(stack);
+        if (!root.contains(KEY_MODULE_ROLLS, Tag.TAG_COMPOUND)) return out;
+        CompoundTag all = root.getCompound(KEY_MODULE_ROLLS);
+        for (String key : all.getAllKeys()) {
+            CompoundTag rolls = all.getCompound(key);
+            if (!rolls.isEmpty()) out.put(key, rolls.copy());
+        }
+        return out;
+    }
+
+    /** writes (or clears, with null) one slot's roll fractions */
+    public static void setModuleRolls(ItemStack stack, String slotKey, @Nullable CompoundTag rolls) {
+        CompoundTag root = root(stack);
+        CompoundTag all = root.contains(KEY_MODULE_ROLLS, Tag.TAG_COMPOUND)
+                ? root.getCompound(KEY_MODULE_ROLLS).copy() : new CompoundTag();
+        if (rolls == null || rolls.isEmpty()) all.remove(slotKey);
+        else all.put(slotKey, rolls.copy());
+        if (all.isEmpty()) root.remove(KEY_MODULE_ROLLS);
+        else root.put(KEY_MODULE_ROLLS, all);
     }
 
     private static CompoundTag modulesTag(ItemStack stack) {

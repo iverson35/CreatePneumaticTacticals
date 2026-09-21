@@ -5,6 +5,7 @@ import com.simibubi.create.content.equipment.potatoCannon.PotatoProjectileEntity
 import com.simibubi.create.foundation.damageTypes.CreateDamageSources;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.network.CptNetwork;
+import dev.ignis.createpneumatictacticals.network.HitBloodPacket;
 import dev.ignis.createpneumatictacticals.network.HitConfirmPacket;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -14,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.damagesource.DamageSource;
@@ -38,6 +40,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Gun-fired projectile runtime. Projectiles spawned by GunFireHandler carry
@@ -111,8 +114,10 @@ public abstract class PotatoProjectileMixin {
         if (cpt$lastPos != null) cpt$traveled += pos.distanceTo(cpt$lastPos);
         cpt$lastPos = pos;
         AmmoExtension ext = cpt$ext(self);
-        if (ext.damageFalloffRate > 0 && cpt$damageAt(self, ext, cpt$baseDamage(self, ext)) <= 0) {
-            // damage fell to zero: detonate once if explosive, then die
+        double base = cpt$baseDamage(self, ext);
+        // damage fell to zero: detonate once if explosive, then die. The
+        // derived rate counts too, not just an authored damage_falloff_rate.
+        if (base > 0 && cpt$damageAt(ext, base) <= 0) {
             if (ext.affectRadius > 0) cpt$explode(self, pos, ext);
             self.kill();
         }
@@ -291,9 +296,9 @@ public abstract class PotatoProjectileMixin {
         Entity owner = self.getOwner();
         PotatoCannonProjectileType type = self.getProjectileType();
 
-        double damage = cpt$damageAt(self, ext, cpt$baseDamage(self, ext))
+        double damage = cpt$damageAt(ext, cpt$baseDamage(self, ext))
                 * self.getPersistentData().getDouble("cpt_dmg");
-        boolean headshot = target instanceof LivingEntity living && cpt$isHeadshot(living, hit);
+        boolean headshot = target instanceof LivingEntity living && cpt$isHeadshot(living);
         if (headshot) damage *= ext.headshotMultiplier;
 
         DamageSource source = CreateDamageSources.potatoCannon(level, self, owner);
@@ -314,6 +319,7 @@ public abstract class PotatoProjectileMixin {
             if (owner instanceof ServerPlayer sp) {
                 CptNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sp), new HitConfirmPacket());
             }
+            cpt$sprayBlood(living, damage, headshot);
         }
         if (ext.affectRadius > 0) cpt$explode(self, hit, ext);
         self.kill();
@@ -396,17 +402,106 @@ public abstract class PotatoProjectileMixin {
     // --- shared bits ------------------------------------------------------------
 
     /**
-     * Head region per plan_v2 (from pointblank's HitScan.isHeadshot): the top
-     * slab of the bounding box starting at {@code height - width x 0.12},
-     * expanded horizontally by 0.301 on each side.
+     * Head region: the top slab of the bounding box, twice as deep as the gap
+     * between eye level and the crown ({@code height - eyeHeight}) - the body
+     * above the eyes counts double, so aiming at the eyes lands mid-band. The
+     * slab is dropped entirely when it would cover half the creature or more
+     * (spider: height 0.9 with eyes at 0.65 would be 56% head) or when the
+     * eyes sit at or above the crown.
      */
     @Unique
-    private static boolean cpt$isHeadshot(LivingEntity entity, Vec3 hit) {
+    private boolean cpt$isHeadshot(LivingEntity entity) {
         AABB bb = entity.getBoundingBox();
-        double headStart = bb.minY + bb.getYsize() - bb.getXsize() * 0.12;
-        return hit.y >= headStart && hit.y <= bb.maxY
-                && hit.x >= bb.minX - 0.301 && hit.x <= bb.maxX + 0.301
-                && hit.z >= bb.minZ - 0.301 && hit.z <= bb.maxZ + 0.301;
+        double height = bb.getYsize();
+        double headDepth = (height - entity.getEyeHeight()) * 2;
+        if (headDepth <= 0 || headDepth * 2 >= height) return false;
+        double y = cpt$hitPoint(bb).y;
+        return y >= bb.maxY - headDepth && y <= bb.maxY;
+    }
+
+    /**
+     * Point at which the round met the target box. The vanilla entity test
+     * hands back an EntityHitResult whose location is the ENTITY's own position
+     * (feet) whenever the projectile's tick began inside the inflated box - the
+     * normal case at gun speeds, and why the raw hit.y read as the ground - so
+     * both the hit height and the blood spray come from the projectile's own
+     * path instead.
+     *
+     * <p>The segment is backed up by more than the box diagonal before the
+     * clip, because AABB.clip only reports crossings at t &gt; 0: a segment that
+     * STARTS inside the box reports nothing at all. That is the point-blank
+     * case - muzzle already inside the inflated box, which the vanilla test
+     * still resolves as a hit through its own shortcut - and without the
+     * extension the spray would come off the gun instead of the target.
+     * Backed up that far, the start is provably outside, so the crossing it
+     * reports is the face the round came in through.
+     *
+     * <p>Grazes count at the box surface: the vanilla test inflates the target
+     * by 0.3, so a shot can land without touching the box.
+     */
+    @Unique
+    private Vec3 cpt$hitPoint(AABB box) {
+        PotatoProjectileEntity self = cpt$self();
+        Vec3 pos = self.position();
+        Vec3 dir = cpt$flightDir(self);
+        // Walk the very step the hit test used. AbstractHurtingProjectile.tick
+        // runs onHit BEFORE its setPos, so position() is still the tick's start
+        // - one full step short of the target at gun speeds (the vanilla test
+        // reaches ahead with getDeltaMovement). Reading the point off position()
+        // alone is what put the spray at the muzzle up close and a step short at
+        // range. Both ends are padded by more than the box diagonal because
+        // AABB.clip only reports crossings at t > 0: a segment that STARTS
+        // inside the box reports nothing at all.
+        double reach = Math.sqrt(box.getXsize() * box.getXsize() + box.getYsize() * box.getYsize()
+                + box.getZsize() * box.getZsize()) + 1.0;
+        Vec3 from = pos.subtract(dir.scale(reach));
+        Vec3 to = pos.add(self.getDeltaMovement()).add(dir.scale(reach));
+        Optional<Vec3> hit = box.clip(from, to);
+        if (hit.isEmpty()) hit = box.inflate(0.3).clip(from, to);
+        if (hit.isPresent()) {
+            Vec3 p = hit.get();
+            return new Vec3(p.x, Mth.clamp(p.y, box.minY, box.maxY), p.z);
+        }
+        return pos;
+    }
+
+    /**
+     * Direction the round is travelling. Velocity first: the hit is resolved
+     * BEFORE the projectile moves this tick, so its position still equals the
+     * tick's start and the position step is zero at that moment.
+     */
+    @Unique
+    private Vec3 cpt$flightDir(PotatoProjectileEntity self) {
+        Vec3 v = self.getDeltaMovement();
+        if (v.lengthSqr() > 1.0E-6) return v.normalize();
+        if (cpt$lastPos != null) {
+            Vec3 step = self.position().subtract(cpt$lastPos);
+            if (step.lengthSqr() > 1.0E-6) return step.normalize();
+        }
+        return new Vec3(0.0, 1.0, 0.0);
+    }
+
+    /**
+     * Blood on a landed hit: a forward cone down the flight path plus a small
+     * backward sputter, both rolled client side (see HitBlood) - the server
+     * ships point, direction and drop count only, never per-particle packets.
+     * The count grows with the damage actually dealt, so a headshot (multiplier
+     * applied first) sprays noticeably more than the same round to the chest.
+     * Only players within HitBloodPacket.RADIUS blocks of the impact are told;
+     * nobody further out can see the spray anyway.
+     */
+    @Unique
+    private void cpt$sprayBlood(LivingEntity target, double damage, boolean headshot) {
+        if (!(cpt$self().level() instanceof ServerLevel serverLevel)) return;
+        Vec3 point = cpt$hitPoint(target.getBoundingBox());
+        int drops = Mth.clamp((int) Math.round(headshot ? 5 + damage * 1.5 : 4 + damage * 1.2),
+                headshot ? 5 : 4, headshot ? 36 : 28);
+        HitBloodPacket packet = new HitBloodPacket(point, cpt$flightDir(cpt$self()), drops);
+        for (ServerPlayer sp : serverLevel.players()) {
+            if (sp.distanceToSqr(point) <= HitBloodPacket.RADIUS * HitBloodPacket.RADIUS) {
+                CptNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sp), packet);
+            }
+        }
     }
 
     /**
@@ -458,18 +553,20 @@ public abstract class PotatoProjectileMixin {
     }
 
     /**
-     * Damage after range falloff. Effective range scales with the gun's
-     * bullet_speed (stamped as cpt_bspeed at spawn - post-spawn velocity is
-     * polluted by drag/gravity); beyond it, damage drops by
-     * damage_falloff_rate per block down to zero.
+     * Damage after range falloff. The range is absolute: effective_range is
+     * how far the ammo keeps full damage, whatever gun fired it (bullet_speed
+     * buys time-of-flight and a flatter drop, never reach - the projectile
+     * speed clamp is bypassed by EntityMotionMixin, so a fast gun really does
+     * arrive sooner). Beyond the range damage drops per block until it reaches
+     * zero: at damage_falloff_rate when the ammo authors one, else at a rate
+     * that fades the shot out by twice the falloff start.
      */
     @Unique
-    private double cpt$damageAt(PotatoProjectileEntity self, AmmoExtension ext, double base) {
-        double bspeed = self.getPersistentData().getDouble("cpt_bspeed");
-        if (bspeed <= 0) bspeed = 1;
-        double range = ext.effectiveRange * bspeed;
-        if (cpt$traveled <= range || ext.damageFalloffRate <= 0) return base;
-        return Math.max(0, base - (cpt$traveled - range) * ext.damageFalloffRate);
+    private double cpt$damageAt(AmmoExtension ext, double base) {
+        double range = ext.effectiveRange;
+        if (cpt$traveled <= range) return base;
+        double rate = ext.damageFalloffRate > 0 ? ext.damageFalloffRate : base / range;
+        return Math.max(0, base - (cpt$traveled - range) * rate);
     }
 
     /** fraction of sampled body points visible from the explosion center */

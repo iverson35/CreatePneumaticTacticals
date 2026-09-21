@@ -70,6 +70,10 @@ public final class WorkbenchAssembler {
         initial.put(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER, receiverDef);
         dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(newGun, initial,
                 new EnumMap<>(dev.ignis.createpneumatictacticals.module.HandguardPosition.class));
+        // the receiver item is consumed here: its roll has to move onto the gun
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setModuleRolls(newGun,
+                dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER.getSerializedName(),
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getRolls(held));
         if (receiverDef.gunName != null) {
             newGun.setHoverName(net.minecraft.network.chat.Component.translatable(receiverDef.gunName));
         }
@@ -133,6 +137,12 @@ public final class WorkbenchAssembler {
             dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(gun, installed,
                     dev.ignis.createpneumatictacticals.gun.GunNbt.readHandguardAttachments(gun));
         }
+        // the stack roll travels with the module into the gun NBT
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setModuleRolls(gun,
+                def.type == dev.ignis.createpneumatictacticals.module.ModuleType.HANDGUARD_ATTACHMENT
+                        ? handguardPosFromMount(mountId).slotKey()
+                        : def.type.getSerializedName(),
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getRolls(held));
         // item-as-dye-authority: undyed held item clears the gun's stale
         // copy; dyed item overwrites it (mirrors the old menu sync)
         int[] itemColors = dev.ignis.createpneumatictacticals.item.ModuleItem.getDyeColors(held);
@@ -161,14 +171,15 @@ public final class WorkbenchAssembler {
                 dev.ignis.createpneumatictacticals.module.ModuleDefinition> installed =
                 dev.ignis.createpneumatictacticals.gun.GunNbt.readModules(gun);
         // find and remove
-        var it = installed.entrySet().iterator();
         var removed = (dev.ignis.createpneumatictacticals.module.ModuleDefinition) null;
+        String removedKey = null;
         var atts = dev.ignis.createpneumatictacticals.gun.GunNbt.readHandguardAttachments(gun);
         boolean wasAttachment = false;
         for (var e : new java.util.ArrayList<>(atts.entrySet())) {
             if (e.getValue().id.equals(moduleId)) {
                 atts.remove(e.getKey());
                 removed = e.getValue();
+                removedKey = e.getKey().slotKey();
                 wasAttachment = true;
             }
         }
@@ -177,13 +188,19 @@ public final class WorkbenchAssembler {
                 if (e.getValue().id.equals(moduleId)) {
                     installed.remove(e.getKey());
                     removed = e.getValue();
+                    removedKey = e.getKey().getSerializedName();
                 }
             }
         }
         if (removed == null) return;
+        // rolls are keyed by the same slot keys as the Modules tag: read them
+        // before writeModules, which prunes the slots it drops
+        java.util.Map<String, net.minecraft.nbt.CompoundTag> rolls =
+                dev.ignis.createpneumatictacticals.gun.GunNbt.readModuleRolls(gun);
         dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(gun, installed, atts);
         // dye copy travels back out of the gun's NBT (item keeps its paid dye)
         ItemStack out = dev.ignis.createpneumatictacticals.item.ModuleItem.of(moduleId);
+        dev.ignis.createpneumatictacticals.item.ModuleItem.setRolls(out, rolls.get(removedKey));
         int[] gunColors = dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, moduleId);
         if (gunColors != null && gunColors.length >= 3) {
             dev.ignis.createpneumatictacticals.item.ModuleItem.setDyeColors(out, gunColors);
@@ -193,12 +210,13 @@ public final class WorkbenchAssembler {
         // the muzzle; removing the handguard drops its attachments
         var dependents = dependentsOf(removed, installed, atts);
         for (var dep : dependents) {
-            removeInternal(gun, dep);
-            ItemStack depOut = dev.ignis.createpneumatictacticals.item.ModuleItem.of(dep.id);
-            int[] depColors = dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, dep.id);
+            removeInternal(gun, dep.getValue());
+            ItemStack depOut = dev.ignis.createpneumatictacticals.item.ModuleItem.of(dep.getValue().id);
+            dev.ignis.createpneumatictacticals.item.ModuleItem.setRolls(depOut, rolls.get(dep.getKey()));
+            int[] depColors = dev.ignis.createpneumatictacticals.gun.GunNbt.getColors(gun, dep.getValue().id);
             if (depColors != null && depColors.length >= 3) {
                 dev.ignis.createpneumatictacticals.item.ModuleItem.setDyeColors(depOut, depColors);
-                dev.ignis.createpneumatictacticals.gun.GunNbt.clearColors(gun, dep.id);
+                dev.ignis.createpneumatictacticals.gun.GunNbt.clearColors(gun, dep.getValue().id);
             }
             give(player, depOut);
         }
@@ -206,22 +224,26 @@ public final class WorkbenchAssembler {
         bench.setChanged();
     }
 
-    /** modules that must leave with `removed` (installed + atts mutated) */
-    private static java.util.List<dev.ignis.createpneumatictacticals.module.ModuleDefinition>
+    /** modules that must leave with `removed` (installed + atts mutated);
+     *  each entry keeps its slot key so its roll can travel back out */
+    private static java.util.List<java.util.Map.Entry<String,
+            dev.ignis.createpneumatictacticals.module.ModuleDefinition>>
     dependentsOf(dev.ignis.createpneumatictacticals.module.ModuleDefinition removed,
                  java.util.Map<dev.ignis.createpneumatictacticals.module.ModuleType,
                          dev.ignis.createpneumatictacticals.module.ModuleDefinition> installed,
                  java.util.Map<dev.ignis.createpneumatictacticals.module.HandguardPosition,
                          dev.ignis.createpneumatictacticals.module.ModuleDefinition> atts) {
-        java.util.List<dev.ignis.createpneumatictacticals.module.ModuleDefinition> out = new java.util.ArrayList<>();
+        java.util.List<java.util.Map.Entry<String,
+                dev.ignis.createpneumatictacticals.module.ModuleDefinition>> out = new java.util.ArrayList<>();
         switch (removed.type) {
             case BARREL -> {
                 var muzzle = installed.remove(dev.ignis.createpneumatictacticals.module.ModuleType.MUZZLE);
-                if (muzzle != null) out.add(muzzle);
+                if (muzzle != null) out.add(java.util.Map.entry(
+                        dev.ignis.createpneumatictacticals.module.ModuleType.MUZZLE.getSerializedName(), muzzle));
             }
             case HANDGUARD -> {
                 for (var e : new java.util.ArrayList<>(atts.entrySet())) {
-                    out.add(e.getValue());
+                    out.add(java.util.Map.entry(e.getKey().slotKey(), e.getValue()));
                     atts.remove(e.getKey());
                 }
             }
