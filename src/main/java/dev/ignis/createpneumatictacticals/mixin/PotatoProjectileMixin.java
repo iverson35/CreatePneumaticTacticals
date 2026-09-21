@@ -82,6 +82,10 @@ public abstract class PotatoProjectileMixin {
      *  createpneumatictacticals$restoreLaunchVelocity) */
     @Unique private Vec3 cpt$spawnVel;
 
+    /** surface nudge of the last bounce, applied at the tick tail */
+    @Unique
+    private Vec3 cpt$bouncePos;
+
     @Unique
     private PotatoProjectileEntity cpt$self() {
         return (PotatoProjectileEntity) (Object) this;
@@ -246,6 +250,20 @@ public abstract class PotatoProjectileMixin {
         cpt$spawnVel = null;
     }
 
+    /**
+     * Last word of the tick for a bounce. AbstractHurtingProjectile moves the
+     * entity AFTER onHit, so the surface nudge has to be re-applied here, once
+     * vanilla and Create's own tick around it are done writing the position.
+     */
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void createpneumatictacticals$applyBounce(CallbackInfo ci) {
+        if (cpt$bouncePos == null) return;
+        PotatoProjectileEntity self = cpt$self();
+        self.setPos(cpt$bouncePos.x, cpt$bouncePos.y, cpt$bouncePos.z);
+        cpt$bouncePos = null;
+    }
+
+
     // --- entity hit: full replacement for gun shots ---------------------------
 
     @Inject(method = "onHitEntity", at = @At("HEAD"), cancellable = true)
@@ -327,10 +345,17 @@ public abstract class PotatoProjectileMixin {
             Vec3 reflected = v.subtract(n.scale(2 * v.dot(n))).scale(speedDecay);
             if (reflected.lengthSqr() > 1.0E-4) {
                 cpt$reflects++;
+                // the velocity IS honoured (the vanilla tick re-reads it after
+                // onHit), the position is not: AbstractHurtingProjectile ends the
+                // tick with setPos(getX() + delta), throwing away any setPos done
+                // here. Park the surface nudge for the tick tail instead - left
+                // as is, the projectile finishes the tick at (pre-hit position +
+                // reflected velocity), a point that disagrees with the segment it
+                // just swept, and in corners it lands inside neighbouring blocks:
+                // the next clip then starts inside a solid and the bullet flies
+                // straight through the wall.
+                cpt$bouncePos = ray.getLocation().add(n.scale(0.05));
                 self.setDeltaMovement(reflected);
-                // nudge off the surface so the next tick doesn't instantly re-hit
-                Vec3 pos = ray.getLocation().add(n.scale(0.05));
-                self.setPos(pos.x, pos.y, pos.z);
                 // the bounce must run on BOTH sides: the replica integrates its
                 // own motion, so leaving Create's handler in place here would
                 // make a bouncing bullet vanish at its first impact on screen
