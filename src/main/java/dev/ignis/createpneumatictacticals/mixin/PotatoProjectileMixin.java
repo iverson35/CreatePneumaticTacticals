@@ -8,6 +8,7 @@ import dev.ignis.createpneumatictacticals.network.CptNetwork;
 import dev.ignis.createpneumatictacticals.network.HitConfirmPacket;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -51,6 +52,10 @@ import java.util.List;
  * <li>per-tick exterior ballistics: the gun's aggregated gravity/drag scales
  * (cpt_gravity/cpt_drag) rescale the ammo type's own values, so attachments
  * flatten or steepen the drop</li>
+ * <li>launch velocity (cpt_vel_*): the vanilla channels quantize each axis at
+ * +-3.9, so the true value rides the spawn payload and the clamped motion
+ * sync is refused client-side (EntityMotionMixin) — without this, gun speeds
+ * above 3.9 blocks/tick bend toward the 45-degree diagonals</li>
  * <li>10 s fallback lifetime: a gun shot that never hits anything is removed
  * (detonating first when the ammo is explosive), so stray projectiles cannot
  * pile up</li>
@@ -71,6 +76,9 @@ public abstract class PotatoProjectileMixin {
     @Unique private double cpt$traveled;
     @Unique private int cpt$reflects;
     @Unique private Vec3 cpt$lastPos;
+    /** client spawn: true launch velocity, re-applied on the first tick (see
+     *  createpneumatictacticals$restoreLaunchVelocity) */
+    @Unique private Vec3 cpt$spawnVel;
 
     @Unique
     private PotatoProjectileEntity cpt$self() {
@@ -174,6 +182,11 @@ public abstract class PotatoProjectileMixin {
         if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
         if (data.contains("cpt_drag")) nbt.putDouble("cpt_drag", data.getDouble("cpt_drag"));
         if (data.getBoolean("cpt_gunshot")) nbt.putBoolean("cpt_gunshot", true);
+        if (data.contains("cpt_vel_x")) {
+            nbt.putDouble("cpt_vel_x", data.getDouble("cpt_vel_x"));
+            nbt.putDouble("cpt_vel_y", data.getDouble("cpt_vel_y"));
+            nbt.putDouble("cpt_vel_z", data.getDouble("cpt_vel_z"));
+        }
     }
 
     @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
@@ -182,6 +195,40 @@ public abstract class PotatoProjectileMixin {
         if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));
         if (nbt.contains("cpt_drag")) data.putDouble("cpt_drag", nbt.getDouble("cpt_drag"));
         if (nbt.getBoolean("cpt_gunshot")) data.putBoolean("cpt_gunshot", true);
+        if (nbt.contains("cpt_vel_x")) {
+            data.putDouble("cpt_vel_x", nbt.getDouble("cpt_vel_x"));
+            data.putDouble("cpt_vel_y", nbt.getDouble("cpt_vel_y"));
+            data.putDouble("cpt_vel_z", nbt.getDouble("cpt_vel_z"));
+        }
+    }
+
+    /**
+     * Client replica: the vanilla spawn packet clamps each axis to +-3.9
+     * (ClientboundAddEntityPacket), so the replica would start out slower and
+     * off-axis. Create ships the entity NBT as spawn data (writeSpawnData ->
+     * addAdditionalSaveData), so the true launch velocity rides along and is
+     * picked up here.
+     *
+     * <p>The tick re-apply is NOT redundant: Forge applies this payload first
+     * and the packet's own (clamped) velocity afterwards, so a write here is
+     * always overwritten. Verified in-game — spawn read saw before=(-3.9, ...)
+     * with cpt_vel=(-7.53, ...), and tick 0 still held the clamped value until
+     * this re-apply. tick() HEAD runs before Projectile.tick integrates the
+     * movement, so no frame is ever simulated with the truncated velocity.
+     */
+    @Inject(method = "readSpawnData", remap = false, at = @At("TAIL"))
+    private void createpneumatictacticals$captureLaunchVelocity(FriendlyByteBuf buf, CallbackInfo ci) {
+        CompoundTag data = cpt$self().getPersistentData();
+        if (!data.contains("cpt_vel_x")) return;
+        cpt$spawnVel = new Vec3(data.getDouble("cpt_vel_x"), data.getDouble("cpt_vel_y"),
+                data.getDouble("cpt_vel_z"));
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void createpneumatictacticals$applyLaunchVelocity(CallbackInfo ci) {
+        if (cpt$spawnVel == null) return;
+        cpt$self().setDeltaMovement(cpt$spawnVel);
+        cpt$spawnVel = null;
     }
 
     // --- entity hit: full replacement for gun shots ---------------------------

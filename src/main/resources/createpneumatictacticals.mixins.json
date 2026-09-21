@@ -8,6 +8,7 @@
     "PotatoProjectileMixin"
   ],
   "client": [
+    "EntityMotionMixin",
     "HumanoidModelMixin",
     "MouseHandlerMixin",
     "PotatoProjectileRendererMixin"

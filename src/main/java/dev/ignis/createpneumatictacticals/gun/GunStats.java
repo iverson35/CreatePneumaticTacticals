@@ -19,12 +19,12 @@ public final class GunStats {
     public double hipfireAccuracyMultiplier = 1.0;
     public double ergonomics = 1.0;
     /**
-     * Launch speed is 2 * ammoVelocityMultiplier * bulletSpeed, capped at
-     * 3.9 blocks/tick in GunFireHandler: vanilla motion sync clamps each axis
-     * to +-3.9 (ClientboundSetEntityMotionPacket), so anything faster gets its
-     * dominant axis truncated on the client and the visible trajectory bends
-     * toward the 45-degree diagonals. Modules pushing bulletSpeed beyond that
-     * cap only shorten time-of-flight server-side, never visual speed.
+     * Launch speed is 2 * ammoVelocityMultiplier * bulletSpeed, uncapped:
+     * vanilla quantizes both velocity channels per axis at +-3.9, so the true
+     * launch velocity is shipped in the spawn payload (cpt_vel_*) and the
+     * clamped motion sync is refused by the client replica (EntityMotionMixin).
+     * Beyond the server-side effect on time-of-flight and effective range
+     * (cpt_bspeed), bulletSpeed therefore drives the real visual speed too.
      */
     public double bulletSpeed = 1.0;
     /**

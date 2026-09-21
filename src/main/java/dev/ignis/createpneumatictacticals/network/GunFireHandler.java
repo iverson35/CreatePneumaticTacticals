@@ -206,16 +206,17 @@ public final class GunFireHandler {
             }
         }
         int pellets = Math.max(1, type.split());
-        // Vanilla motion sync (ClientboundSetEntityMotionPacket, sent both at
-        // spawn pairing and per-tick for trackDelta entities like the potato
-        // projectile) encodes each axis independently as clamp(v, -3.9, 3.9).
-        // Above 3.9 the dominant axis is truncated on the client while
-        // diagonal components (S * 0.707) stay intact, pulling the visible
-        // trajectory toward the 45-degree diagonals — a real directional
-        // artifact, not just slower bullets. Cap the launch speed so the
-        // client reproduces the true ballistics (vanilla arrows cap at ~3.0
-        // for the same reason).
-        double speed = Math.min(2 * type.velocityMultiplier() * stats.bulletSpeed, 3.9);
+        // Vanilla clamps BOTH velocity channels to +-3.9 per axis: the spawn
+        // packet (ClientboundAddEntityPacket) and the per-change motion packet
+        // (ClientboundSetEntityMotionPacket). Above that the dominant axis is
+        // truncated on the client while diagonal components (S * 0.707)
+        // survive, bending the visible trajectory toward the 45-degree
+        // diagonals, and the replica's own integration falls behind the
+        // server's. Both are countered instead of capped: the true launch
+        // velocity rides the spawn payload (cpt_vel_*) and the replica refuses
+        // the clamped motion sync (EntityMotionMixin), so the launch speed
+        // stays exact on both sides at any value.
+        double speed = 2 * type.velocityMultiplier() * stats.bulletSpeed;
         // dynamic muzzle distance from the assembled gun's Z-axis bone
         // chain (GunLength; legacy 0.5 when the pack lacks the bones)
         double muzzleDistance = dev.ignis.createpneumatictacticals.gun.GunLength.of(gun);
@@ -253,7 +254,15 @@ public final class GunFireHandler {
             // drop the anchor so the projectile's center sits exactly on the
             // eye ray through the crosshair
             projectile.setPos(launch.x, launch.y - 0.125f, launch.z);
-            projectile.setDeltaMovement(dir.scale(speed));
+            Vec3 launchVel = dir.scale(speed);
+            projectile.setDeltaMovement(launchVel);
+            // true launch velocity, mirrored into the spawn payload: the
+            // vanilla channels quantize per axis at +-3.9 (see the speed
+            // note above), so the client replica needs its own copy
+            // (PotatoProjectileMixin restores it on readSpawnData)
+            projectile.getPersistentData().putDouble("cpt_vel_x", launchVel.x);
+            projectile.getPersistentData().putDouble("cpt_vel_y", launchVel.y);
+            projectile.getPersistentData().putDouble("cpt_vel_z", launchVel.z);
             // mark gun-fired projectiles: the hit/bounce/explosion runtime
             // (PotatoProjectileMixin) keys off cpt_gunshot and reads the ammo
             // extension via cpt_ammo; cpt_dmg carries the gun's damage multiplier
