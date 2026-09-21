@@ -3,6 +3,7 @@ package dev.ignis.createpneumatictacticals.client;
 /**
  * Three-layer recoil (plan_v2 后坐力系统):
  * 1. view: pitch up + a random left/right yaw kick per shot, decays to zero
+ *    (VIEW_KICK_SCALE: the camera kick is 2x the gun's own kick)
  * 2. model: gun model kick via damped spring (consumed by renderer) —
  *    vertical-only by design: backward push + muzzle flip, no lateral kick
  * 3. screen shake: slight shake scaled by the vertical multiplier
@@ -31,6 +32,8 @@ public final class RecoilModel {
     private static final double SPRING_STIFFNESS = 300;
     private static final double SPRING_DAMPING = 20;
     private static final double MAX_DT = 0.1; // pause/hitch guard
+    /** camera-only multiplier: aim-point kick vs the raw base_recoil_* values */
+    private static final double VIEW_KICK_SCALE = 2.0;
 
     private static double pitchOffset = 0;   // degrees, positive = up
     private static double yawOffset = 0;     // degrees
@@ -64,9 +67,11 @@ public final class RecoilModel {
         // hipfire camera shake halved — full hipfire view kick was nauseating
         double vView = aiming ? vScale : vScale * 0.5;
         double hView = aiming ? hScale : hScale * 0.5;
-        pitchOffset = basePitch * vView;
+        // the camera kick alone gets doubled: the model spring below and the
+        // screen shake stay on the raw base, so the weapon does not feel stiffer
+        pitchOffset = basePitch * vView * VIEW_KICK_SCALE;
         // random-signed: held fire genuinely walks the aim left and right
-        yawOffset = (Math.random() * 2 - 1) * baseYaw * hView;
+        yawOffset = (Math.random() * 2 - 1) * baseYaw * hView * VIEW_KICK_SCALE;
         // model kick + screen shake follow the receiver's base recoil, so
         // tuning a gun's base_recoil_pitch scales the whole feel, not just
         // the view angle (constants normalized to the former fixed kick at
