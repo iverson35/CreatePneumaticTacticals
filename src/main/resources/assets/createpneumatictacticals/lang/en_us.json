@@ -38,6 +38,8 @@
   "stat.createpneumatictacticals.recoil_vertical_multiplier": "Recoil (Vert.)",
   "stat.createpneumatictacticals.recoil_horizontal_multiplier": "Recoil (Horiz.)",
   "stat.createpneumatictacticals.recoil_recovery": "Recovery",
+  "stat.createpneumatictacticals.gravity_multiplier": "Drop",
+  "stat.createpneumatictacticals.drag_multiplier": "Air Drag",
   "stat.createpneumatictacticals.gas_suppression": "Gas Suppression",
   "stat.createpneumatictacticals.aim_zoom": "Zoom",
   "stat.createpneumatictacticals.tactical_aim_zoom": "Tac Zoom",

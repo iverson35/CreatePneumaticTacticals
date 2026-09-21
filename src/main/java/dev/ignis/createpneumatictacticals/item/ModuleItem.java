@@ -160,27 +160,34 @@ public class ModuleItem extends Item implements GeoItem {
             tooltip.add(positionLine("stat.createpneumatictacticals.hg_positions",
                     def.positions).withStyle(ChatFormatting.YELLOW));
         }
-        addStatLines(tooltip, Map.of(
-                "reload_speed", def.reloadSpeed,
-                "damage_multiplier", def.damageMultiplier,
-                "fire_rate_multiplier", def.fireRateMultiplier,
-                "hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier,
-                "ergonomics", def.ergonomics,
-                "bullet_speed", def.bulletSpeed,
-                "recoil_vertical_multiplier", def.recoilVerticalMultiplier,
-                "recoil_horizontal_multiplier", def.recoilHorizontalMultiplier,
-                "recoil_recovery", def.recoilRecovery,
-                "gas_suppression", def.gasSuppression
-        ));
+        // LinkedHashMap, not Map.of: past 10 pairs Map.of has no overload, and
+        // its iteration order is salted per JVM run - the tooltip line order
+        // would shuffle between launches.
+        Map<String, Double> stats = new java.util.LinkedHashMap<>();
+        stats.put("reload_speed", def.reloadSpeed);
+        stats.put("damage_multiplier", def.damageMultiplier);
+        stats.put("fire_rate_multiplier", def.fireRateMultiplier);
+        stats.put("hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier);
+        stats.put("ergonomics", def.ergonomics);
+        stats.put("bullet_speed", def.bulletSpeed);
+        stats.put("recoil_vertical_multiplier", def.recoilVerticalMultiplier);
+        stats.put("recoil_horizontal_multiplier", def.recoilHorizontalMultiplier);
+        stats.put("recoil_recovery", def.recoilRecovery);
+        stats.put("gravity_multiplier", def.gravityMultiplier);
+        stats.put("drag_multiplier", def.dragMultiplier);
+        stats.put("gas_suppression", def.gasSuppression);
+        addStatLines(tooltip, stats);
     }
 
     /**
      * Stats where a lower value is better; everything else reads green when
-     * it increases. Both recoil multipliers scale the kick directly, so a
-     * negative modifier is the improvement.
+     * it increases. Both recoil multipliers scale the kick directly and both
+     * ballistics scales multiply gravity/drag, so a negative modifier is the
+     * improvement in all four.
      */
     private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of(
-            "recoil_vertical_multiplier", "recoil_horizontal_multiplier");
+            "recoil_vertical_multiplier", "recoil_horizontal_multiplier",
+            "gravity_multiplier", "drag_multiplier");
 
     /**
      * Box-drawing glyph for the open-slot set: each available slot draws

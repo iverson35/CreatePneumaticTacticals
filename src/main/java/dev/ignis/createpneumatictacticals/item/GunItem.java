@@ -61,6 +61,8 @@ public class GunItem extends Item {
             tooltip.add(stat(stats.ergonomics, "ergonomics"));
             tooltip.add(stat(stats.recoilVerticalMultiplier, "recoil_vertical_multiplier"));
             tooltip.add(stat(stats.recoilHorizontalMultiplier, "recoil_horizontal_multiplier"));
+            tooltip.add(stat(stats.gravityMultiplier, "gravity_multiplier"));
+            tooltip.add(stat(stats.dragMultiplier, "drag_multiplier"));
         } else {
             tooltip.add(Component.translatable("tooltip." + CreatePneumaticTacticals.MODID + ".stats_hint")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));

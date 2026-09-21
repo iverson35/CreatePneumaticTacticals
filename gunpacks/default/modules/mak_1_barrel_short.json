@@ -4,6 +4,7 @@
   "gun_type": "medium",
   "gun_properties": {
     "bullet_speed": -0.2,
+    "gravity_multiplier": 0.15,
     "ergonomics": 0.2
   },
   "module_affected": [

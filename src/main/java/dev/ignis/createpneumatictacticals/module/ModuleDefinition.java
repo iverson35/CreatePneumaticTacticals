@@ -40,7 +40,8 @@ public final class ModuleDefinition {
     /** additive modifiers, may be empty */
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
-            recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery;
+            recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery,
+            gravityMultiplier, dragMultiplier;
     /** muzzle: -5..1 gas suppression; -1 = double smoke, +1 = none */
     public final double gasSuppression;
     /**
@@ -118,6 +119,8 @@ public final class ModuleDefinition {
         this.recoilVerticalMultiplier = b.recoilVerticalMultiplier;
         this.recoilHorizontalMultiplier = b.recoilHorizontalMultiplier;
         this.recoilRecovery = b.recoilRecovery;
+        this.gravityMultiplier = b.gravityMultiplier;
+        this.dragMultiplier = b.dragMultiplier;
         this.gasSuppression = b.gasSuppression;
         this.unique = b.unique;
         this.gasGuides = b.gasGuides;
@@ -194,6 +197,8 @@ public final class ModuleDefinition {
         b.recoilVerticalMultiplier = GsonHelper.getAsDouble(props, "recoil_vertical_multiplier", 0);
         b.recoilHorizontalMultiplier = GsonHelper.getAsDouble(props, "recoil_horizontal_multiplier", 0);
         b.recoilRecovery = GsonHelper.getAsDouble(props, "recoil_recovery", 0);
+        b.gravityMultiplier = GsonHelper.getAsDouble(props, "gravity_multiplier", 0);
+        b.dragMultiplier = GsonHelper.getAsDouble(props, "drag_multiplier", 0);
         b.unique = GsonHelper.getAsBoolean(props, "unique", false);
         if (type == ModuleType.MUZZLE) {
             b.gasSuppression = net.minecraft.util.Mth.clamp(
@@ -301,7 +306,8 @@ public final class ModuleDefinition {
         private final List<Affected> affected = new ArrayList<>();
         private double reloadSpeed, damageMultiplier, fireRateMultiplier,
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
-                recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery;
+                recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery,
+                gravityMultiplier, dragMultiplier;
         private double gasSuppression;
         private boolean unique;
         private final List<GasGuide> gasGuides = new ArrayList<>();

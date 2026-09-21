@@ -263,6 +263,12 @@ public final class GunFireHandler {
             // effective range = effective_range x bullet_speed; stamp it now,
             // post-spawn velocity is polluted by drag/gravity
             projectile.getPersistentData().putDouble("cpt_bspeed", stats.bulletSpeed);
+            // exterior ballistics: consumed per tick by PotatoProjectileMixin
+            // (scales the ammo type's gravity accel / air drag). Both are
+            // also carried in addAdditionalSaveData so the client replica
+            // ticks the identical trajectory.
+            projectile.getPersistentData().putDouble("cpt_gravity", stats.gravityMultiplier);
+            projectile.getPersistentData().putDouble("cpt_drag", stats.dragMultiplier);
             projectile.setOwner(player);
             player.level().addFreshEntity(projectile);
         }

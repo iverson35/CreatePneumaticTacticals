@@ -40,6 +40,20 @@ public final class GunStats {
      */
     public double recoilHorizontalMultiplier = 1.0;
     public double recoilRecovery = 1.0;
+    /**
+     * Exterior-ballistics scales, applied per tick by PotatoProjectileMixin
+     * to the projectile's {@code -0.05 * type.gravityMultiplier()} vertical
+     * accel: base 1.0 (the ammo type's own value), additive over modules,
+     * clamped 0.1..3.0. Lower = flatter trajectory.
+     */
+    public double gravityMultiplier = 1.0;
+    /**
+     * Air-drag scale: the effective per-tick velocity retention becomes
+     * {@code 1 - (1 - type.drag()) * this}. 1.0 reproduces the ammo type
+     * exactly; lower keeps speed (and therefore range / time of flight)
+     * better. Same base/additive/clamp rules as {@link #gravityMultiplier}.
+     */
+    public double dragMultiplier = 1.0;
     /** total muzzle gas suppression, clamped -5..1; smoke = (1 - v) * base (±1 = ±100%) */
     public double gasSuppression = 0;
     public double aimZoom = 1.25;
@@ -93,6 +107,8 @@ public final class GunStats {
             s.recoilVerticalMultiplier += def.recoilVerticalMultiplier;
             s.recoilHorizontalMultiplier += def.recoilHorizontalMultiplier;
             s.recoilRecovery += def.recoilRecovery;
+            s.gravityMultiplier += def.gravityMultiplier;
+            s.dragMultiplier += def.dragMultiplier;
             s.gasSuppression += def.gasSuppression;
         }
         s.receiver = installed.get(ModuleType.RECEIVER);
@@ -123,6 +139,8 @@ public final class GunStats {
         s.recoilVerticalMultiplier = Mth.clamp(s.recoilVerticalMultiplier, 0.1, 3.0);
         s.recoilHorizontalMultiplier = Mth.clamp(s.recoilHorizontalMultiplier, 0.1, 3.0);
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);
+        s.gravityMultiplier = Mth.clamp(s.gravityMultiplier, 0.1, 3.0);
+        s.dragMultiplier = Mth.clamp(s.dragMultiplier, 0.1, 3.0);
         s.gasSuppression = Mth.clamp(s.gasSuppression, -5, 1);
     }
 

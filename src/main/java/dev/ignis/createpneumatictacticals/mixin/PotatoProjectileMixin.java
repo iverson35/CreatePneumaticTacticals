@@ -7,6 +7,7 @@ import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.network.CptNetwork;
 import dev.ignis.createpneumatictacticals.network.HitConfirmPacket;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -26,9 +27,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -45,6 +48,9 @@ import java.util.List;
  * cover-tested via LOS sampling, floored by penetrate_ratio)</li>
  * <li>block reflection with speed_decay, up to max_reflect</li>
  * <li>potion/fire effects on direct hits and in the explosion radius</li>
+ * <li>per-tick exterior ballistics: the gun's aggregated gravity/drag scales
+ * (cpt_gravity/cpt_drag) rescale the ammo type's own values, so attachments
+ * flatten or steepen the drop</li>
  * </ul>
  * Plain potato-cannon projectiles keep Create's behavior untouched.
  * Traveled distance / reflect count are mixin instance state: not persisted
@@ -52,6 +58,12 @@ import java.util.List;
  */
 @Mixin(PotatoProjectileEntity.class)
 public abstract class PotatoProjectileMixin {
+
+    /**
+     * Create's per-ammo projectile type: source of the base gravity accel and
+     * air drag that the gun's attachment scales modulate.
+     */
+    @Shadow(remap = false) protected PotatoCannonProjectileType type;
 
     @Unique private double cpt$traveled;
     @Unique private int cpt$reflects;
@@ -87,6 +99,60 @@ public abstract class PotatoProjectileMixin {
             if (ext.affectRadius > 0) cpt$explode(self, pos, ext);
             self.kill();
         }
+    }
+
+    // --- exterior ballistics (attachment gravity/drag) ------------------------
+
+    /**
+     * Rescales Create's own per-tick physics line
+     * {@code setDeltaMovement(getDeltaMovement().add(0, -0.05 * gravityMultiplier, 0).scale(drag))}.
+     * Instead of re-deriving the -0.05 constant (which would silently drift if
+     * Create retunes it), the gravity term is recovered from the vector Create
+     * already built: {@code physics = (before + (0, g, 0)) * d}. A projectile
+     * without the stamped scales (plain potato cannon, or a gun with no
+     * ballistics modules) takes the untouched path, bit-identical to Create.
+     */
+    @Redirect(method = "tick", remap = false, at = @At(value = "INVOKE",
+            target = "Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
+    private void createpneumatictacticals$ballistics(PotatoProjectileEntity self, Vec3 physics) {
+        Vec3 before = self.getDeltaMovement();
+        CompoundTag data = self.getPersistentData();
+        double gravityScale = cpt$scale(data, "cpt_gravity");
+        double dragScale = cpt$scale(data, "cpt_drag");
+        double baseDrag = type.drag();
+        if ((gravityScale == 1 && dragScale == 1) || baseDrag == 0) {
+            self.setDeltaMovement(physics);
+            return;
+        }
+        double gravity = physics.y / baseDrag - before.y;
+        self.setDeltaMovement(before.add(0, gravity * gravityScale, 0)
+                .scale(1 - (1 - baseDrag) * dragScale));
+    }
+
+    /** stamped scale, or 1.0 (Create's own value) when the key is absent */
+    @Unique
+    private static double cpt$scale(CompoundTag data, String key) {
+        return data.contains(key) ? data.getDouble(key) : 1.0;
+    }
+
+    /**
+     * The spawn packet is Create's writeSpawnData, which serializes exactly
+     * this payload - so mirroring the ballistics keys here hands them to the
+     * client replica, and both sides tick the same trajectory. Plain save/load
+     * round-trips them too, which keeps chunk-reloaded projectiles honest.
+     */
+    @Inject(method = "addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
+    private void createpneumatictacticals$saveBallistics(CompoundTag nbt, CallbackInfo ci) {
+        CompoundTag data = cpt$self().getPersistentData();
+        if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
+        if (data.contains("cpt_drag")) nbt.putDouble("cpt_drag", data.getDouble("cpt_drag"));
+    }
+
+    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
+    private void createpneumatictacticals$readBallistics(CompoundTag nbt, CallbackInfo ci) {
+        CompoundTag data = cpt$self().getPersistentData();
+        if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));
+        if (nbt.contains("cpt_drag")) data.putDouble("cpt_drag", nbt.getDouble("cpt_drag"));
     }
 
     // --- entity hit: full replacement for gun shots ---------------------------

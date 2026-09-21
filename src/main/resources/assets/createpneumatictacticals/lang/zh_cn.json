@@ -38,6 +38,8 @@
   "stat.createpneumatictacticals.recoil_vertical_multiplier": "垂直后座",
   "stat.createpneumatictacticals.recoil_horizontal_multiplier": "水平后座",
   "stat.createpneumatictacticals.recoil_recovery": "回正",
+  "stat.createpneumatictacticals.gravity_multiplier": "下坠",
+  "stat.createpneumatictacticals.drag_multiplier": "空气阻力",
   "stat.createpneumatictacticals.gas_suppression": "气体抑制",
   "stat.createpneumatictacticals.aim_zoom": "瞄准",
   "stat.createpneumatictacticals.tactical_aim_zoom": "侧瞄",
