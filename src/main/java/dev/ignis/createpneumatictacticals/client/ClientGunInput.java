@@ -41,6 +41,8 @@ public final class ClientGunInput {
     private static boolean reloadPending = false;
     /** the gun the pending R press was meant for; a slot switch voids it */
     private static ItemStack reloadPendingGun = null;
+    /** hotbar slot the pending press came from (see sameHeldGun) */
+    private static int reloadPendingSlot = -1;
     /** ammo type resolved during tryFire; read by MuzzleSmoke for puff scaling */
     private static PotatoCannonProjectileType currentType;
     private static long lastLocalShotMs = 0;
@@ -58,6 +60,8 @@ public final class ClientGunInput {
     private static long reloadBoltStartMs = 0;
     private static int reloadBatch = 0;
     private static ItemStack reloadingGun = ItemStack.EMPTY;
+    /** hotbar slot the reload was started from (see sameHeldGun) */
+    private static int reloadingSlot = -1;
 
     /** reload ticks of the ammo behind the latest fire attempt; 0 = unknown */
     public static int currentAmmoReloadTicks() {
@@ -93,11 +97,6 @@ public final class ClientGunInput {
         // Only the input-driven logic below is blocked while a screen is up.
         MuzzleClearance.tick(player, holdingGun);
         ReadyModel.tick(player, holdingGun);
-        if (mc.screen != null) {
-            // opening any screen mid-reload interrupts it (magazine: fails; round: batch lost)
-            cancelReload();
-            return;
-        }
         if (!holdingGun) {
             wasFiring = false;
             cancelReload();
@@ -106,6 +105,16 @@ public final class ClientGunInput {
         }
 
         GunStats stats = GunStats.ofGun(gun);
+
+        // A screen interrupts NOTHING here: the reload state machine and the
+        // pose broadcast run BEFORE the screen gate below, so opening the
+        // inventory mid-reload lets the batch timer, the completion packet
+        // and the third-person pose carry on to the end. The gun item is not
+        // drawn behind a GUI, so the frozen animation is invisible — the
+        // reload itself is not. Only the input-driven logic below is blocked.
+        tickReload(player, gun, stats);
+        updatePoseBroadcast(true, gun);
+        if (mc.screen != null) return;
 
         // --- fire ---
         if (mc.options.keyAttack.isDown()) {
@@ -144,7 +153,7 @@ public final class ClientGunInput {
         // still blending; retry once the controller is free. The pending gun
         // must still be in hand — a slot switch voids the press.
         if (reloadPending) {
-            if (gun != reloadPendingGun) {
+            if (!sameHeldGun(player, gun, reloadPendingSlot, reloadPendingGun)) {
                 // slot switched since the press: void the pending reload
                 reloadPending = false;
                 reloadPendingGun = null;
@@ -165,8 +174,6 @@ public final class ClientGunInput {
         if (ModKeybinds.AIM_STANCE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.CYCLE_AIM_STANCE));
         }
-
-        updatePoseBroadcast(true, gun);
     }
 
     // --- third-person pose sync: the owning client is the source of truth ---
@@ -327,6 +334,7 @@ public final class ClientGunInput {
         if (System.currentTimeMillis() < fireAnimBusyUntilMs) {
             reloadPending = true;
             reloadPendingGun = gun;
+            reloadPendingSlot = player.getInventory().selected;
             return;
         }
         startReload(player, gun, stats);
@@ -363,6 +371,7 @@ public final class ClientGunInput {
                         .reloadPhaseMs(gun, reloadRoundMode, stats.reloadSpeed) : 0;
         reloadBatch = reloadRoundMode ? Math.max(1, stats.feed.loadAmount) : stats.feed.clipSize;
         reloadingGun = gun;
+        reloadingSlot = player.getInventory().selected;
         reloading = true;
         GunAnimationDriver.onReloadStart();
     }
@@ -395,14 +404,21 @@ public final class ClientGunInput {
      * ammo); round reload applies per-batch — each finished batch sends its own
      * packet, an interruption only loses the in-flight batch. A single R press
      * keeps loading round-by-round until the magazine is full; switching slots
-     * or opening a screen interrupts it (firing is locked, NOT an interrupt).
-     * The gun stack reference doubles as the "same gun" check: switching
-     * slots / dropping / stowing replaces it.
+     * interrupts it (firing is locked, NOT an interrupt; opening a screen is
+     * NOT one either — see onClientTick). The "same gun" check is the hotbar
+     * slot + the item, never the stack instance: any server NBT write (aim
+     * stance, fire mode, ammo cycle, the reload result itself) re-syncs a
+     * fresh ItemStack into the slot.
      */
     private static void tickReload(Player player, ItemStack gun, GunStats stats) {
         if (!reloading) return;
-        if (gun != reloadingGun) {
-            // switching slots / dropping the gun interrupts the reload
+        if (!sameHeldGun(player, gun, reloadingSlot, reloadingGun)) {
+            // switching slots / swapping the gun out interrupts the reload.
+            // Stack IDENTITY is not the test: an NBT write from the server
+            // (X aim stance, V fire mode, O ammo cycle) comes back as a fresh
+            // ItemStack in the same slot, and testing identity voided the
+            // reload mid-way — the side/main sight switch looked like an
+            // interrupt for exactly that reason.
             cancelReload();
             return;
         }
@@ -424,12 +440,27 @@ public final class ClientGunInput {
         }
     }
 
+    /**
+     * True while {@code gun} is still the gun an action was started on: same
+     * hotbar slot, same item. NBT is deliberately NOT compared — a stance /
+     * fire-mode / ammo-cycle write re-syncs the stack as a NEW instance, and
+     * that must not read as "the gun changed". Dropping or stowing the gun
+     * fails the item half of this test (the slot then holds something else).
+     */
+    private static boolean sameHeldGun(Player player, ItemStack gun, int slot, ItemStack ref) {
+        return player.getInventory().selected == slot && gun.getItem() == ref.getItem();
+    }
+
     /** ends the reload state and stops the reload animation on the gun */
     private static void cancelReload() {
         if (!reloading) return;
         reloading = false;
         reloadPending = false;
         reloadPendingGun = null;
+        reloadingSlot = -1;
+        // interrupt() keys off the stack's GeckoLib instance id, which the
+        // server round-trip preserves, so the stale reference still stops the
+        // right animation
         GunAnimationDriver.interrupt(reloadingGun);
     }
 }
