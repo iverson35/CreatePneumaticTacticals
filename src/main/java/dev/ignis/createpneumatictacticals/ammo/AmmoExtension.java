@@ -95,14 +95,35 @@ public final class AmmoExtension {
             Map.entry("create:pufferfish", GunType.MEDIUM),
             Map.entry("create:suspicious_stew", GunType.MEDIUM));
 
+    /**
+     * Built-in bounce tuning for specific ammo (design constants). Same
+     * reasoning as BUILTIN_CALIBERS: Create's jar ships the JSONs for the
+     * shared resource folder, so a mod-side resource override loses the pack
+     * order battle (verified in-game: the honeyed apple parsed with no bounce
+     * when the values only lived in our own JSON). Datapack entries still win:
+     * a JSON carrying max_reflect/speed_decay overrides this table, including
+     * an explicit {@code "max_reflect": 0} to switch bouncing off.
+     */
+    private static final Map<String, Bounce> BUILTIN_BOUNCE = Map.of(
+            "create:honeyed_apple", new Bounce(4, 0.72));
+
+    /** max_reflect / speed_decay pair: bounces left and speed kept per bounce */
+    public record Bounce(int maxReflect, double speedDecay) {
+    }
+
     public static AmmoExtension get(String ammoId) {
         AmmoExtension ext = TABLE.get(ammoId);
         if (ext != null) return ext;
-        // no datapack entry: use the built-in caliber when classified
+        // no datapack entry: use the built-in caliber/bounce when classified
         GunType caliber = BUILTIN_CALIBERS.get(ammoId);
-        if (caliber != null) {
+        Bounce bounce = BUILTIN_BOUNCE.get(ammoId);
+        if (caliber != null || bounce != null) {
             AmmoExtension def = new AmmoExtension();
-            def.gunType = caliber;
+            if (caliber != null) def.gunType = caliber;
+            if (bounce != null) {
+                def.maxReflect = bounce.maxReflect();
+                def.speedDecay = bounce.speedDecay();
+            }
             return def;
         }
         return DEFAULTS;
@@ -111,6 +132,11 @@ public final class AmmoExtension {
     /** Built-in caliber for an ammo id, or null when unclassified. */
     static GunType builtinCaliber(String ammoId) {
         return BUILTIN_CALIBERS.get(ammoId);
+    }
+
+    /** Built-in bounce tuning for an ammo id, or null when it does not bounce. */
+    static Bounce builtinBounce(String ammoId) {
+        return BUILTIN_BOUNCE.get(ammoId);
     }
     public static void put(String ammoId, AmmoExtension ext) {
         TABLE.put(ammoId, ext);

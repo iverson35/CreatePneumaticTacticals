@@ -62,6 +62,18 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         if (json.has("max_reflect") || json.has("speed_decay")) {
             ext.maxReflect = (int) optDouble(json, "max_reflect", 10);
             ext.speedDecay = optDouble(json, "speed_decay", 0.5);
+        } else {
+            // Create's own type JSONs never carry bounce keys, so the built-in
+            // table supplies the ammo tuned by hand (see AmmoExtension)
+            AmmoExtension.Bounce bounce = AmmoExtension.builtinBounce(id.toString());
+            if (bounce != null) {
+                ext.maxReflect = bounce.maxReflect();
+                ext.speedDecay = bounce.speedDecay();
+            }
+        }
+        if (ext.maxReflect > 0) {
+            LOGGER.info("Ammo {} bounces: max_reflect={} speed_decay={}", id, ext.maxReflect,
+                    ext.speedDecay);
         }
         ext.effectiveRange = optDouble(json, "effective_range", ext.effectiveRange);
         ext.damageFalloffRate = optDouble(json, "damage_falloff_rate", ext.damageFalloffRate);

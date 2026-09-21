@@ -6,6 +6,7 @@ import com.simibubi.create.foundation.damageTypes.CreateDamageSources;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.network.CptNetwork;
 import dev.ignis.createpneumatictacticals.network.HitConfirmPacket;
+import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -18,6 +19,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -187,6 +189,15 @@ public abstract class PotatoProjectileMixin {
             nbt.putDouble("cpt_vel_y", data.getDouble("cpt_vel_y"));
             nbt.putDouble("cpt_vel_z", data.getDouble("cpt_vel_z"));
         }
+        if (data.getBoolean("cpt_gunshot")) {
+            // bounce parameters ride the same payload: the client replica has
+            // no ammo table (AmmoExtension is filled by the server reload
+            // listener), so without them Create's own client handler would
+            // kill a bouncing bullet at its first impact
+            AmmoExtension ext = cpt$ext(cpt$self());
+            nbt.putInt("cpt_bounce", ext.maxReflect);
+            nbt.putDouble("cpt_decay", ext.speedDecay);
+        }
     }
 
     @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
@@ -199,6 +210,10 @@ public abstract class PotatoProjectileMixin {
             data.putDouble("cpt_vel_x", nbt.getDouble("cpt_vel_x"));
             data.putDouble("cpt_vel_y", nbt.getDouble("cpt_vel_y"));
             data.putDouble("cpt_vel_z", nbt.getDouble("cpt_vel_z"));
+        }
+        if (nbt.contains("cpt_bounce")) {
+            data.putInt("cpt_bounce", nbt.getInt("cpt_bounce"));
+            data.putDouble("cpt_decay", nbt.getDouble("cpt_decay"));
         }
     }
 
@@ -293,30 +308,64 @@ public abstract class PotatoProjectileMixin {
         PotatoProjectileEntity self = cpt$self();
         if (!cpt$isGunShot(self)) return;
         Level level = self.level();
-        // client replica: leave Create's own handler in place so its
-        // block-hit pop particles still play; the server owns reflection
-        // and death
-        if (level.isClientSide()) return;
-        ci.cancel();
-
         AmmoExtension ext = cpt$ext(self);
-        if (ext.maxReflect > 0 && cpt$reflects < ext.maxReflect) {
+        CompoundTag data = self.getPersistentData();
+        // the client replica has no ammo table (AmmoExtension is filled by the
+        // server reload listener), so it reads the bounce parameters that came
+        // along in the spawn payload - see createpneumatictacticals$saveBallistics
+        int maxReflect = ext.maxReflect;
+        double speedDecay = ext.speedDecay;
+        if (level.isClientSide()) {
+            maxReflect = data.contains("cpt_bounce") ? data.getInt("cpt_bounce") : 0;
+            speedDecay = data.contains("cpt_decay") ? data.getDouble("cpt_decay") : 0.5;
+        }
+        if (maxReflect > 0 && cpt$reflects < maxReflect) {
             Vec3 v = self.getDeltaMovement();
             Vec3 n = new Vec3(ray.getDirection().getStepX(), ray.getDirection().getStepY(),
                     ray.getDirection().getStepZ());
             // reflect about the face normal, keep speed_decay of the speed
-            Vec3 reflected = v.subtract(n.scale(2 * v.dot(n))).scale(ext.speedDecay);
+            Vec3 reflected = v.subtract(n.scale(2 * v.dot(n))).scale(speedDecay);
             if (reflected.lengthSqr() > 1.0E-4) {
                 cpt$reflects++;
                 self.setDeltaMovement(reflected);
                 // nudge off the surface so the next tick doesn't instantly re-hit
                 Vec3 pos = ray.getLocation().add(n.scale(0.05));
                 self.setPos(pos.x, pos.y, pos.z);
+                // the bounce must run on BOTH sides: the replica integrates its
+                // own motion, so leaving Create's handler in place here would
+                // make a bouncing bullet vanish at its first impact on screen
+                cpt$bouncePop(self, ray.getLocation());
+                ci.cancel();
                 return;
             }
         }
+        // terminal impact: the client keeps Create's own handler (pop + kill),
+        // the server runs the gun's impact handling
+        if (level.isClientSide()) return;
+        ci.cancel();
         if (ext.affectRadius > 0) cpt$explode(self, ray.getLocation(), ext);
         self.kill();
+    }
+
+    /**
+     * Impact feedback for a bounce, mirroring Create's own pop(): a burst of
+     * item particles (both sides, exactly like Create's block hit) plus the
+     * potato hit sound (server only - playOnServer broadcasts it to everyone).
+     */
+    @Unique
+    private static void cpt$bouncePop(PotatoProjectileEntity self, Vec3 hit) {
+        Level level = self.level();
+        ItemStack stack = self.getItem();
+        if (!stack.isEmpty()) {
+            for (int i = 0; i < 7; i++) {
+                Vec3 m = new Vec3((level.random.nextDouble() - 0.5) * 0.25,
+                        (level.random.nextDouble() - 0.5) * 0.25,
+                        (level.random.nextDouble() - 0.5) * 0.25);
+                level.addParticle(new ItemParticleOption(ParticleTypes.ITEM, stack), hit.x, hit.y, hit.z,
+                        m.x, m.y, m.z);
+            }
+        }
+        if (!level.isClientSide()) PotatoProjectileEntity.playHitSound(level, hit);
     }
 
     // --- shared bits ------------------------------------------------------------
