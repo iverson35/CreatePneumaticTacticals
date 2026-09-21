@@ -14,13 +14,21 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Projectiles spawn a block in front of the camera and the GROUND item
- * render looms huge over the first blocks of flight. Shrink the render with
- * proximity: scale ramps linearly from {@link #cpt$MIN_SCALE} at the muzzle
- * back to full size at {@link #cpt$FULL_SIZE_DISTANCE}. Visual only —
- * hitbox, damage and sync are untouched. Applies to ALL potato projectiles:
- * persistent NBT tags are server-only, so gun-fired ones cannot be
- * distinguished client-side.
+ * Two independent render scales, both visual only (hitbox, damage and sync
+ * are untouched):
+ * <ul>
+ * <li>proximity: projectiles spawn a block in front of the camera and the
+ * GROUND item render looms huge over the first blocks of flight, so the
+ * scale ramps linearly from {@link #cpt$MIN_SCALE} at the muzzle back to full
+ * size at {@link #cpt$FULL_SIZE_DISTANCE} — applies to ALL potato
+ * projectiles, potato-cannon shots included</li>
+ * <li>gun ammo: anything our guns fired carries the server-stamped
+ * {@code cpt_gunshot} flag, which PotatoProjectileMixin mirrors through the
+ * spawn packet (ForgeData itself never reaches the client) — those render at
+ * {@link #cpt$GUN_SCALE}, multiplied on top of the proximity ramp</li>
+ * </ul>
+ * Both scales ride the same pivot, the item's visual center, so shrinking
+ * never slides the projectile off the crosshair or off its hitbox.
  */
 @Mixin(PotatoProjectileRenderer.class)
 public abstract class PotatoProjectileRendererMixin {
@@ -30,6 +38,9 @@ public abstract class PotatoProjectileRendererMixin {
     private static final float cpt$FULL_SIZE_DISTANCE = 4.0f;
     @Unique
     private static final float cpt$MIN_SCALE = 0.25f;
+    /** gun ammo renders at 25% of its size (a 75% shrink) */
+    @Unique
+    private static final float cpt$GUN_SCALE = 0.25f;
     /** true between the HEAD push and the TAIL pop of one render call */
     @Unique
     private static boolean cpt$shrunk = false;
@@ -46,12 +57,16 @@ public abstract class PotatoProjectileRendererMixin {
         Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         double dist = cam.distanceTo(entity.getPosition(pt));
         float scale = Mth.clamp((float) (dist / cpt$FULL_SIZE_DISTANCE), cpt$MIN_SCALE, 1.0f);
+        // gun ammo is small by design: a flat 75% shrink on top of the ramp,
+        // so the visible size tracks the 0.25 hitbox instead of a whole item
+        if (entity.getPersistentData().getBoolean("cpt_gunshot")) scale *= cpt$GUN_SCALE;
         if (scale >= 1.0f) return;
-        // pivot the scale at the rendered item's visual center: Create
+        // pivot both scales at the rendered item's visual center: Create
         // translates to bbHeight/2 - 1/8, then the GROUND display context
         // adds its own +2/16 y offset for generated item models — net
         // center = bounding box center. Scaling around the entity origin
-        // instead would slide the item up/down as it grows.
+        // instead would slide the item up/down as it shrinks or grows, so
+        // the 75% gun-ammo shrink pans out as a pure size change.
         float py = (float) (entity.getBoundingBox().getYsize() / 2.0);
         ms.pushPose();
         ms.translate(0f, py, 0f);

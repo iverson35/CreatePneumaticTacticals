@@ -162,15 +162,18 @@ public abstract class PotatoProjectileMixin {
 
     /**
      * The spawn packet is Create's writeSpawnData, which serializes exactly
-     * this payload - so mirroring the ballistics keys here hands them to the
-     * client replica, and both sides tick the same trajectory. Plain save/load
+     * this payload, so mirroring the ballistics keys here hands them to the
+     * client replica and both sides tick the same trajectory. Plain save/load
      * round-trips them too, which keeps chunk-reloaded projectiles honest.
+     * The gun-shot flag rides along for the same reason: ForgeData never goes
+     * over the network, and the renderer needs the flag to size gun ammo.
      */
     @Inject(method = "addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
     private void createpneumatictacticals$saveBallistics(CompoundTag nbt, CallbackInfo ci) {
         CompoundTag data = cpt$self().getPersistentData();
         if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
         if (data.contains("cpt_drag")) nbt.putDouble("cpt_drag", data.getDouble("cpt_drag"));
+        if (data.getBoolean("cpt_gunshot")) nbt.putBoolean("cpt_gunshot", true);
     }
 
     @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
@@ -178,6 +181,7 @@ public abstract class PotatoProjectileMixin {
         CompoundTag data = cpt$self().getPersistentData();
         if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));
         if (nbt.contains("cpt_drag")) data.putDouble("cpt_drag", nbt.getDouble("cpt_drag"));
+        if (nbt.getBoolean("cpt_gunshot")) data.putBoolean("cpt_gunshot", true);
     }
 
     // --- entity hit: full replacement for gun shots ---------------------------
@@ -195,9 +199,11 @@ public abstract class PotatoProjectileMixin {
             ci.cancel();
             return;
         }
-        ci.cancel(); // full replacement of Create's hit handling for gun shots
         Level level = self.level();
+        // client replica: leave Create's own handler in place so its hit
+        // particles still play; the server owns damage, effects and death
         if (level.isClientSide()) return;
+        ci.cancel(); // full replacement of Create's hit handling for gun shots
 
         AmmoExtension ext = cpt$ext(self);
         Entity target = ray.getEntity();
@@ -239,9 +245,12 @@ public abstract class PotatoProjectileMixin {
     private void createpneumatictacticals$gunHitBlock(BlockHitResult ray, CallbackInfo ci) {
         PotatoProjectileEntity self = cpt$self();
         if (!cpt$isGunShot(self)) return;
-        ci.cancel();
         Level level = self.level();
+        // client replica: leave Create's own handler in place so its
+        // block-hit pop particles still play; the server owns reflection
+        // and death
         if (level.isClientSide()) return;
+        ci.cancel();
 
         AmmoExtension ext = cpt$ext(self);
         if (ext.maxReflect > 0 && cpt$reflects < ext.maxReflect) {
