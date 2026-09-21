@@ -4,8 +4,7 @@
   "gun_properties": {
     "reload_speed": 0.0,
     "fire_rate_multiplier": 3.0,
-    "damage_multiplier": -0.5,
-    "bullet_speed": 0.3
+    "damage_multiplier": -0.5
   },
   "gun_type": "medium",
   "burst_count": 3,

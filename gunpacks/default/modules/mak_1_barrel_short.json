@@ -3,8 +3,8 @@
   "module_type": "barrel",
   "gun_type": "medium",
   "gun_properties": {
-    "bullet_speed": -0.2,
-    "gravity_multiplier": -1,
+    "bullet_speed": 2,
+    "gravity_multiplier": -0.8,
     "drag_multiplier": -0.5,
     "ergonomics": 0.2
   },
