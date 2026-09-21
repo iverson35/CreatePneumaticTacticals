@@ -40,7 +40,7 @@ public final class ModuleDefinition {
     /** additive modifiers, may be empty */
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
-            recoilMultiplier, recoilRecovery;
+            recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery;
     /** muzzle: -5..1 gas suppression; -1 = double smoke, +1 = none */
     public final double gasSuppression;
     /**
@@ -115,7 +115,8 @@ public final class ModuleDefinition {
         this.hipfireAccuracyMultiplier = b.hipfireAccuracyMultiplier;
         this.ergonomics = b.ergonomics;
         this.bulletSpeed = b.bulletSpeed;
-        this.recoilMultiplier = b.recoilMultiplier;
+        this.recoilVerticalMultiplier = b.recoilVerticalMultiplier;
+        this.recoilHorizontalMultiplier = b.recoilHorizontalMultiplier;
         this.recoilRecovery = b.recoilRecovery;
         this.gasSuppression = b.gasSuppression;
         this.unique = b.unique;
@@ -190,7 +191,8 @@ public final class ModuleDefinition {
         b.hipfireAccuracyMultiplier = GsonHelper.getAsDouble(props, "hipfire_accuracy_multiplier", 0);
         b.ergonomics = GsonHelper.getAsDouble(props, "ergonomics", 0);
         b.bulletSpeed = GsonHelper.getAsDouble(props, "bullet_speed", 0);
-        b.recoilMultiplier = GsonHelper.getAsDouble(props, "recoil_multiplier", 0);
+        b.recoilVerticalMultiplier = GsonHelper.getAsDouble(props, "recoil_vertical_multiplier", 0);
+        b.recoilHorizontalMultiplier = GsonHelper.getAsDouble(props, "recoil_horizontal_multiplier", 0);
         b.recoilRecovery = GsonHelper.getAsDouble(props, "recoil_recovery", 0);
         b.unique = GsonHelper.getAsBoolean(props, "unique", false);
         if (type == ModuleType.MUZZLE) {
@@ -299,7 +301,7 @@ public final class ModuleDefinition {
         private final List<Affected> affected = new ArrayList<>();
         private double reloadSpeed, damageMultiplier, fireRateMultiplier,
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
-                recoilMultiplier, recoilRecovery;
+                recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery;
         private double gasSuppression;
         private boolean unique;
         private final List<GasGuide> gasGuides = new ArrayList<>();

@@ -114,7 +114,8 @@ public final class GunHudOverlay implements IGuiOverlay {
         g.drawString(mc.font, fmt("damage_multiplier", stats.damageMultiplier), x, y, 0xFFD0D0D0);
         g.drawString(mc.font, fmt("fire_rate_multiplier", stats.fireRateMultiplier), x, y + 11, 0xFFD0D0D0);
         g.drawString(mc.font, fmt("ergonomics", stats.ergonomics), x, y + 22, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("recoil_multiplier", stats.recoilMultiplier), x, y + 32, 0xFFD0D0D0);
+        g.drawString(mc.font, fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier), x, y + 32, 0xFFD0D0D0);
+        g.drawString(mc.font, fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier), x, y + 43, 0xFFD0D0D0);
         if (stats.isComplete() && stats.receiver != null && stats.receiver.gunType != null) {
             g.drawString(mc.font, net.minecraft.network.chat.Component.translatable(
                             "stat." + CreatePneumaticTacticals.MODID + ".gun_type")

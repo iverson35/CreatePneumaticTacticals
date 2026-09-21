@@ -15,7 +15,7 @@
   ],
   "fire_sound": "createpneumatictacticals:gun.bb_rifle.shoot",
   "base_recoil_pitch": 3.6,
-  "base_recoil_yaw": 0.9,
+  "base_recoil_yaw": 2.4,
   "ignore_ammo_pitch": false,
   "gun_name": "gun.createpneumatictacticals.mak_1",
   "module_affected": [

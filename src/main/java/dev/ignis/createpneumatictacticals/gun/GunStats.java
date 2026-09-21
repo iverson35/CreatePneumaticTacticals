@@ -27,7 +27,18 @@ public final class GunStats {
      * cap only shorten time-of-flight server-side, never visual speed.
      */
     public double bulletSpeed = 1.0;
-    public double recoilMultiplier = 1.0;
+    /**
+     * Vertical recoil scale: camera pitch kick + the gun model's backward
+     * push / muzzle flip + the screen shake. Base 1.0, additive over
+     * modules, clamped 0.1..3.0.
+     */
+    public double recoilVerticalMultiplier = 1.0;
+    /**
+     * Horizontal recoil scale: the random left/right camera yaw kick per
+     * shot. View-only by design — the gun model itself never kicks
+     * sideways. Same base/additive/clamp rules as the vertical one.
+     */
+    public double recoilHorizontalMultiplier = 1.0;
     public double recoilRecovery = 1.0;
     /** total muzzle gas suppression, clamped -5..1; smoke = (1 - v) * base (±1 = ±100%) */
     public double gasSuppression = 0;
@@ -79,7 +90,8 @@ public final class GunStats {
             s.hipfireAccuracyMultiplier += def.hipfireAccuracyMultiplier;
             s.ergonomics += def.ergonomics;
             s.bulletSpeed += def.bulletSpeed;
-            s.recoilMultiplier += def.recoilMultiplier;
+            s.recoilVerticalMultiplier += def.recoilVerticalMultiplier;
+            s.recoilHorizontalMultiplier += def.recoilHorizontalMultiplier;
             s.recoilRecovery += def.recoilRecovery;
             s.gasSuppression += def.gasSuppression;
         }
@@ -108,7 +120,8 @@ public final class GunStats {
         // workbench display honest instead of showing silly sums
         s.ergonomics = Mth.clamp(s.ergonomics, 0.1, 5.0);
         s.bulletSpeed = Math.max(0.1, s.bulletSpeed);
-        s.recoilMultiplier = Mth.clamp(s.recoilMultiplier, 0.1, 3.0);
+        s.recoilVerticalMultiplier = Mth.clamp(s.recoilVerticalMultiplier, 0.1, 3.0);
+        s.recoilHorizontalMultiplier = Mth.clamp(s.recoilHorizontalMultiplier, 0.1, 3.0);
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);
         s.gasSuppression = Mth.clamp(s.gasSuppression, -5, 1);
     }

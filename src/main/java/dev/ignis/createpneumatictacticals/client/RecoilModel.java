@@ -2,9 +2,14 @@ package dev.ignis.createpneumatictacticals.client;
 
 /**
  * Three-layer recoil (plan_v2 后坐力系统):
- * 1. view: pitch up per shot, decays toward zero
- * 2. model: gun model kick via damped spring (consumed by renderer)
- * 3. screen shake: slight shake scaled by recoilMultiplier
+ * 1. view: pitch up + a random left/right yaw kick per shot, decays to zero
+ * 2. model: gun model kick via damped spring (consumed by renderer) —
+ *    vertical-only by design: backward push + muzzle flip, no lateral kick
+ * 3. screen shake: slight shake scaled by the vertical multiplier
+ *
+ * <p>The two recoil axes scale independently: a module's vertical multiplier
+ * drives the camera pitch, the model kick and the shake; its horizontal
+ * multiplier drives only the camera yaw.
  *
  * <p>A new shot before the previous rebound finished BAKES the leftover
  * offset into the player's real rotation (the current camera pose becomes
@@ -37,8 +42,9 @@ public final class RecoilModel {
 
     private RecoilModel() {}
 
-    public static void onShot(double basePitch, double baseYaw, double recoilMult, boolean aiming,
-                              double recoilRecovery, net.minecraft.world.entity.player.Player player) {
+    public static void onShot(double basePitch, double baseYaw, double verticalMult, double horizontalMult,
+                              boolean aiming, double recoilRecovery,
+                              net.minecraft.world.entity.player.Player player) {
         update();
         // new shot before the previous rebound finished: bake the leftover
         // offset into the REAL player rotation — the current camera pose
@@ -52,17 +58,22 @@ public final class RecoilModel {
         pitchOffset = 0;
         yawOffset = 0;
         recoveryScale = Math.max(0, 1 + recoilRecovery);
-        double scale = recoilMult * (aiming ? 0.7 : 1.0);
+        double aimMult = aiming ? 0.7 : 1.0;
+        double vScale = verticalMult * aimMult;
+        double hScale = horizontalMult * aimMult;
         // hipfire camera shake halved — full hipfire view kick was nauseating
-        double viewScale = aiming ? scale : scale * 0.5;
-        pitchOffset = basePitch * viewScale;
-        yawOffset = (Math.random() * 2 - 1) * baseYaw * viewScale;
+        double vView = aiming ? vScale : vScale * 0.5;
+        double hView = aiming ? hScale : hScale * 0.5;
+        pitchOffset = basePitch * vView;
+        // random-signed: held fire genuinely walks the aim left and right
+        yawOffset = (Math.random() * 2 - 1) * baseYaw * hView;
         // model kick + screen shake follow the receiver's base recoil, so
         // tuning a gun's base_recoil_pitch scales the whole feel, not just
         // the view angle (constants normalized to the former fixed kick at
-        // base 1.2: 33*1.2 = 40, 1.25*1.2 = 1.5)
-        springVel += 33.0 * basePitch * scale;
-        shake += 1.25 * basePitch * scale;
+        // base 1.2: 33*1.2 = 40, 1.25*1.2 = 1.5). Vertical-only: the model
+        // never kicks sideways, so horizontal-recoil mods must not quiet it.
+        springVel += 33.0 * basePitch * vScale;
+        shake += 1.25 * basePitch * vScale;
     }
 
     /** advance all layers to now; idempotent within the same nanos */

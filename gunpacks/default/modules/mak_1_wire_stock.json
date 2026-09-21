@@ -2,7 +2,8 @@
   "name": "createpneumatictacticals:mak_1_wire_stock",
   "module_type": "stock",
   "gun_properties": {
-    "recoil_multiplier": -0.2,
+    "recoil_vertical_multiplier": -0.1,
+    "recoil_horizontal_multiplier": -0.1,
     "ergonomics": 0.2
   }
 }

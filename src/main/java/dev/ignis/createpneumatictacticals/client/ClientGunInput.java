@@ -285,9 +285,9 @@ public final class ClientGunInput {
         // chain's stage transitions then blend from that stale pose.
         fireAnimBusyUntilMs = now + fireAnimMs(gun);
         // local feel: recoil + bloom + fire animation
-        double recoilMult = stats.recoilMultiplier;
         boolean aiming = ModKeybinds.isAiming();
-        RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw, recoilMult, aiming,
+        RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw,
+                stats.recoilVerticalMultiplier, stats.recoilHorizontalMultiplier, aiming,
                 stats.recoilRecovery, player);
         SpreadModel.addBloom(ext);
         // muzzle smoke: purely client-side (never synced per-particle);

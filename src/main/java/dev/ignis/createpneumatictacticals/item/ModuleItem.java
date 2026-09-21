@@ -167,7 +167,8 @@ public class ModuleItem extends Item implements GeoItem {
                 "hipfire_accuracy_multiplier", def.hipfireAccuracyMultiplier,
                 "ergonomics", def.ergonomics,
                 "bullet_speed", def.bulletSpeed,
-                "recoil_multiplier", def.recoilMultiplier,
+                "recoil_vertical_multiplier", def.recoilVerticalMultiplier,
+                "recoil_horizontal_multiplier", def.recoilHorizontalMultiplier,
                 "recoil_recovery", def.recoilRecovery,
                 "gas_suppression", def.gasSuppression
         ));
@@ -175,10 +176,11 @@ public class ModuleItem extends Item implements GeoItem {
 
     /**
      * Stats where a lower value is better; everything else reads green when
-     * it increases. recoil_multiplier scales kick/shake directly, so a
+     * it increases. Both recoil multipliers scale the kick directly, so a
      * negative modifier is the improvement.
      */
-    private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of("recoil_multiplier");
+    private static final java.util.Set<String> LOWER_IS_BETTER = java.util.Set.of(
+            "recoil_vertical_multiplier", "recoil_horizontal_multiplier");
 
     /**
      * Box-drawing glyph for the open-slot set: each available slot draws
