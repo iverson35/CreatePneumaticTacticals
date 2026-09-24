@@ -1,0 +1,9 @@
+{
+  "name": "createpneumatictacticals:711_ammo_15",
+  "module_type": "feed",
+  "gun_properties": {
+    "reload_speed": -0.2
+  },
+  "load_type": "magazine",
+  "clip_size": 15
+}

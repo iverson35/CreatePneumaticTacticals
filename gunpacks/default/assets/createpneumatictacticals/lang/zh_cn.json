@@ -12,5 +12,10 @@
   "module.createpneumatictacticals.pica_sight_small_mounted_md1": "MD-1 增高红点瞄具",
   "module.createpneumatictacticals.charm_crystal": "水晶挂件",
   "module.createpneumatictacticals.charm_delta_coin": "三角币挂件",
-  "itemGroup.createpneumatictacticals": "气动战术装备"
+  "module.createpneumatictacticals.spiccato_711": "SPICCATO 711 主体",
+  "gun.createpneumatictacticals.spiccato_711": "SPICCATO 711 手枪",
+  "module.createpneumatictacticals.711_barrel": "SPICCATO 711 标准枪管",
+  "module.createpneumatictacticals.711_cartridge_supply": "SPICCATO 711 气瓶击针",
+  "module.createpneumatictacticals.711_ammo_15": "SPICCATO 711 15发弹匣",
+  "itemGroup.createpneumatictacticals": "机械动力：气动战术"
 }

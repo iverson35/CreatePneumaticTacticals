@@ -1,0 +1,55 @@
+{
+  "name": "createpneumatictacticals:spiccato_711",
+  "module_type": "receiver",
+  "gun_properties": {
+    "reload_speed": 0.0,
+    "fire_rate_multiplier": 7.0,
+    "damage_multiplier": -0.5
+  },
+  "gun_type": "light",
+  "fire_modes": [
+    "semi"
+  ],
+  "fire_sound": "createpneumatictacticals:gun.pistol_silenced.shoot",
+  "base_recoil_pitch": 3.6,
+  "base_recoil_yaw": 2.4,
+  "ignore_ammo_pitch": false,
+  "gun_name": "gun.createpneumatictacticals.spiccato_711",
+  "module_affected": [
+    {
+      "module_type": "barrel",
+      "mode": "include",
+      "value": [
+        "REGEX=711_.+"
+      ]
+    },
+    {
+      "module_type": "feed",
+      "mode": "include",
+      "value": [
+        "REGEX=711_.+"
+      ]
+    },
+    {
+      "module_type": "supply",
+      "mode": "include",
+      "value": [
+        "REGEX=711_.+"
+      ]
+    },
+    {
+      "module_type": "sight",
+      "mode": "include",
+      "value": [
+        "REGEX=pica_sight_small.+"
+      ]
+    },
+    {
+      "module_type": "charm",
+      "mode": "include",
+      "value": [
+        "REGEX=charm.+"
+      ]
+    }
+  ]
+}

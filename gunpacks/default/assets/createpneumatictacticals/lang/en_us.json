@@ -12,5 +12,10 @@
   "module.createpneumatictacticals.pica_sight_small_mounted_md1": "MD-1 Raised Red Dot Sight",
   "module.createpneumatictacticals.charm_crystal": "Crystal Charm",
   "module.createpneumatictacticals.charm_delta_coin": "Delta Coin Charm",
+  "module.createpneumatictacticals.spiccato_711": "SPICCATO 711 Main Body",
+  "gun.createpneumatictacticals.spiccato_711": "SPICCATO 711 Pistol",
+  "module.createpneumatictacticals.711_barrel": "SPICCATO 711 Barrel",
+  "module.createpneumatictacticals.711_cartridge_supply": "SPICCATO 711 Cartridge Supply",
+  "module.createpneumatictacticals.711_ammo_15": "SPICCATO 711 15-Round Magazine",
   "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals"
 }
