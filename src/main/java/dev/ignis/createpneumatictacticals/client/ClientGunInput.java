@@ -65,6 +65,8 @@ public final class ClientGunInput {
      * third-person RELOADING_EMPTY pose flips here so the arm out-phase
      * (up-swing + tap) aligns WITH the bolt instead of playing after it */
     private static long reloadBoltStartMs = 0;
+    /** empty reload: onBolt already fired for the batch in flight */
+    private static boolean reloadBoltFired = false;
     private static int reloadBatch = 0;
     private static ItemStack reloadingGun = ItemStack.EMPTY;
     /** hotbar slot the reload was started from (see sameHeldGun) */
@@ -387,8 +389,9 @@ public final class ClientGunInput {
         reloadBatch = reloadRoundMode ? Math.max(1, stats.feed.loadAmount) : stats.feed.clipSize;
         reloadingGun = gun;
         reloadingSlot = player.getInventory().selected;
+        reloadBoltFired = false;
         reloading = true;
-        GunAnimationDriver.onReloadStart(empty);
+        GunAnimationDriver.onReloadStart();
     }
 
     /**
@@ -475,6 +478,16 @@ public final class ClientGunInput {
             cancelReload();
             return;
         }
+        if (reloading && reloadEmpty && !reloadBoltFired
+                && System.currentTimeMillis() >= reloadBoltStartMs) {
+            // the bolt plays as its own animation instead of the reload
+            // chain's second stage: a GeckoLib stage switch does not re-save
+            // the transition start, so the chained bolt blended from the
+            // stale snapshot the fire left on the slide (see
+            // GunAnimationDriver.onReloadStart)
+            reloadBoltFired = true;
+            GunAnimationDriver.onBolt(stats.reloadSpeed);
+        }
         if (System.currentTimeMillis() < reloadEndMs) return;
         // batch finished -> apply immediately
         CptNetwork.CHANNEL.sendToServer(new ReloadResultPacket(true, reloadBatch));
@@ -508,6 +521,7 @@ public final class ClientGunInput {
     private static void cancelReload() {
         if (!reloading) return;
         reloading = false;
+        reloadBoltFired = false;
         reloadPending = false;
         reloadPendingGun = null;
         reloadingSlot = -1;

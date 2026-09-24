@@ -555,6 +555,11 @@
 					"rotation": [0, -90, 90]
 				},
 				{
+					"name": "loc_sight",
+					"parent": "slide",
+					"pivot": [0, 2.7, 2.8]
+				},
+				{
 					"name": "loc_barrel",
 					"parent": "main",
 					"pivot": [0, 2.10521, -0.14044]
@@ -595,11 +600,6 @@
 					"name": "loc_stock",
 					"parent": "main",
 					"pivot": [0, -2.09479, 3.65956]
-				},
-				{
-					"name": "loc_sight",
-					"parent": "main",
-					"pivot": [0, 2.7, 2.8]
 				}
 			]
 		}

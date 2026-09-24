@@ -2,20 +2,17 @@
 	"format_version": "1.8.0",
 	"animations": {
 		"animation.spiccato_711.fire": {
-			"animation_length": 0.25,
+			"animation_length": 0.125,
 			"bones": {
 				"hammer": {
 					"rotation": {
 						"0.0": {
-							"vector": [0, 0, 0]
+							"vector": [45, 0, 0]
 						},
 						"0.0417": {
-							"vector": [-60, 0, 0]
+							"vector": [-15, 0, 0]
 						},
-						"0.1667": {
-							"vector": [-60, 0, 0]
-						},
-						"0.25": {
+						"0.125": {
 							"vector": [0, 0, 0]
 						}
 					}
@@ -29,11 +26,11 @@
 							"vector": [0, 0, 1.9],
 							"easing": "easeOutCirc"
 						},
-						"0.1667": {
+						"0.0833": {
 							"vector": [0, 0, 0],
 							"easing": "easeInCirc"
 						},
-						"0.25": {
+						"0.125": {
 							"vector": [0, 0, 0],
 							"easing": "linear"
 						}
@@ -139,10 +136,10 @@
 							"vector": [0, 0, 0]
 						},
 						"0.1667": {
-							"vector": [-60, 0, 0]
+							"vector": [-15, 0, 0]
 						},
 						"0.4583": {
-							"vector": [-60, 0, 0]
+							"vector": [-15, 0, 0]
 						},
 						"0.5": {
 							"vector": [0, 0, 0]
@@ -159,7 +156,7 @@
 						},
 						"0.1667": {
 							"vector": [0, 0, 1.9],
-							"easing": "easeOutElastic"
+							"easing": "easeOutCirc"
 						},
 						"0.375": {
 							"vector": [0, 0, 1.9],

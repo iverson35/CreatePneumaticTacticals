@@ -3,10 +3,10 @@
   "module_type": "receiver",
   "gun_properties": {
     "reload_speed": 0.0,
-    "fire_rate_multiplier": 2.0,
-    "damage_multiplier": 0.5,
+    "fire_rate_multiplier": 1.5,
+    "damage_multiplier": 0.25,
     "ergonomics": 1.0,
-    "hipfire_accuracy_multiplier": 0.5
+    "hipfire_accuracy_multiplier": 1
   },
   "gun_type": "light",
   "fire_modes": [

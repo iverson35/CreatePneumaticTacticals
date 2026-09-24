@@ -37,13 +37,20 @@ public final class GunAnimationDriver {
 
     /**
      * Reload start: picks reload vs reload_round by the installed feed
-     * module's load_type; {@code empty} appends the bolt cycle (timing mirrors
-     * GunAnimTiming). Broadcast to the receiver and all modules. The empty
-     * decision comes from the caller, never from the NBT count: an ammo swap
-     * empties the magazine server-side, and that sync is still a tick away —
-     * reading it here picked the non-empty chain for every swap.
+     * module's load_type. Broadcast to the receiver and all modules. The
+     * empty decision comes from the caller, never from the NBT count: an
+     * ammo swap empties the magazine server-side, and that sync is still a
+     * tick away — reading it here picked the non-empty chain for every swap.
+     *
+     * The empty-reload bolt is deliberately NOT a second stage of this
+     * RawAnimation: GeckoLib's stage switch polls the next stage inside
+     * processCurrentAnimation without re-saving the transition start, so the
+     * bolt blended from whatever snapshot the last animation touching the
+     * same bone (the fire's slide) had left in the controller — a stale
+     * mid-animation pose, visible as the slide jerking backwards first.
+     * ClientGunInput triggers onBolt at the bolt's own start instead.
      */
-    public static void onReloadStart(boolean empty) {
+    public static void onReloadStart() {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
         ItemStack gun = player.getMainHandItem();
@@ -52,23 +59,24 @@ public final class GunAnimationDriver {
         if (stats.feed == null) return;
         boolean round = stats.feed.feedType == FeedType.ROUND;
         RawAnimation anim = round ? GunAnimations.RELOAD_ROUND : GunAnimations.RELOAD_MAGAZINE;
-        if (empty) {
-            anim = RawAnimation.begin()
-                    .thenPlay(round ? "reload_round" : "reload")
-                    .thenPlay("bolt");
-        }
-        // play the reload chain at reloadSpeed: the lock window
-        // (GunAnimTiming.reloadBatchMs) is the same chain divided by
-        // reloadSpeed, so the animation MUST be sped up identically or the
-        // visual tail (bolt) outlives the lock and the gun fires mid-bolt
+        // play the reload at reloadSpeed: the lock window
+        // (GunAnimTiming.reloadBatchMs) is the same reload + bolt sequence
+        // divided by reloadSpeed, so the animation MUST be sped up
+        // identically or the visual tail (bolt) outlives the lock and the
+        // gun fires mid-bolt
         broadcast(gun, anim, stats.reloadSpeed);
     }
 
-    /** empty-reload bolt cycle on all parts */
-    public static void onBolt() {
+    /**
+     * Empty-reload bolt cycle on all parts, fired at the bolt's own start
+     * (ClientGunInput.tickReload) instead of riding the reload chain — see
+     * onReloadStart for why the chained stage switch broke the transition
+     * start. Scaled by reloadSpeed exactly like the reload it follows.
+     */
+    public static void onBolt(double speed) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
-        broadcast(player.getMainHandItem(), GunAnimations.BOLT, 1.0);
+        broadcast(player.getMainHandItem(), GunAnimations.BOLT, speed);
     }
 
     /** fire animation (charge handle / bolt cycle / mag feed) on all parts */
