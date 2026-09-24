@@ -204,6 +204,14 @@ dependencies {
     implementation fg.deobf("maven.modrinth:mmmmmmmmmmmm:${dummy_version}")
     runtimeOnly fg.deobf("maven.modrinth:moonlight:${moonlight_version}")
 
+    // Shader stack (dev runtime only): Embeddium chunk renderer + Oculus
+    // (Iris port) + Colorwheel (Oculus shaders for Flywheel/Create content).
+    // Present so rendering changes can be checked against shaders; not a
+    // dependency, never referenced by code, never in mods.toml.
+    runtimeOnly fg.deobf("maven.modrinth:embeddium:${embeddium_version}")
+    runtimeOnly fg.deobf("maven.modrinth:oculus:${oculus_version}")
+    runtimeOnly fg.deobf("maven.modrinth:colorwheel:${colorwheel_version}")
+
     // Registrate: compile-time only; at runtime it is provided by Create's jarjar
     compileOnly fg.deobf("com.tterrag.registrate:Registrate:MC1.20-1.3.3")
     // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}")
