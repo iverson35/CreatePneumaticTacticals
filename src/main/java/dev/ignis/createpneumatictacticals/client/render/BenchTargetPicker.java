@@ -95,7 +95,7 @@ public final class BenchTargetPicker {
         return hover != null;
     }
 
-    /** pick: nearest marker of any rendered bench within HITBOX of the eye ray */
+    /** pick: nearest visible marker of any rendered bench within HITBOX of the eye ray */
     private static void updateHover() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || rendered.isEmpty()) {
@@ -109,6 +109,10 @@ public final class BenchTargetPicker {
         for (GunWorkbenchBlockEntity bench : rendered) {
             if (!WorkbenchOverlay.uiInRange(bench.getBlockPos())) continue;
             for (WorkbenchOverlay.Marker m : WorkbenchOverlay.markers(bench)) {
+                // hidden markers are not pickable; the candidate resolved here is
+                // exactly what a click would install (no second validation)
+                ItemStack candidate = installCandidate(bench, m);
+                if (!visible(m, candidate)) continue;
                 Vec3 toMarker = m.worldPos().subtract(eye);
                 double along = toMarker.dot(dir);
                 if (along < 0.3 || along > REACH) continue; // behind camera / out of reach
@@ -116,22 +120,48 @@ public final class BenchTargetPicker {
                 if (closest.distanceTo(m.worldPos()) > HITBOX) continue;
                 if (along < bestDist) {
                     bestDist = along;
-                    best = new Hover(m, bench.getBlockPos(), heldModule(m));
+                    best = new Hover(m, bench.getBlockPos(), candidate);
                 }
             }
         }
         hover = best;
     }
 
-    /** the module item the player would install at a free mount (main or off) */
-    private static ItemStack heldModule(WorkbenchOverlay.Marker m) {
+    /**
+     * The module that would install at a free mount: the main hand first, then
+     * the off hand, and only from a hand whose module passes the same
+     * validation the server applies on INSTALL — so the [+] marker, the ghost
+     * preview and the install click always name the same stack (and hand).
+     */
+    private static ItemStack installCandidate(GunWorkbenchBlockEntity bench, WorkbenchOverlay.Marker m) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || m.occupied() || m.isTake()) return ItemStack.EMPTY;
         ItemStack main = mc.player.getMainHandItem();
-        if (ModuleManager.definitionOf(main) != null) return main;
+        ModuleDefinition mainDef = ModuleManager.definitionOf(main);
+        if (mainDef != null && WorkbenchMarkerRenderer.previewReject(bench, mainDef, m) == null) return main;
         ItemStack off = mc.player.getOffhandItem();
-        if (ModuleManager.definitionOf(off) != null) return off;
+        ModuleDefinition offDef = ModuleManager.definitionOf(off);
+        if (offDef != null && WorkbenchMarkerRenderer.previewReject(bench, offDef, m) == null) return off;
         return ItemStack.EMPTY;
+    }
+
+    /**
+     * Marker visibility — the renderer skips drawing and the picker skips
+     * picking, so a hidden marker can never be hovered: [+] only while the
+     * held candidate would install at that mount, [-] only with an empty
+     * acting (main) hand, [▼] always.
+     */
+    private static boolean visible(WorkbenchOverlay.Marker m, ItemStack candidate) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return false;
+        if (m.isTake()) return true;
+        if (m.occupied()) return mc.player.getMainHandItem().isEmpty();
+        return !candidate.isEmpty();
+    }
+
+    /** {@link #visible} with the candidate resolved here (renderer entry point) */
+    public static boolean isVisible(GunWorkbenchBlockEntity bench, WorkbenchOverlay.Marker m) {
+        return visible(m, installCandidate(bench, m));
     }
 
     // ---------------------------------------------------------------
@@ -170,9 +200,9 @@ public final class BenchTargetPicker {
                         Workbench3dPacket.Action.REMOVE, pos, false, m.installed().id));
                 return true;
             }
-            // [+]: a compatible module in hand installs
+            // [+]: the hover's candidate — validated when the hover was picked
             ItemStack held = hover.heldModule();
-            if (ModuleManager.definitionOf(held) != null) {
+            if (!held.isEmpty()) {
                 boolean offhand = held == mc.player.getOffhandItem();
                 CptNetwork.CHANNEL.sendToServer(new Workbench3dPacket(
                         Workbench3dPacket.Action.INSTALL, pos, offhand, m.mountId()));

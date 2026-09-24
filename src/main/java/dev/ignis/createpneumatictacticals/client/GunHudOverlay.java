@@ -13,8 +13,10 @@ import dev.ignis.createpneumatictacticals.module.FireMode;
 import dev.ignis.createpneumatictacticals.module.SupplyType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -25,6 +27,8 @@ import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Gun HUD (plan_v2): dynamic hipfire crosshair whose arm gap tracks the
@@ -92,10 +96,17 @@ public final class GunHudOverlay implements IGuiOverlay {
 
     // --- 3D workbench stats panel (hovering the [▼] take marker) ---
 
+    private static final int HEADER_COLOR = 0xFF90C890;
+    private static final int STAT_COLOR = 0xFFD0D0D0;
+    private static final int HINT_COLOR = 0xFF909090;
+    /** panel line height (the font's 9px line plus a little air) */
+    private static final int LINE_H = 11;
+
     /**
      * While the crosshair hovers the bench's take marker, draw the staged
-     * gun's core stats (damage / fire rate / ergonomics / recoil + gun
-     * type). Mirrors the removed GUI stats panel, condensed.
+     * gun's stats: caliber + the core multipliers, and with Shift the full
+     * spec (every aggregate stat plus the feed/supply module data). The gun
+     * item's tooltip uses the same default/full split.
      */
     private static void renderBenchStats(GuiGraphics g, Minecraft mc, int width, int height) {
         dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.Hover hover =
@@ -109,28 +120,88 @@ public final class GunHudOverlay implements IGuiOverlay {
         ItemStack gun = bench.getGunSlot().getItem(0);
         if (!(gun.getItem() instanceof GunItem)) return; // nothing staged
         GunStats stats = GunStats.ofGun(gun);
-        int x = width / 2 + 12;
-        int y = height / 2 - 34;
-        g.drawString(mc.font, fmt("damage_multiplier", stats.damageMultiplier), x, y, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("fire_rate_multiplier", stats.fireRateMultiplier), x, y + 11, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("ergonomics", stats.ergonomics), x, y + 22, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier), x, y + 32, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier), x, y + 43, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("gravity_multiplier", stats.gravityMultiplier), x, y + 54, 0xFFD0D0D0);
-        g.drawString(mc.font, fmt("drag_multiplier", stats.dragMultiplier), x, y + 65, 0xFFD0D0D0);
+        boolean full = Screen.hasShiftDown();
+
+        Component header = null;
         if (stats.isComplete() && stats.receiver != null && stats.receiver.gunType != null) {
-            g.drawString(mc.font, net.minecraft.network.chat.Component.translatable(
-                            "stat." + CreatePneumaticTacticals.MODID + ".gun_type")
-                            .append(": ").append(net.minecraft.network.chat.Component.translatable(
-                                    "gun_type." + CreatePneumaticTacticals.MODID
-                                            + "." + stats.receiver.gunType.getSerializedName())),
-                    x, y - 12, 0xFF90C890);
+            header = Component.translatable(statKey("gun_type")).append(": ")
+                    .append(Component.translatable("gun_type." + CreatePneumaticTacticals.MODID
+                            + "." + stats.receiver.gunType.getSerializedName()));
+        }
+        List<Component> lines = new ArrayList<>();
+        if (full) {
+            addFeedLine(lines, stats);
+            addSupplyLine(lines, stats);
+            lines.add(fmt("reload_speed", stats.reloadSpeed));
+            lines.add(fmt("damage_multiplier", stats.damageMultiplier));
+            lines.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
+            lines.add(fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier));
+            lines.add(fmt("ergonomics", stats.ergonomics));
+            lines.add(fmt("aim_zoom", stats.aimZoom));
+            lines.add(fmt("tactical_aim_zoom", stats.tacticalAimZoom));
+            lines.add(fmt("bullet_speed", stats.bulletSpeed));
+            lines.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
+            lines.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));
+            lines.add(fmt("recoil_recovery", stats.recoilRecovery));
+            lines.add(fmt("gravity_multiplier", stats.gravityMultiplier));
+            lines.add(fmt("drag_multiplier", stats.dragMultiplier));
+            lines.add(fmt("gas_suppression", stats.gasSuppression));
+        } else {
+            lines.add(fmt("damage_multiplier", stats.damageMultiplier));
+            lines.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
+            lines.add(fmt("ergonomics", stats.ergonomics));
+            lines.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
+            lines.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));
+            lines.add(fmt("gravity_multiplier", stats.gravityMultiplier));
+            lines.add(fmt("drag_multiplier", stats.dragMultiplier));
+        }
+
+        // block centred on the crosshair row, just right of it; the hint row
+        // only exists while the full spec is still one Shift away
+        int rows = lines.size() + (header != null ? 1 : 0) + (full ? 0 : 1);
+        int x = width / 2 + 12;
+        int y = height / 2 - rows * LINE_H / 2;
+        if (header != null) {
+            g.drawString(mc.font, header, x, y, HEADER_COLOR);
+            y += LINE_H;
+        }
+        for (Component line : lines) {
+            g.drawString(mc.font, line, x, y, STAT_COLOR);
+            y += LINE_H;
+        }
+        if (!full) {
+            g.drawString(mc.font, Component.translatable(
+                    "gui." + CreatePneumaticTacticals.MODID + ".stats_full_hint"), x, y, HINT_COLOR);
         }
     }
 
+    /** "Feed Type: Magazine  (Capacity: 30)" — same shape as the module tooltip */
+    private static void addFeedLine(List<Component> lines, GunStats stats) {
+        if (stats.feed == null || stats.feed.feedType == null) return;
+        MutableComponent line = Component.translatable(statKey("feed_type")).append(": ")
+                .append(Component.translatable("feed_type." + CreatePneumaticTacticals.MODID
+                        + "." + stats.feed.feedType.getSerializedName()));
+        if (stats.feed.clipSize > 0) {
+            line.append(Component.literal("  (").append(Component.translatable(statKey("clip_capacity")))
+                    .append(": " + stats.feed.clipSize + ")"));
+        }
+        lines.add(line);
+    }
+
+    private static void addSupplyLine(List<Component> lines, GunStats stats) {
+        if (stats.supply == null || stats.supply.supplyType == null) return;
+        lines.add(Component.translatable(statKey("supply_type")).append(": ")
+                .append(Component.translatable("supply_type." + CreatePneumaticTacticals.MODID
+                        + "." + stats.supply.supplyType.getSerializedName())));
+    }
+
     private static Component fmt(String statKey, double value) {
-        return Component.translatable("stat." + CreatePneumaticTacticals.MODID + "." + statKey)
+        return Component.translatable(statKey(statKey))
                 .append(": ").append(String.format("%.2f", value));
+    }
+
+    private static String statKey(String statKey) {
+        return "stat." + CreatePneumaticTacticals.MODID + "." + statKey;
     }
 
     // --- crosshair ---

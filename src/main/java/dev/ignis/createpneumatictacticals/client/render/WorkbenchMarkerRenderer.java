@@ -11,17 +11,25 @@ import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 /**
  * Draws the workbench markers as camera-facing quads ([+] free mounts,
  * [-] occupied mounts translucent, [▼] take) plus the translucent blue
  * module preview at the hovered [+] mount.
+ *
+ * <p>Only the markers {@link BenchTargetPicker#isVisible} admits are drawn,
+ * so the icons on screen are exactly the markers the crosshair can pick.
+ * The hovered one is fully opaque and gets its slot name underneath — the
+ * label is what tells the player which mount they are about to touch.
  *
  * <p>All drawing happens in a fresh world-relative PoseStack (the BER
  * frame), AFTER {@link GunWorkbenchRenderer} rendered the gun — markers
@@ -45,6 +53,13 @@ final class WorkbenchMarkerRenderer {
         return new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/" + name + ".png");
     }
 
+    /** label text height relative to the marker's half-size (9px font line) */
+    private static final float LABEL_SCALE = 0.055f;
+    /** gap between the icon's bottom edge and the label, × half-size */
+    private static final float LABEL_GAP = 0.1f;
+    /** label colour: white, like the marker quads themselves */
+    private static final int LABEL_COLOR = 0xFFFFFFFF;
+
     private WorkbenchMarkerRenderer() {}
 
 
@@ -60,6 +75,9 @@ final class WorkbenchMarkerRenderer {
         // already translated): marker world positions must be relativized
         Vec3 origin = Vec3.atLowerCornerOf(bench.getBlockPos());
         for (WorkbenchOverlay.Marker m : WorkbenchOverlay.markers(bench)) {
+            // hidden markers are neither drawn nor pickable (the picker applies
+            // the same rule, so what is on screen is what can be hovered)
+            if (!BenchTargetPicker.isVisible(bench, m)) continue;
             drawBillboard(poseStack, buffer, m, cam, origin,
                     BenchTargetPicker.isHovered(m), packedLight);
         }
@@ -97,6 +115,61 @@ final class WorkbenchMarkerRenderer {
         } finally {
             poseStack.popPose();
         }
+        if (hovered) drawLabel(poseStack, buffer, m, rel, size, packedLight);
+    }
+
+    /**
+     * Slot name under the hovered marker, in its own camera-facing frame (the
+     * icon's cylindrical billboard would tilt the text away from the eye when
+     * looking down at the bench).
+     *
+     * <p>The transform is the vanilla name-tag one: the font draws y-down in
+     * screen space, and the camera orientation plus the double flip both right
+     * the glyphs and keep the quads' winding front-facing — the text render
+     * types cull back faces, so a single-axis flip would draw nothing.
+     */
+    private static void drawLabel(PoseStack poseStack, MultiBufferSource buffer,
+                                  WorkbenchOverlay.Marker m, Vec3 rel, float size, int packedLight) {
+        Component label = label(m);
+        if (label == null) return;
+        Minecraft mc = Minecraft.getInstance();
+        Font font = mc.font;
+        String text = label.getString();
+        float scale = size * LABEL_SCALE;
+        poseStack.pushPose();
+        try {
+            poseStack.translate(rel.x, rel.y, rel.z);
+            poseStack.mulPose(mc.gameRenderer.getMainCamera().rotation());
+            // in the camera frame +y is up on screen: step down past the icon
+            poseStack.translate(0f, -size - size * LABEL_GAP, 0f);
+            poseStack.scale(-scale, -scale, scale);
+            font.drawInBatch(text, -font.width(text) / 2f, 0f, LABEL_COLOR, true,
+                    poseStack.last().pose(), buffer, Font.DisplayMode.SEE_THROUGH, 0, packedLight);
+        } finally {
+            poseStack.popPose();
+        }
+    }
+
+    /**
+     * The slot a marker belongs to: the module type its mount accepts ("后托"
+     * for the stock mount), or the handguard position for a handguard
+     * attachment point ("护木(上)"). Null for [▼] — the take marker is the gun
+     * itself, not a slot.
+     */
+    private static @Nullable Component label(WorkbenchOverlay.Marker m) {
+        if (m.isTake()) return null;
+        HandguardPosition pos = WorkbenchAssembler.handguardPosFromMount(m.mountId());
+        if (pos != null) {
+            return Component.translatable(typeKey(ModuleType.HANDGUARD))
+                    .append(Component.translatable("hg_pos." + CreatePneumaticTacticals.MODID
+                            + "." + pos.getSerializedName()));
+        }
+        ModuleType type = WorkbenchAssembler.mountTypeOf(m.mountId());
+        return type == null ? null : Component.translatable(typeKey(type));
+    }
+
+    private static String typeKey(ModuleType type) {
+        return "module_type." + CreatePneumaticTacticals.MODID + "." + type.getSerializedName();
     }
 
     /**
