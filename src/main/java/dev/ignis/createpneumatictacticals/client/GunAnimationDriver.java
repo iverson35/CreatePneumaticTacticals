@@ -37,10 +37,13 @@ public final class GunAnimationDriver {
 
     /**
      * Reload start: picks reload vs reload_round by the installed feed
-     * module's load_type; an empty magazine appends the bolt cycle (timing
-     * mirrors GunAnimTiming). Broadcast to the receiver and all modules.
+     * module's load_type; {@code empty} appends the bolt cycle (timing mirrors
+     * GunAnimTiming). Broadcast to the receiver and all modules. The empty
+     * decision comes from the caller, never from the NBT count: an ammo swap
+     * empties the magazine server-side, and that sync is still a tick away —
+     * reading it here picked the non-empty chain for every swap.
      */
-    public static void onReloadStart() {
+    public static void onReloadStart(boolean empty) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
         ItemStack gun = player.getMainHandItem();
@@ -48,7 +51,6 @@ public final class GunAnimationDriver {
         GunStats stats = GunStats.ofGun(gun);
         if (stats.feed == null) return;
         boolean round = stats.feed.feedType == FeedType.ROUND;
-        boolean empty = GunNbt.getAmmoCount(gun) <= 0;
         RawAnimation anim = round ? GunAnimations.RELOAD_ROUND : GunAnimations.RELOAD_MAGAZINE;
         if (empty) {
             anim = RawAnimation.begin()

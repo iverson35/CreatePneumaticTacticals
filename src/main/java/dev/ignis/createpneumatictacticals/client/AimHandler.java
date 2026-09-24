@@ -3,6 +3,7 @@ package dev.ignis.createpneumatictacticals.client;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
+import dev.ignis.createpneumatictacticals.gun.InteractPass;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
 import dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
@@ -188,23 +189,21 @@ public final class AimHandler {
     public static void onClickInput(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        // interact key: vanilla's own use flow is running with the gun made
+        // transparent (InteractPass) - nothing may swallow it
+        if (InteractPass.isActive()) return;
+        boolean holdingGun = mc.player.getMainHandItem().getItem() instanceof GeoGunItem;
         if (event.getKeyMapping() == mc.options.keyUse) {
             // 3D workbench: route every hand state (gun/receiver/module/empty)
             // through the packet flow; cancel vanilla so block.use and the
             // item-dip animation never fire for consumed workbench clicks.
-            // Gate: a marker hovered (any bench in view) OR the crosshair
-            // block is the bench itself (staging a gun/receiver).
-            boolean benchBlock = mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
-                    && mc.level.getBlockState(hit.getBlockPos()).getBlock()
-                        instanceof dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock;
-            if ((benchBlock || BenchTargetPicker.wouldInteract())
-                    && BenchTargetPicker.sendRightClick()) {
+            if (tryBenchRightClick(mc)) {
                 event.setCanceled(true);
                 event.setSwingHand(false);
                 return;
             }
-            if (!(mc.player.getMainHandItem().getItem() instanceof GeoGunItem)) return;
-        } else if (!(mc.player.getMainHandItem().getItem() instanceof GeoGunItem)) {
+            if (!holdingGun) return;
+        } else if (!holdingGun) {
             return;
         }
         // gun holder: swallow use/attack (aiming owns right click, no melee)
@@ -212,6 +211,30 @@ public final class AimHandler {
                 || event.getKeyMapping() == mc.options.keyAttack) {
             event.setCanceled(true);
             event.setSwingHand(false);
+            return;
         }
+        // middle mouse belongs to the interact key while a gun is held: without
+        // this a mid-click would ALSO pick-block the aimed block and swap the
+        // gun out of the hand. Only while the interact key actually sits on the
+        // pick-block input - rebind it elsewhere and pick-block is back.
+        if (event.getKeyMapping() == mc.options.keyPickItem
+                && InteractKey.sharesInput(mc.options.keyPickItem)) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+        }
+    }
+
+    /**
+     * 3D workbench right-click routing: true when the click was consumed by
+     * the assembly packet flow. Gate: a marker hovered (any bench in view) OR
+     * the crosshair block is the bench itself (staging a gun/receiver). Every
+     * hand state (gun/receiver/module/empty) goes through here, so the caller
+     * must swallow the vanilla click.
+     */
+    static boolean tryBenchRightClick(Minecraft mc) {
+        boolean benchBlock = mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
+                && mc.level.getBlockState(hit.getBlockPos()).getBlock()
+                    instanceof dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock;
+        return (benchBlock || BenchTargetPicker.wouldInteract()) && BenchTargetPicker.sendRightClick();
     }
 }

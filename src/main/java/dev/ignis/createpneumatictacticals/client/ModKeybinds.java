@@ -17,6 +17,8 @@ public final class ModKeybinds {
     public static final KeyMapping FIRE_MODE = register("fire_mode", GLFW.GLFW_KEY_V);
     public static final KeyMapping AIM_STANCE = register("aim_stance", GLFW.GLFW_KEY_X);
     public static final KeyMapping CYCLE_AMMO = register("cycle_ammo", GLFW.GLFW_KEY_O);
+    /** middle mouse: vanilla right-click use while a gun is held; see InteractKey */
+    public static final KeyMapping INTERACT = registerMouse("interact", GLFW.GLFW_MOUSE_BUTTON_MIDDLE);
 
     private ModKeybinds() {}
 
@@ -28,6 +30,12 @@ public final class ModKeybinds {
     private static KeyMapping register(String name, int key) {
         return new KeyMapping("key." + CreatePneumaticTacticals.MODID + "." + name,
                 KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, key,
+                "key.categories." + CreatePneumaticTacticals.MODID);
+    }
+
+    private static KeyMapping registerMouse(String name, int button) {
+        return new KeyMapping("key." + CreatePneumaticTacticals.MODID + "." + name,
+                KeyConflictContext.IN_GAME, InputConstants.Type.MOUSE, button,
                 "key.categories." + CreatePneumaticTacticals.MODID);
     }
 }

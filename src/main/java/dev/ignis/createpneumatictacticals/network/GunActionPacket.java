@@ -14,8 +14,9 @@ public class GunActionPacket {
 
     public enum Action {
         NEXT_FIRE_MODE,
-        NEXT_AMMO,
-        CYCLE_AIM_STANCE
+        CYCLE_AIM_STANCE,
+        /** aborted reload: drop the ammo swap it was going to apply */
+        CANCEL_AMMO_SWAP
     }
 
     public final Action action;

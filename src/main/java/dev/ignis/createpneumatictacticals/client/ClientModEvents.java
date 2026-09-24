@@ -20,6 +20,7 @@ public final class ClientModEvents {
         event.register(ModKeybinds.FIRE_MODE);
         event.register(ModKeybinds.AIM_STANCE);
         event.register(ModKeybinds.CYCLE_AMMO);
+        event.register(ModKeybinds.INTERACT);
     }
 
     @SubscribeEvent

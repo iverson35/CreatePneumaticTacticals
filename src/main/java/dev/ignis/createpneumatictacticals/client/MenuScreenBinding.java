@@ -28,5 +28,6 @@ public final class MenuScreenBinding {
     @SubscribeEvent
     public static void onRegisterOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
         GunHudOverlay.register(event);
+        AmmoWheel.register(event);
     }
 }

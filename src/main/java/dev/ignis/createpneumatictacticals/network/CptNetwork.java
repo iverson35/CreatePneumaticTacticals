@@ -26,6 +26,7 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, FireRequestPacket.class, FireRequestPacket::encode, FireRequestPacket::decode, FireRequestPacket::handle);
         CHANNEL.registerMessage(id++, ReloadResultPacket.class, ReloadResultPacket::encode, ReloadResultPacket::decode, ReloadResultPacket::handle);
         CHANNEL.registerMessage(id++, GunActionPacket.class, GunActionPacket::encode, GunActionPacket::decode, GunActionPacket::handle);
+        CHANNEL.registerMessage(id++, SelectAmmoPacket.class, SelectAmmoPacket::encode, SelectAmmoPacket::decode, SelectAmmoPacket::handle);
         CHANNEL.registerMessage(id++, WorkbenchActionPacket.class, WorkbenchActionPacket::encode, WorkbenchActionPacket::decode, WorkbenchActionPacket::handle);
         CHANNEL.registerMessage(id++, AimStatePacket.class, AimStatePacket::encode, AimStatePacket::decode, AimStatePacket::handle);
         // S2C

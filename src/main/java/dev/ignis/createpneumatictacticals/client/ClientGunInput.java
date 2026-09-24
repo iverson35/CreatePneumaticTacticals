@@ -3,12 +3,14 @@ package dev.ignis.createpneumatictacticals.client;
 import dev.ignis.createpneumatictacticals.Config;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
+import dev.ignis.createpneumatictacticals.gun.AmmoTypes;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.network.CptNetwork;
 import dev.ignis.createpneumatictacticals.network.FireRequestPacket;
 import dev.ignis.createpneumatictacticals.network.ReloadResultPacket;
 import dev.ignis.createpneumatictacticals.network.GunActionPacket;
+import dev.ignis.createpneumatictacticals.network.SelectAmmoPacket;
 import dev.ignis.createpneumatictacticals.module.FireMode;
 import com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType;
 import net.minecraft.client.Minecraft;
@@ -18,6 +20,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
+import java.util.List;
 
 /**
  * Client input loop: while a gun is held, left mouse fires (per fire mode),
@@ -43,6 +47,9 @@ public final class ClientGunInput {
     private static ItemStack reloadPendingGun = null;
     /** hotbar slot the pending press came from (see sameHeldGun) */
     private static int reloadPendingSlot = -1;
+    /** ammo type a reload was started as a swap for; null = plain reload.
+     * Consumed by the startReload it was requested for. */
+    private static String reloadSwapAmmo = null;
     /** ammo type resolved during tryFire; read by MuzzleSmoke for puff scaling */
     private static PotatoCannonProjectileType currentType;
     private static long lastLocalShotMs = 0;
@@ -154,9 +161,13 @@ public final class ClientGunInput {
         // must still be in hand — a slot switch voids the press.
         if (reloadPending) {
             if (!sameHeldGun(player, gun, reloadPendingSlot, reloadPendingGun)) {
-                // slot switched since the press: void the pending reload
+                // slot switched since the press: void the pending reload and
+                // cancel the swap it was going to apply
                 reloadPending = false;
                 reloadPendingGun = null;
+                reloadSwapAmmo = null;
+                CptNetwork.CHANNEL.sendToServer(
+                        new GunActionPacket(GunActionPacket.Action.CANCEL_AMMO_SWAP));
             } else if (!reloading && System.currentTimeMillis() >= fireAnimBusyUntilMs) {
                 reloadPending = false;
                 reloadPendingGun = null;
@@ -168,9 +179,7 @@ public final class ClientGunInput {
         if (ModKeybinds.FIRE_MODE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.NEXT_FIRE_MODE));
         }
-        if (ModKeybinds.CYCLE_AMMO.consumeClick()) {
-            CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.NEXT_AMMO));
-        }
+        // ammo key: tap cycles, hold opens the wheel (AmmoWheel owns it)
         if (ModKeybinds.AIM_STANCE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.CYCLE_AIM_STANCE));
         }
@@ -341,13 +350,19 @@ public final class ClientGunInput {
     }
 
     private static void startReload(Player player, ItemStack gun, GunStats stats) {
+        // consumed here: a swap shapes only the reload it was requested for
+        String swapAmmo = reloadSwapAmmo;
+        reloadSwapAmmo = null;
         if (reloading || !stats.isComplete() || stats.feed == null
                 || stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK) return;
-        if (GunNbt.getAmmoCount(gun) >= stats.feed.clipSize) return; // already full
-        // a deferred ammo pick (cycled while the magazine held rounds) is what
-        // this reload fills with — check pods for THAT type, or the reload
-        // would be rejected as "no_pod" even though new-type pods exist
-        String ammoId = GunNbt.getPendingAmmo(gun);
+        // a swap empties the magazine first, so it starts even from a full one
+        if (swapAmmo == null && GunNbt.getAmmoCount(gun) >= stats.feed.clipSize) return;
+        // an ammo swap defers the new type to this reload — check pods for
+        // THAT type, or the reload would be rejected as "no_pod" even though
+        // new-type pods exist. The server sync (same values) is a tick away,
+        // hence the flag instead of a local NBT prediction.
+        String ammoId = swapAmmo;
+        if (ammoId == null || ammoId.isEmpty()) ammoId = GunNbt.getPendingAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) ammoId = GunNbt.getAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) {
             feedback(player, "no_ammo_selected", ModKeybinds.CYCLE_AMMO);
@@ -361,7 +376,7 @@ public final class ClientGunInput {
         }
         reloadRoundMode = stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.ROUND;
         // duration = receiver animation length (+ bolt when empty) / reload speed
-        boolean empty = GunNbt.getAmmoCount(gun) <= 0;
+        boolean empty = swapAmmo != null || GunNbt.getAmmoCount(gun) <= 0;
         reloadEmpty = empty; // third-person choreography variant
         reloadBatchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, reloadRoundMode, empty, stats.reloadSpeed);
@@ -373,7 +388,45 @@ public final class ClientGunInput {
         reloadingGun = gun;
         reloadingSlot = player.getInventory().selected;
         reloading = true;
-        GunAnimationDriver.onReloadStart();
+        GunAnimationDriver.onReloadStart(empty);
+    }
+
+    /**
+     * Ammo switch (wheel pick / tap cycle). With a magazine the server hands
+     * the remaining rounds back and defers the new type to the reload started
+     * here — so an interrupted reload cancels the switch: the gun keeps its
+     * loaded type and the returned rounds stay with the player. The swap is
+     * flagged, not written into NBT: the server's sync (same values — empty
+     * magazine, new type pending) is a tick away, and a pick the server rejects
+     * must not leave a local magazine state behind.
+     */
+    public static void switchAmmo(Player player, ItemStack gun, GunStats stats, String ammoId) {
+        if (ammoId == null || ammoId.isEmpty() || stats.feed == null) return;
+        if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
+        if (ammoId.equals(effectiveAmmo(gun))) return; // nothing to switch to
+        CptNetwork.CHANNEL.sendToServer(new SelectAmmoPacket(ammoId));
+        if (stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK) {
+            return; // no magazine state: the server switches instantly
+        }
+        reloadSwapAmmo = ammoId;
+        requestReload(player, gun, stats);
+    }
+
+    /** Ammo key tap: cycle to the next type the player can load (same order as the wheel). */
+    public static void cycleAmmo(Player player, ItemStack gun, GunStats stats) {
+        if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
+        if (stats.receiver == null) return;
+        List<String> compatible = AmmoTypes.compatibleFor(player, stats);
+        if (compatible.isEmpty()) return;
+        String current = effectiveAmmo(gun);
+        int idx = current == null ? -1 : compatible.indexOf(current);
+        switchAmmo(player, gun, stats, compatible.get((idx + 1) % compatible.size()));
+    }
+
+    /** The type the gun shows: a deferred pick outranks the loaded one. */
+    public static String effectiveAmmo(ItemStack gun) {
+        String id = GunNbt.getPendingAmmo(gun);
+        return id == null || id.isEmpty() ? GunNbt.getAmmo(gun) : id;
     }
 
     /** Inventory pods loadable into this gun (plain, or pressurized for cartridge supply). */
@@ -458,6 +511,11 @@ public final class ClientGunInput {
         reloadPending = false;
         reloadPendingGun = null;
         reloadingSlot = -1;
+        reloadSwapAmmo = null;
+        // an aborted reload cancels the swap it was started for: the gun keeps
+        // its loaded type and the returned rounds stay with the player
+        CptNetwork.CHANNEL.sendToServer(
+                new GunActionPacket(GunActionPacket.Action.CANCEL_AMMO_SWAP));
         // interrupt() keys off the stack's GeckoLib instance id, which the
         // server round-trip preserves, so the stale reference still stops the
         // right animation

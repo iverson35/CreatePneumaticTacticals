@@ -3,6 +3,7 @@ package dev.ignis.createpneumatictacticals.item;
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
+import dev.ignis.createpneumatictacticals.gun.InteractPass;
 import dev.ignis.createpneumatictacticals.module.GunType;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
@@ -137,15 +138,27 @@ public class GunItem extends Item {
     }
 
     // --- right click is AIM: consume all vanilla use paths ---
+    //
+    // Exception: while InteractPass is up (the interact key is running the
+    // vanilla use flow) the gun must behave as if the hand were empty, or the
+    // CONSUMEs below would eat the very interaction that key exists for.
+    // Client side only: the server runs the block's use before the item's
+    // useOn anyway, and the offhand fallback is a client-side loop decision.
 
     @Override
     public net.minecraft.world.InteractionResultHolder<ItemStack> use(Level level,
             net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand) {
+        if (level.isClientSide && InteractPass.isActive()) {
+            return net.minecraft.world.InteractionResultHolder.pass(player.getItemInHand(hand));
+        }
         return net.minecraft.world.InteractionResultHolder.consume(player.getItemInHand(hand));
     }
 
     @Override
     public net.minecraft.world.InteractionResult useOn(net.minecraft.world.item.context.UseOnContext context) {
+        if (context.getLevel().isClientSide && InteractPass.isActive()) {
+            return net.minecraft.world.InteractionResult.PASS;
+        }
         return net.minecraft.world.InteractionResult.CONSUME;
     }
 
@@ -153,6 +166,9 @@ public class GunItem extends Item {
     public net.minecraft.world.InteractionResult interactLivingEntity(ItemStack stack,
             net.minecraft.world.entity.player.Player player, net.minecraft.world.entity.LivingEntity target,
             net.minecraft.world.InteractionHand hand) {
+        if (player.level().isClientSide && InteractPass.isActive()) {
+            return net.minecraft.world.InteractionResult.PASS;
+        }
         return net.minecraft.world.InteractionResult.CONSUME;
     }
 }

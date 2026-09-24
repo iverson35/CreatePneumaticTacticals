@@ -1,17 +1,26 @@
 package dev.ignis.createpneumatictacticals.network;
 
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
+import dev.ignis.createpneumatictacticals.gun.AmmoTypes;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
+import dev.ignis.createpneumatictacticals.item.ModItems;
+import dev.ignis.createpneumatictacticals.item.PodItem;
 import dev.ignis.createpneumatictacticals.module.FireMode;
+import dev.ignis.createpneumatictacticals.module.SupplyType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server-side handling of fire mode / ammo / aim stance cycling.
+ * Server-side handling of fire mode / aim stance cycling and of ammo picks
+ * (the wheel's explicit pick, or the client's cycle target). A pick that
+ * changes the type swaps the magazine: the remaining rounds go back to the
+ * player and the new type loads with the reload the client starts alongside.
  */
 public final class GunActionHandler {
 
@@ -34,27 +43,6 @@ public final class GunActionHandler {
                     GunNbt.setFireMode(gun, modes.get((idx + 1) % modes.size()));
                 }
             }
-            case NEXT_AMMO -> {
-                // cycle through Create potato projectile types compatible with the receiver
-                List<String> compatible = compatibleAmmoIds(player, stats);
-
-                if (compatible.isEmpty()) return;
-                String current = GunNbt.getAmmo(gun);
-                int idx = current == null ? -1 : compatible.indexOf(current);
-                String next = compatible.get((idx + 1) % compatible.size());
-                // magazine still holds rounds of the CURRENT type: defer —
-                // write the pick as pending, applied at the next reload.
-                // Backpack feed has no magazine state, switches instantly.
-                boolean backpack = stats.feed != null
-                        && stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
-                if (!backpack && GunNbt.getAmmoCount(gun) > 0) {
-                    GunNbt.setPendingAmmo(gun, next);
-                } else {
-                    GunNbt.setPendingAmmo(gun, null);
-                    GunNbt.setAmmo(gun, next);
-                }
-                // per plan: never auto-switch when the selected ammo runs out
-            }
             case CYCLE_AIM_STANCE -> {
                 String current = GunNbt.getAimStance(gun);
                 String next = switch (current == null ? "" : current) {
@@ -64,44 +52,92 @@ public final class GunActionHandler {
                 };
                 GunNbt.setAimStance(gun, next);
             }
+            case CANCEL_AMMO_SWAP -> {
+                // the reload that would have applied a swap was aborted: the gun
+                // keeps its loaded type (the rounds were returned when the pick
+                // was made). Harmless when no swap is pending.
+                GunNbt.setPendingAmmo(gun, null);
+            }
         }
     }
 
+    /** Ammo pick (wheel / cycle target): only ids the player can load are accepted. */
+    public static void onSelectAmmo(ServerPlayer player, String ammoId) {
+        ItemStack gun = player.getMainHandItem();
+        if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
+        GunStats stats = GunStats.ofGun(gun);
+        if (stats.receiver == null) return;
+        if (!AmmoTypes.compatibleFor(player, stats).contains(ammoId)) return;
+        applyAmmoSelection(player, gun, stats, ammoId);
+    }
+
     /**
-     * Ammo types the player can actually use: inventory pods (plain pods, or
-     * pressurized pods for cartridge supply) whose projectile type the
-     * receiver accepts, sorted alphabetically. Creative: all compatible
-     * registered types (pods not required).
+     * Write an ammo pick. With rounds of the loaded type still in the magazine
+     * the pick is a swap: those rounds go back to the player as pods (whatever
+     * does not fit drops at their feet), the magazine empties, and the new type
+     * is deferred to the reload the client starts with the pick — so an
+     * interrupted reload cancels the switch: the gun keeps its loaded type and
+     * the returned rounds stay with the player. Creative hands nothing back —
+     * the magazine refills for free there, so pods would only clutter the
+     * inventory. Backpack feed has no magazine state and switches instantly.
      */
-    private static List<String> compatibleAmmoIds(ServerPlayer player, GunStats stats) {
-        java.util.Set<String> out = new java.util.TreeSet<>();
-        if (player.isCreative()) {
-            var registry = player.level().registryAccess()
-                    .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
-            for (var entry : registry.entrySet()) {
-                String key = entry.getKey().location().toString();
-                if (stats.receiver.gunType.accepts(AmmoExtension.get(key).gunType)) out.add(key);
+    private static void applyAmmoSelection(ServerPlayer player, ItemStack gun, GunStats stats, String ammoId) {
+        boolean backpack = stats.feed != null
+                && stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
+        if (backpack) {
+            GunNbt.setPendingAmmo(gun, null);
+            GunNbt.setAmmo(gun, ammoId);
+            return;
+        }
+        if (ammoId.equals(GunNbt.getAmmo(gun))) {
+            // picking what is already loaded: only a deferred pick is dropped
+            GunNbt.setPendingAmmo(gun, null);
+            return;
+        }
+        int rounds = GunNbt.getAmmoCount(gun);
+        if (rounds > 0) {
+            // creative: nothing to hand back, the magazine refills for free.
+            // Otherwise: cannot hand the rounds back -> keep the gun untouched
+            // rather than lose them.
+            if (!player.isCreative() && !unloadMagazine(player, gun, stats, rounds)) return;
+            GunNbt.setAmmoCount(gun, 0);
+            GunNbt.setPendingAmmo(gun, ammoId);
+        } else {
+            GunNbt.setPendingAmmo(gun, null);
+            GunNbt.setAmmo(gun, ammoId);
+        }
+        // per plan: never auto-switch when the selected ammo runs out
+    }
+
+    /**
+     * Hand the magazine's remaining rounds back as pods of the type being
+     * unloaded — the exact inverse of the reload's pod consumption (one pod per
+     * round). Overflow past a full inventory drops at the player's feet.
+     * False when the loaded type has no content item to put in a pod.
+     */
+    private static boolean unloadMagazine(ServerPlayer player, ItemStack gun, GunStats stats, int rounds) {
+        String loaded = GunNbt.getAmmo(gun);
+        if (loaded == null || loaded.isEmpty()) return false;
+        Item content = AmmoExtension.contentItemFor(player.level().registryAccess(), loaded);
+        if (content == null || content == Items.AIR) return false;
+        boolean cartridge = stats.supply != null && stats.supply.supplyType == SupplyType.CARTRIDGE;
+        ItemStack template = PodItem.ofContent(content,
+                cartridge ? ModItems.PRESSURIZED_POD.get() : ModItems.POD.get());
+        int perStack = Math.max(1, template.getMaxStackSize());
+        int dropped = 0;
+        for (int left = rounds; left > 0; left -= perStack) {
+            ItemStack pods = template.copy();
+            pods.setCount(Math.min(left, perStack));
+            player.getInventory().add(pods); // shrinks to whatever did not fit
+            if (!pods.isEmpty()) {
+                dropped += pods.getCount();
+                player.drop(pods, false);
             }
-            return new ArrayList<>(out);
         }
-        boolean cartridge = stats.supply != null && stats.supply.supplyType
-                == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
-        net.minecraft.world.item.Item requiredPod = cartridge
-                ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
-                : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
-        for (ItemStack stack : player.getInventory().items) {
-            if (stack.getItem() != requiredPod) continue;
-            var content = dev.ignis.createpneumatictacticals.item.PodItem.contentId(stack);
-            if (content == null) continue;
-            net.minecraft.world.item.Item item =
-                    net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(content);
-            if (item == null || item == net.minecraft.world.item.Items.AIR) continue;
-            var typeRef = com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType
-                    .getTypeForItem(player.level().registryAccess(), item);
-            if (typeRef.isEmpty()) continue;
-            String typeId = typeRef.get().unwrapKey().orElseThrow().location().toString();
-            if (stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) out.add(typeId);
+        if (dropped > 0) {
+            player.displayClientMessage(Component.translatable(
+                    "gui.createpneumatictacticals.ammo_dropped", dropped), true);
         }
-        return new ArrayList<>(out);
+        return true;
     }
 }
