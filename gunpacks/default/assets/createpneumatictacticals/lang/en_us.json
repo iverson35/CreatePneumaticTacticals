@@ -11,5 +11,6 @@
   "module.createpneumatictacticals.pica_laser_dbg": "PICA Green Laser (Rail)",
   "module.createpneumatictacticals.pica_sight_small_mounted_md1": "MD-1 Raised Red Dot Sight",
   "module.createpneumatictacticals.charm_crystal": "Crystal Charm",
+  "module.createpneumatictacticals.charm_delta_coin": "Delta Coin Charm",
   "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals"
 }
