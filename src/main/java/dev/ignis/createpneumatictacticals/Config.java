@@ -54,6 +54,10 @@ public class Config {
             .comment("Merge gun part textures into one runtime atlas (big FPS win with many guns on screen)")
             .define("gunAtlas", true);
 
+    public static final ForgeConfigSpec.IntValue LOD_DISTANCE = CLIENT_BUILDER
+            .comment("Camera distance in blocks beyond which cosmetic gun modules (sights, muzzle devices, charms, rail attachments) are not rendered; 0 disables")
+            .defineInRange("lodDistance", 32, 0, 256);
+
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean bloodParticles;
@@ -66,6 +70,7 @@ public class Config {
     public static int gunHudOffsetY;
     public static boolean charmPhysics;
     public static boolean gunAtlas;
+    public static int lodDistance;
 
 
     @SubscribeEvent
@@ -81,6 +86,7 @@ public class Config {
             gunHudOffsetY = GUN_HUD_OFFSET_Y.get();
             charmPhysics = CHARM_PHYSICS.get();
             gunAtlas = GUN_ATLAS.get();
+            lodDistance = LOD_DISTANCE.get();
         }
     }
 }

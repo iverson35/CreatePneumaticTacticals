@@ -56,6 +56,13 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         GunModulesLayer.animationsEnabled = firstPerson
                 || context == ItemDisplayContext.THIRD_PERSON_LEFT_HAND
                 || context == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
+        // LOD: the pass pose translation is the item position in camera
+        // space (entity/hand transforms applied, display offsets < 1
+        // block), so its length is the camera distance. GUI has no world
+        // position and never LODs.
+        int lod = dev.ignis.createpneumatictacticals.Config.lodDistance;
+        GunModulesLayer.lodActive = lod > 0 && context != ItemDisplayContext.GUI
+                && itemDistSq(poseStack) > lod * (float) lod;
         ((GunGeoModel) getGeoModel()).setStack(stack);
         if (context == ItemDisplayContext.GUI) {
             // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display"
@@ -93,6 +100,14 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
         GunHandsLayer.isFirstPersonPass = false;
         GunModulesLayer.animationsEnabled = false;
+        GunModulesLayer.lodActive = false;
+    }
+
+    /** camera-space distance squared of the item being rendered */
+    private static float itemDistSq(PoseStack poseStack) {
+        org.joml.Matrix4f m = poseStack.last().pose();
+        float dx = m.m30(), dy = m.m31(), dz = m.m32();
+        return dx * dx + dy * dy + dz * dz;
     }
 
     /** the live gun model — used by GunAnimationDriver to pin animation resolution context */
@@ -125,8 +140,10 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         // restored afterwards — they are shared with the in-hand pass.
         boolean prevFirstPerson = GunHandsLayer.isFirstPersonPass;
         boolean prevAnimated = GunModulesLayer.animationsEnabled;
+        boolean prevLod = GunModulesLayer.lodActive;
         GunHandsLayer.isFirstPersonPass = false;
         GunModulesLayer.animationsEnabled = false;
+        GunModulesLayer.lodActive = false; // bench: always full detail
         java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
                 GunAnimations.snapshotBones(model);
         GunAnimations.resetToRestPose(model);
@@ -152,6 +169,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
             GunAnimations.restoreBones(saved);
             GunHandsLayer.isFirstPersonPass = prevFirstPerson;
             GunModulesLayer.animationsEnabled = prevAnimated;
+            GunModulesLayer.lodActive = prevLod;
         }
     }
 

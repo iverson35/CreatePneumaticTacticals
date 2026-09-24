@@ -53,6 +53,17 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
      */
     public static boolean animationsEnabled = false;
 
+    /**
+     * LOD for the current pass: the camera is beyond {@code Config.lodDistance}
+     * from the gun being rendered (dropped guns, other players' held guns,
+     * item frames — anything in world space). Cosmetic modules — sights,
+     * muzzle devices, charms, handguard rail attachments — are skipped:
+     * they are a few pixels at that range, while their vertex emission is
+     * most of a gun render cost. GUI icons and the local first-person
+     * pass never LOD. Set per pass by GunHandsAwareRenderer.
+     */
+    public static boolean lodActive;
+
     public GunModulesLayer(GeoRenderer<GeoGunItem> renderer) {
         super(renderer);
     }
@@ -95,12 +106,12 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
 
         mount(receiverModel, "loc_feed", modules.get(ModuleType.FEED), ctx, ghost);
         mount(receiverModel, "loc_supply", modules.get(ModuleType.SUPPLY), ctx, ghost);
-        mount(receiverModel, "loc_sight", modules.get(ModuleType.SIGHT), ctx, ghost);
-        mount(receiverModel, "loc_sight_side", modules.get(ModuleType.TACTICAL_SIGHT), ctx, ghost);
+        if (!lodActive) mount(receiverModel, "loc_sight", modules.get(ModuleType.SIGHT), ctx, ghost);
+        if (!lodActive) mount(receiverModel, "loc_sight_side", modules.get(ModuleType.TACTICAL_SIGHT), ctx, ghost);
         mount(receiverModel, "loc_stock", modules.get(ModuleType.STOCK), ctx, ghost);
         mount(receiverModel, "loc_barrel", modules.get(ModuleType.BARREL), ctx, ghost);
         mount(receiverModel, "loc_handguard", modules.get(ModuleType.HANDGUARD), ctx, ghost);
-        mount(receiverModel, "loc_charm", modules.get(ModuleType.CHARM), ctx, ghost);
+        if (!lodActive) mount(receiverModel, "loc_charm", modules.get(ModuleType.CHARM), ctx, ghost);
         // a preview at a receiver mount; deep mounts (muzzle port, handguard
         // attachment) are matched during the descent below
         if (ghost != null) {
@@ -211,26 +222,32 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
             if (target.type == ModuleType.BARREL) {
-                // capture the muzzle tip for MuzzleSmoke: push, walk the
-                // barrel model's root->loc_muzzle_attachment chain (the
-                // recursive mount below pops its own pose, so it cannot
-                // leave that space for us), sample, then pop. Works bare
-                // (muzzle module absent -> tip at the locator) or with a
-                // device (front face computed from its cubes).
-                ctx.poseStack.pushPose();
-                try {
-                    CoreGeoBone muzzleLoc = model.getBone("loc_muzzle_attachment").orElse(null);
-                    if (muzzleLoc != null) {
-                        applyBoneChain(muzzleLoc, ctx.poseStack);
-                        captureMuzzleAnchor(ctx, ctx.poseStack, ctx.modules.get(ModuleType.MUZZLE));
+                // muzzle device + anchor capture, both skipped at LOD range
+                if (!lodActive) {
+                    // capture the muzzle tip for MuzzleSmoke: push, walk the
+                    // barrel model's root->loc_muzzle_attachment chain (the
+                    // recursive mount below pops its own pose, so it cannot
+                    // leave that space for us), sample, then pop. Works bare
+                    // (muzzle module absent -> tip at the locator) or with a
+                    // device (front face computed from its cubes).
+                    ctx.poseStack.pushPose();
+                    try {
+                        CoreGeoBone muzzleLoc = model.getBone("loc_muzzle_attachment").orElse(null);
+                        if (muzzleLoc != null) {
+                            applyBoneChain(muzzleLoc, ctx.poseStack);
+                            captureMuzzleAnchor(ctx, ctx.poseStack, ctx.modules.get(ModuleType.MUZZLE));
+                        }
+                    } finally {
+                        ctx.poseStack.popPose();
                     }
-                } finally {
-                    ctx.poseStack.popPose();
+                    mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx, ghost);
                 }
-                mount(model, "loc_muzzle_attachment", ctx.modules.get(ModuleType.MUZZLE), ctx, ghost);
             } else if (target.type == ModuleType.HANDGUARD) {
-                for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
-                    mount(model, e.getKey().locatorName(), e.getValue(), ctx, ghost);
+                // rail attachments are invisible at LOD range
+                if (!lodActive) {
+                    for (Map.Entry<HandguardPosition, ModuleDefinition> e : ctx.hgAttachments.entrySet()) {
+                        mount(model, e.getKey().locatorName(), e.getValue(), ctx, ghost);
+                    }
                 }
                 // the ghost's own handguard position may be free (not in the
                 // installed map), so walk it explicitly
