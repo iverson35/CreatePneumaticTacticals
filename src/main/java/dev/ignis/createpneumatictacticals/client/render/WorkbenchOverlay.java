@@ -47,7 +47,7 @@ public final class WorkbenchOverlay {
 
     private static final ModuleType[] MOUNT_ORDER = {
             ModuleType.FEED, ModuleType.SUPPLY, ModuleType.SIGHT, ModuleType.TACTICAL_SIGHT,
-            ModuleType.STOCK, ModuleType.BARREL, ModuleType.HANDGUARD
+            ModuleType.STOCK, ModuleType.BARREL, ModuleType.HANDGUARD, ModuleType.CHARM
     };
 
     /**

@@ -78,6 +78,14 @@ public final class ModuleDefinition {
     /** sight-only fields */
     public final double aimZoom, tacticalAimZoom;
 
+    /**
+     * charm-only: swing physics. Chain geometry is deliberately NOT here —
+     * the segment count is whatever the model ships ({@code chain_0} upwards,
+     * or a single joint on the pendant bone) and the lengths come from the
+     * model's bone pivots, so the numbers cannot desync from the art.
+     */
+    public final CharmSpec charm;
+
     /** handguard: exposed attachment points; empty = no attachment slots */
     public final List<HandguardPosition> attachmentPoints;
     /** handguard_attachment: positions this attachment can mount to */
@@ -105,6 +113,28 @@ public final class ModuleDefinition {
     /** one gas-guide port of a muzzle device */
     public record GasGuide(double weight, double velocityMultiplier,
                            double spreadMultiplier, double directionX, double directionY) {}
+
+    /**
+     * Charm swing physics (JSON {@code "charm"} block). Every value is
+     * frame-rate independent, and {@link #DEFAULT} is what an omitted block
+     * (or an omitted key) falls back to.
+     *
+     * @param gravityScale    gravity multiplier; 0 = weightless, &gt;1 = heavier
+     * @param airDrag         velocity damping per second: {@code v *= exp(-airDrag*dt)}
+     * @param pendantMass     pendant mass relative to one chain link
+     * @param maxSwingDegrees swing cone half-angle clamp (degrees, off straight
+     *                        down in world space; the model's rest pose must
+     *                        hang along that axis, which is what a level gun
+     *                        makes the charm's local -Z)
+     * @param surfaceMargin   minimum gap kept to the receiver surface, blocks
+     * @param bounce          normal restitution when a link hits the receiver
+     * @param friction        tangential velocity kept on contact (1 = frictionless)
+     */
+    public record CharmSpec(double gravityScale, double airDrag, double pendantMass,
+                            double maxSwingDegrees, double surfaceMargin,
+                            double bounce, double friction) {
+        public static final CharmSpec DEFAULT = new CharmSpec(1.0, 0.3, 3.0, 75.0, 0.02, 0.15, 0.6);
+    }
 
     private ModuleDefinition(Builder b) {
         this.id = b.id;
@@ -140,6 +170,7 @@ public final class ModuleDefinition {
         this.airPerShot = b.airPerShot;
         this.aimZoom = b.aimZoom;
         this.tacticalAimZoom = b.tacticalAimZoom;
+        this.charm = b.charm;
 
         this.attachmentPoints = List.copyOf(b.attachmentPoints);
         this.positions = List.copyOf(b.positions);
@@ -259,6 +290,20 @@ public final class ModuleDefinition {
         if (type == ModuleType.TACTICAL_SIGHT) {
             b.tacticalAimZoom = GsonHelper.getAsDouble(json, "tactical_aim_zoom", 1.0);
         }
+        // charm: swing physics (geometry comes from the model, not the JSON)
+        if (type == ModuleType.CHARM && json.has("charm")) {
+            JsonObject c = json.getAsJsonObject("charm");
+            CharmSpec d = CharmSpec.DEFAULT;
+            b.charm = new CharmSpec(
+                    GsonHelper.getAsDouble(c, "gravity_scale", d.gravityScale()),
+                    GsonHelper.getAsDouble(c, "air_drag", d.airDrag()),
+                    Math.max(0.01, GsonHelper.getAsDouble(c, "pendant_mass", d.pendantMass())),
+                    net.minecraft.util.Mth.clamp(
+                            GsonHelper.getAsDouble(c, "max_swing_degrees", d.maxSwingDegrees()), 0, 180),
+                    Math.max(0, GsonHelper.getAsDouble(c, "surface_margin", d.surfaceMargin())),
+                    net.minecraft.util.Mth.clamp(GsonHelper.getAsDouble(c, "bounce", d.bounce()), 0, 1),
+                    net.minecraft.util.Mth.clamp(GsonHelper.getAsDouble(c, "friction", d.friction()), 0, 1));
+        }
         // handguard: exposed attachment points
         if (type == ModuleType.HANDGUARD) {
             b.attachmentPoints = parsePositions(json, "attachment_points", id);
@@ -323,6 +368,7 @@ public final class ModuleDefinition {
         @Nullable private SupplyType supplyType;
         private int airCapacity, airPerShot;
         private double aimZoom = 1.25, tacticalAimZoom = 1.0;
+        private CharmSpec charm = CharmSpec.DEFAULT;
 
         private List<HandguardPosition> attachmentPoints = Collections.emptyList();
         private List<HandguardPosition> positions = Collections.emptyList();

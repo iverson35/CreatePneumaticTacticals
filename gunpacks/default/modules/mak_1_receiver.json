@@ -22,6 +22,7 @@
     { "module_type": "barrel", "mode": "include", "value": ["REGEX=mak_1.+"] },
     { "module_type": "stock",  "mode": "include", "value": ["REGEX=mak_1.+"] },
     { "module_type": "feed",   "mode": "include", "value": ["REGEX=mak_1.+"] },
-    { "module_type": "supply", "mode": "include", "value": ["REGEX=mak_1.+"] }
+    { "module_type": "supply", "mode": "include", "value": ["REGEX=mak_1.+"] },
+    { "module_type": "charm",  "mode": "include", "value": ["REGEX=charm.+"] }
   ]
 }

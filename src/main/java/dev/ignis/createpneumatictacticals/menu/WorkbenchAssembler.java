@@ -298,6 +298,7 @@ public final class WorkbenchAssembler {
             case "loc_stock" -> dev.ignis.createpneumatictacticals.module.ModuleType.STOCK;
             case "loc_barrel" -> dev.ignis.createpneumatictacticals.module.ModuleType.BARREL;
             case "loc_handguard" -> dev.ignis.createpneumatictacticals.module.ModuleType.HANDGUARD;
+            case "loc_charm" -> dev.ignis.createpneumatictacticals.module.ModuleType.CHARM;
             case "loc_muzzle_attachment" -> dev.ignis.createpneumatictacticals.module.ModuleType.MUZZLE;
             default -> null;
         };

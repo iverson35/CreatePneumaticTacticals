@@ -210,6 +210,7 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
             case STOCK -> "loc_stock";
             case BARREL -> "loc_barrel";
             case HANDGUARD -> "loc_handguard";
+            case CHARM -> "loc_charm";
             default -> null; // MUZZLE mounts on the barrel; HG_ATTACHMENT on the handguard
         };
     }

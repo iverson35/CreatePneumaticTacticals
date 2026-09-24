@@ -46,6 +46,10 @@ public class Config {
             .comment("Vertical offset of the gun ammo widget (from the bottom edge)")
             .defineInRange("gunHudOffsetY", 0, -2000, 2000);
 
+    public static final ForgeConfigSpec.BooleanValue CHARM_PHYSICS = CLIENT_BUILDER
+            .comment("Simulate charm/pendant swing in first person; when false, charms hang in their rest pose")
+            .define("charmPhysics", true);
+
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean bloodParticles;
@@ -56,6 +60,7 @@ public class Config {
     public static boolean gunCrosshairEnabled;
     public static int gunHudOffsetX;
     public static int gunHudOffsetY;
+    public static boolean charmPhysics;
 
 
     @SubscribeEvent
@@ -69,6 +74,7 @@ public class Config {
             gunCrosshairEnabled = GUN_CROSSHAIR_ENABLED.get();
             gunHudOffsetX = GUN_HUD_OFFSET_X.get();
             gunHudOffsetY = GUN_HUD_OFFSET_Y.get();
+            charmPhysics = CHARM_PHYSICS.get();
         }
     }
 }

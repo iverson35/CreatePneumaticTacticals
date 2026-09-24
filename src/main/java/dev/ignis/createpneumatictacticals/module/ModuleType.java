@@ -15,7 +15,9 @@ public enum ModuleType implements StringRepresentable {
     HANDGUARD_ATTACHMENT("handguard_attachment", false),
     SIGHT("sight", false),
     TACTICAL_SIGHT("tactical_sight", false),
-    STOCK("stock", false);
+    STOCK("stock", false),
+    /** decorative chain + pendant, single slot on the receiver (plan_v4) */
+    CHARM("charm", false);
 
     private final String name;
     private final boolean required;

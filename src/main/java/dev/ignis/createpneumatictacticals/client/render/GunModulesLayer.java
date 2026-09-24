@@ -100,6 +100,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         mount(receiverModel, "loc_stock", modules.get(ModuleType.STOCK), ctx, ghost);
         mount(receiverModel, "loc_barrel", modules.get(ModuleType.BARREL), ctx, ghost);
         mount(receiverModel, "loc_handguard", modules.get(ModuleType.HANDGUARD), ctx, ghost);
+        mount(receiverModel, "loc_charm", modules.get(ModuleType.CHARM), ctx, ghost);
         // a preview at a receiver mount; deep mounts (muzzle port, handguard
         // attachment) are matched during the descent below
         if (ghost != null) {
@@ -157,9 +158,16 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             GunAnimations.resetToRestPose(ModuleGunGeoModel.INSTANCE);
         }
 
+        boolean phys = false;
         ctx.poseStack.pushPose();
         try {
             applyBoneChain(loc, ctx.poseStack);
+            if (target.type == ModuleType.CHARM) {
+                // the simulation has the last word on the chain bones: it runs
+                // after the animation pass (which restores undriven bones) and
+                // before the draw (plan_v4)
+                phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
+            }
             // dye regions: bake the module's NBT colors (or the pack's
             // defaults) into a cached dynamic texture when a companion
             // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
@@ -208,6 +216,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                 }
             }
         } finally {
+            if (phys) CharmPhysics.restore();
             ctx.poseStack.popPose();
             if (hideBeam) beam.setHidden(false);
             if (saved != null) GunAnimations.restoreBones(saved);

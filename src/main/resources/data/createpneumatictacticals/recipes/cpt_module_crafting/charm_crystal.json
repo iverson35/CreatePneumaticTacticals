@@ -1,0 +1,8 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "create:iron_sheet"},
+    {"item": "minecraft:gold_ingot"}
+  ],
+  "result": "createpneumatictacticals:charm_crystal"
+}

@@ -181,6 +181,12 @@
 					"pivot": [0, -3.5, 1.5]
 				},
 				{
+					"name": "loc_charm",
+					"parent": "main",
+					"pivot": [1, 1, -2.5],
+					"rotation": [0, -90, 90]
+				},
+				{
 					"name": "bolt",
 					"parent": "main",
 					"pivot": [-0.5, 3.5, 0.5],

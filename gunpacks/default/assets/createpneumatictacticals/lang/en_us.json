@@ -10,5 +10,6 @@
   "module.createpneumatictacticals.mak_1_wire_stock": "MAK-1 Wire Stock",
   "module.createpneumatictacticals.pica_laser_dbg": "PICA Green Laser (Rail)",
   "module.createpneumatictacticals.pica_sight_small_mounted_md1": "MD-1 Raised Red Dot Sight",
+  "module.createpneumatictacticals.charm_crystal": "Crystal Charm",
   "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals"
 }
