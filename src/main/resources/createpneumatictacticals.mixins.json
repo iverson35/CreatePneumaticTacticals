@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "createpneumatictacticals.refmap.json",
   "mixins": [
+    "AbstractSkeletonMixin",
+    "GunPickupPriorityMixin",
     "PotatoProjectileMixin"
   ],
   "client": [

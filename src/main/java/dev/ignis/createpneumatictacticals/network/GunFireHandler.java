@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -29,14 +30,18 @@ import java.util.Optional;
  * Server-authoritative fire logic: validates completeness, ammo count, air and
  * gun-type compatibility, spawns Create's PotatoProjectileEntity from the pod
  * content, applies fire rate and recoil values, decrements ammo/air.
+ *
+ * <p>Two entry points share one core: {@link #onFireRequest} for player
+ * input (client click-time camera, clamped), {@link #onMobFire} for mobs
+ * (GunAttackGoal: server look vector, no HUD/feedback/backpack/recoil).
  */
 public final class GunFireHandler {
 
-    /** ms timestamp of last shot per player; server-side fire rate validation */
+    /** ms timestamp of last shot per shooter; server-side fire rate validation */
     private static final Map<String, Long> LAST_SHOT = new java.util.concurrent.ConcurrentHashMap<>();
     /** aim state mirrored from the client (AimStatePacket) for spread suppression */
     private static final Map<String, Boolean> AIMING = new java.util.concurrent.ConcurrentHashMap<>();
-    /** accumulated hipfire bloom in degrees per player (mirrors client SpreadModel) */
+    /** accumulated hipfire bloom in degrees per shooter (mirrors client SpreadModel) */
     private static final Map<String, Double> BLOOM = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final java.util.Random RANDOM = new java.util.Random();
@@ -57,22 +62,22 @@ public final class GunFireHandler {
      * Server-authoritative hipfire spread in degrees (mirrors the client
      * SpreadModel; aiming = pinpoint, instantaneous instead of interpolated).
      */
-    private static double spreadDegrees(ServerPlayer player, AmmoExtension ext, GunStats stats) {
-        if (AIMING.getOrDefault(player.getStringUUID(), false)) return 0;
-        String key = player.getStringUUID();
-        long now = player.level().getGameTime();
+    private static double spreadDegrees(LivingEntity shooter, AmmoExtension ext, GunStats stats) {
+        if (AIMING.getOrDefault(shooter.getStringUUID(), false)) return 0;
+        String key = shooter.getStringUUID();
+        long now = shooter.level().getGameTime();
         double bloom = BLOOM.getOrDefault(key, 0.0);
         Long last = LAST_SHOT.get(key);
         if (last != null) {
             bloom *= Math.max(0, 1 - (now - last) / (double) BLOOM_DECAY_TICKS);
         }
-        double raw = ext.spread * PosePenalties.posePenalty(player) + bloom;
+        double raw = ext.spread * PosePenalties.posePenalty(shooter) + bloom;
         return Math.max(0, raw / Math.max(0.1, stats.hipfireAccuracyMultiplier));
     }
 
 
-    private static void addBloom(ServerPlayer player, AmmoExtension ext) {
-        String key = player.getStringUUID();
+    private static void addBloom(LivingEntity shooter, AmmoExtension ext) {
+        String key = shooter.getStringUUID();
         BLOOM.put(key, Math.min(2.5 * ext.spread,
                 BLOOM.getOrDefault(key, 0.0) + 0.15 * ext.spread));
     }
@@ -104,7 +109,25 @@ public final class GunFireHandler {
      *                  shoot around corners
      */
     public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir) {
-        ItemStack gun = player.getMainHandItem();
+        fire(player, clientEye, clientDir);
+    }
+
+    /**
+     * Mob fire: the gun AI (GunAttackGoal) calls this with the mob's own
+     * eye/look vectors. The shared core runs without the player conveniences
+     * (client camera trust, HUD feedback, backpack inventory, recoil
+     * broadcast). A mob gun that cannot fire (empty magazine, no air,
+     * backpack feed without an inventory) is simply silent.
+     */
+    public static void onMobFire(LivingEntity shooter) {
+        fire(shooter, null, null);
+    }
+
+    /**
+     * The shared fire core; see the class javadoc for the caller contract.
+     */
+    private static void fire(LivingEntity shooter, Vec3 clientEye, Vec3 clientDir) {
+        ItemStack gun = shooter.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
         GunStats stats = GunStats.ofGun(gun);
@@ -112,8 +135,8 @@ public final class GunFireHandler {
         // ready pose: no firing while elytra flying, or sprinting with a gun
         // too sluggish to stay firing-ready — ergonomics above
         // SPRINT_FIRE_ERGO keeps the gun up (the client mirrors this gate 1:1)
-        if (player.isFallFlying()) return;
-        if (player.isSprinting() && GunStats.ergoScale(gun) <= GunStats.SPRINT_FIRE_ERGO) return;
+        if (shooter.isFallFlying()) return;
+        if (shooter.isSprinting() && GunStats.ergoScale(gun) <= GunStats.SPRINT_FIRE_ERGO) return;
 
         if (!stats.isComplete()) return;
 
@@ -123,11 +146,11 @@ public final class GunFireHandler {
 
         // --- rate limit bookkeeping (the interval itself is computed below,
         // once the ammo type and its reload_ticks are known) ---
-        String key = player.getStringUUID();
-        long now = player.level().getGameTime();
+        String key = shooter.getStringUUID();
+        long now = shooter.level().getGameTime();
         String ammoId = GunNbt.getAmmo(gun);
         if (ammoId == null || ammoId.isEmpty()) {
-            feedback(player, "no_ammo_selected");
+            if (shooter instanceof ServerPlayer player) feedback(player, "no_ammo_selected");
             return;
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
@@ -135,7 +158,7 @@ public final class GunFireHandler {
         // scaled by the gun's fire_rate_multiplier — multiplier 1 is exactly
         // Create-cannon parity. Resolved and gated BEFORE any consumption so
         // spam clicks never drain air or ammo.
-        Optional<PotatoCannonProjectileType> typeOpt = resolveType(player, ammoId);
+        Optional<PotatoCannonProjectileType> typeOpt = resolveType(shooter.level(), ammoId);
         if (typeOpt.isEmpty()) return;
         PotatoCannonProjectileType type = typeOpt.get();
         long intervalTicks = Math.max(1,
@@ -156,7 +179,7 @@ public final class GunFireHandler {
             if (air >= supply.airPerShot) {
                 gun.setDamageValue(air - supply.airPerShot);
             } else {
-                feedback(player, "no_air");
+                if (shooter instanceof ServerPlayer player) feedback(player, "no_air");
                 return;
             }
         }
@@ -168,20 +191,24 @@ public final class GunFireHandler {
         // pressurized pods then) ---
         ItemStack pod = null;
         if (backpack) {
-            pod = findPod(player, ammoId);
-            if (pod == null) {
-                feedback(player, "no_pod");
-                return;
+            if (shooter instanceof ServerPlayer player) {
+                pod = findPod(player, ammoId);
+                if (pod == null) {
+                    feedback(player, "no_pod");
+                    return;
+                }
+            } else {
+                return; // no inventory to feed from: silent
             }
         }
         // --- gun type compatibility ---
         if (!receiver.gunType.accepts(ext.gunType)) {
-            feedback(player, "ammo_type_mismatch");
+            if (shooter instanceof ServerPlayer player) feedback(player, "ammo_type_mismatch");
             return;
         }
 
         // --- spawn projectile (mirrors PotatoCannonItem.use) ---
-        double spreadDeg = spreadDegrees(player, ext, stats);
+        double spreadDeg = spreadDegrees(shooter, ext, stats);
 
         // spread cone apexes at the EYE: sample the angular offset first,
         // put each launch point on its own ray 0.5 blocks out (matches the
@@ -190,8 +217,8 @@ public final class GunFireHandler {
         // giving (1-R)*tan(θ) deviation and trajectories that don't pass
         // through the eye — close-range shots wrongly collapse toward the
         // crosshair.
-        Vec3 eye = player.getEyePosition();
-        Vec3 look = player.getLookAngle();
+        Vec3 eye = shooter.getEyePosition();
+        Vec3 look = shooter.getLookAngle();
         if (clientEye != null && clientDir != null && clientDir.lengthSqr() > 1.0E-8) {
             // trust the client's click-time camera (zero-latency crosshair),
             // clamped: position to 2 blocks of the server eye, direction to
@@ -221,11 +248,11 @@ public final class GunFireHandler {
         // chain (GunLength; legacy 0.5 when the pack lacks the bones)
         double muzzleDistance = dev.ignis.createpneumatictacticals.gun.GunLength.of(gun);
         for (int i = 0; i < pellets; i++) {
-            PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(player.level());
+            PotatoProjectileEntity projectile = AllEntityTypes.POTATO_PROJECTILE.get().create(shooter.level());
             if (projectile == null) return;
             // content: backpack/cartridge use the pod itself; magazine mode
             // synthesizes a plain content stack from the selected ammo item
-            ItemStack contentStack = pod != null ? pod.copy() : contentFor(player, ammoId);
+            ItemStack contentStack = pod != null ? pod.copy() : contentFor(shooter.level(), ammoId);
             if (contentStack == null) return;
             contentStack.setTag(null);
             projectile.setItem(contentStack);
@@ -236,8 +263,8 @@ public final class GunFireHandler {
                 // Reimplemented here because catnip's VecHelper is not on the
                 // compile classpath.
                 double ang = Math.toRadians((360.0 / pellets) * i
-                        + 360.0 * player.getRandom().nextFloat()
-                        + 40 * (player.getRandom().nextFloat() - 0.5f));
+                        + 360.0 * shooter.getRandom().nextFloat()
+                        + 40 * (shooter.getRandom().nextFloat() - 0.5f));
                 Vec3 upAxis = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
                 Vec3 u = dir.cross(upAxis).normalize();
                 Vec3 w = dir.cross(u).normalize();
@@ -275,15 +302,15 @@ public final class GunFireHandler {
             // ticks the identical trajectory.
             projectile.getPersistentData().putDouble("cpt_gravity", stats.gravityMultiplier);
             projectile.getPersistentData().putDouble("cpt_drag", stats.dragMultiplier);
-            projectile.setOwner(player);
-            player.level().addFreshEntity(projectile);
+            projectile.setOwner(shooter);
+            shooter.level().addFreshEntity(projectile);
         }
 
         // --- consume: clip always decrements (creative included); backpack
         // pod shrink and reload-time pod consumption stay creative-free ---
-        addBloom(player, ext);
+        addBloom(shooter, ext);
         if (backpack) {
-            if (!player.isCreative()) pod.shrink(1);
+            if (!(shooter instanceof ServerPlayer player) || !player.isCreative()) pod.shrink(1);
         } else {
             GunNbt.setAmmoCount(gun, GunNbt.getAmmoCount(gun) - 1);
         }
@@ -292,7 +319,7 @@ public final class GunFireHandler {
         // schedule the shell_drop click there (ShellDropScheduler) ---
         if (supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE) {
             dev.ignis.createpneumatictacticals.gun.ShellDropScheduler
-                    .onCartridgeShot((net.minecraft.server.level.ServerLevel) player.level(), player);
+                    .onCartridgeShot((net.minecraft.server.level.ServerLevel) shooter.level(), shooter);
         }
 
         // --- sound: receiver-defined, defaulting to the potato cannon's
@@ -304,8 +331,13 @@ public final class GunFireHandler {
         SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(soundId));
         if (sound != null) {
             float pitch = receiver.ignoreAmmoPitch ? 1.0f : type.soundPitch();
-            player.level().playSound(player, player.getX(), player.getY(), player.getZ(),
-                    sound, SoundSource.PLAYERS, 1.0f, pitch);
+            // the shooting player already heard the shot client-side (instant
+            // feedback), so exclude only them; a mob shooter is heard by
+            // everyone, its target included
+            SoundSource source = shooter instanceof ServerPlayer
+                    ? SoundSource.PLAYERS : SoundSource.HOSTILE;
+            shooter.level().playSound(shooter instanceof ServerPlayer player ? player : null,
+                    shooter.getX(), shooter.getY(), shooter.getZ(), sound, source, 1.0f, pitch);
         }
     }
 
@@ -331,21 +363,16 @@ public final class GunFireHandler {
                 "gui." + CreatePneumaticTacticals.MODID + ".fail." + key), true);
     }
 
-    private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, ItemStack contentStack) {
-        return PotatoCannonProjectileType.getTypeForItem(player.level().registryAccess(), contentStack.getItem())
-                .map(ref -> ref.value());
-    }
-
     /** ammoId is a potato-projectile-TYPE registry key (e.g. create:potato). */
-    private static Optional<PotatoCannonProjectileType> resolveType(ServerPlayer player, String typeId) {
-        return Optional.ofNullable(player.level().registryAccess()
+    private static Optional<PotatoCannonProjectileType> resolveType(net.minecraft.world.level.Level level, String typeId) {
+        return Optional.ofNullable(level.registryAccess()
                 .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
                 .get(ResourceLocation.tryParse(typeId)));
     }
 
     /** Synthesizes a plain content stack: first item registered for the type. */
-    private static ItemStack contentFor(ServerPlayer player, String typeId) {
-        return resolveType(player, typeId)
+    private static ItemStack contentFor(net.minecraft.world.level.Level level, String typeId) {
+        return resolveType(level, typeId)
                 .flatMap(t -> t.items().stream().findFirst())
                 .map(h -> new ItemStack(h.value()))
                 .orElse(null);

@@ -4,7 +4,7 @@ import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.sound.ModSoundEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -62,7 +62,7 @@ public final class ShellDropScheduler {
     private ShellDropScheduler() {}
 
     /** Called by GunFireHandler after a successful CARTRIDGE-supply shot. */
-    public static void onCartridgeShot(ServerLevel level, Player shooter) {
+    public static void onCartridgeShot(ServerLevel level, LivingEntity shooter) {
         // ejection port: right of the view, slightly below the eye, forward
         Vec3 look = shooter.getLookAngle();
         // horizontal right; degenerate (looking straight up/down) falls
