@@ -168,23 +168,46 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                 // before the draw (plan_v4)
                 phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
             }
-            // dye regions: bake the module's NBT colors (or the pack's
-            // defaults) into a cached dynamic texture when a companion
-            // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
+            // texture: the shared runtime atlas when the module fits
+            // (GunTextureAtlas; docs/gun-atlas-design.md), else the
+            // standalone per-texture path below
             ResourceLocation texture = ModuleGunGeoModel.textureId(target.id);
-            texture = DyedTextures.resolve(texture, dyeColors(ctx.stack, target));
+            int[] colors = dyeColors(ctx.stack, target);
             boolean ghostPass = ghostHere != null;
-            ResourceLocation tex = texture;
-            RenderType type = ghostPass ? RenderType.entityTranslucent(tex)
-                    : RenderType.entityCutoutNoCull(tex);
-            getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                    ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
-                    ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
-                    ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
-            if (ghostPass) return; // a preview is one module, no glow pass, no children
-            // fullbright emissive pass for modules with a <name>_glowmask.png
-            GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
-                    ctx.partialTick, texture, getRenderer());
+            GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, colors);
+            if (slot != null && GunTextureAtlas.retarget(model, slot)) {
+                RenderType type = ghostPass ? GunTextureAtlas.TRANSLUCENT : GunTextureAtlas.CUTOUT;
+                getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                        ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                        ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
+                        ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+                if (ghostPass) return; // a preview is one module, no glow pass, no children
+                if (slot.glow()) {
+                    // fullbright emissive pass from the glow atlas (the
+                    // geo_glowing_layer recipe bound to the glow canvas)
+                    getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable,
+                            GunTextureAtlas.GLOW, ctx.bufferSource.getBuffer(GunTextureAtlas.GLOW),
+                            ctx.partialTick, GunGlowLayer.FULLBRIGHT, GunGlowLayer.NO_OVERLAY, 1, 1, 1, 1);
+                }
+            } else {
+                // legacy path: UVs back at the model original first (no-op
+                // when this model was never rewritten)
+                GunTextureAtlas.retarget(model, null);
+                // dye regions: bake the module's NBT colors (or the pack's
+                // defaults) into a cached dynamic texture when a companion
+                // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
+                texture = DyedTextures.resolve(texture, colors);
+                RenderType type = ghostPass ? RenderType.entityTranslucent(texture)
+                        : RenderType.entityCutoutNoCull(texture);
+                getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                        ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                        ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
+                        ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+                if (ghostPass) return; // a preview is one module, no glow pass, no children
+                // fullbright emissive pass for modules with a <name>_glowmask.png
+                GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
+                        ctx.partialTick, texture, getRenderer());
+            }
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state
             if (target.type == ModuleType.BARREL) {

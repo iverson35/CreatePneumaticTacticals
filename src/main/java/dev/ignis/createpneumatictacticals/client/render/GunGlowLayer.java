@@ -35,8 +35,8 @@ import dev.ignis.createpneumatictacticals.item.GeoGunItem;
 public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
 
     /** fullbright: sky + block light at maximum (what AutoGlowingGeoLayer uses) */
-    private static final int FULLBRIGHT = 15728640;
-    private static final int NO_OVERLAY = 0;
+    static final int FULLBRIGHT = 15728640;
+    static final int NO_OVERLAY = 0;
 
     /** glowmask existence per texture id (the resource-manager lookup
      * walks the whole pack chain, ~0.1ms per miss — times every module
@@ -57,6 +57,15 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
                        RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
                        float partialTick, int packedLight, int packedOverlay) {
         ResourceLocation texture = getRenderer().getGeoModel().getTextureResource(animatable);
+        // atlas route: same slot the base pass just retargeted the model to
+        GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);
+        if (slot != null && GunTextureAtlas.retarget(model, slot)) {
+            if (slot.glow()) {
+                getRenderer().reRender(model, poseStack, bufferSource, animatable, GunTextureAtlas.GLOW,
+                        bufferSource.getBuffer(GunTextureAtlas.GLOW), partialTick, FULLBRIGHT, NO_OVERLAY, 1, 1, 1, 1);
+            }
+            return;
+        }
         if (!hasGlowMask(texture)) return;
         RenderType glow = AutoGlowingTexture.getRenderType(texture);
         getRenderer().reRender(model, poseStack, bufferSource, animatable, glow,
@@ -87,13 +96,20 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
         String path = textureId.getPath();
         int dot = path.lastIndexOf('.');
         if (dot < 0) return false;
-        ResourceLocation maskId = new ResourceLocation(textureId.getNamespace(),
-                path.substring(0, dot) + "_glowmask" + path.substring(dot));
+        ResourceLocation maskId = glowmaskIdFor(textureId);
         Boolean cached = GLOWMASK.get(textureId);
         if (cached != null) return cached;
         ResourceManager rm = Minecraft.getInstance().getResourceManager();
         boolean present = rm.getResource(maskId).isPresent();
         GLOWMASK.put(textureId, present);
         return present;
+    }
+
+    /** sibling glowmask id: <id>.png -> <id>_glowmask.png */
+    static ResourceLocation glowmaskIdFor(ResourceLocation textureId) {
+        String path = textureId.getPath();
+        int dot = path.lastIndexOf('.');
+        return new ResourceLocation(textureId.getNamespace(),
+                path.substring(0, dot) + "_glowmask" + path.substring(dot));
     }
 }

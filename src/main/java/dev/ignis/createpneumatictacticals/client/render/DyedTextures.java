@@ -98,23 +98,28 @@ public final class DyedTextures {
                         textureId, mask.getWidth(), mask.getHeight(), base.getWidth(), base.getHeight());
                 mask = null;
             }
-            int w = base.getWidth();
-            int h = base.getHeight();
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    int b = base.getPixelRGBA(x, y);
-                    int region = regionOf(mask, x, y); // -1 = keep original
-                    if (region >= 0 && colors[region] != -1) {
-                        base.setPixelRGBA(x, y, dye(b, colors[region]));
-                    }
-                }
-            }
+            dyeInPlace(base, mask, colors);
             Minecraft.getInstance().getTextureManager()
                     .register(dyedId, new DynamicTexture(base));
             return true;
         } catch (IOException | RuntimeException e) {
             LOGGER.warn("dye bake failed for {}: {}", textureId, e.toString());
             return false;
+        }
+    }
+
+    /**
+     * Recolors the mask dye regions in place, shared by the standalone
+     * bake above and the atlas variant bake (GunTextureAtlas).
+     */
+    static void dyeInPlace(NativeImage base, @org.jetbrains.annotations.Nullable NativeImage mask, int[] colors) {
+        for (int y = 0; y < base.getHeight(); y++) {
+            for (int x = 0; x < base.getWidth(); x++) {
+                int region = regionOf(mask, x, y); // -1 = keep original
+                if (region >= 0 && colors[region] != -1) {
+                    base.setPixelRGBA(x, y, dye(base.getPixelRGBA(x, y), colors[region]));
+                }
+            }
         }
     }
 

@@ -36,6 +36,7 @@ public final class ClientModEvents {
             public void onResourceManagerReload(net.minecraft.server.packs.resources.ResourceManager manager) {
                 dev.ignis.createpneumatictacticals.client.render.GunGlowLayer.invalidateCaches();
                 dev.ignis.createpneumatictacticals.client.render.DyedTextures.invalidateCaches();
+                dev.ignis.createpneumatictacticals.client.render.GunTextureAtlas.invalidate();
             }
         });
     }

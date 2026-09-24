@@ -28,6 +28,25 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         addRenderLayer(new GunGlowLayer(this));
     }
 
+    /**
+     * Receiver base pass joins the shared runtime atlas (GunTextureAtlas)
+     * when its texture fits: the receiver, every module and every other gun
+     * on screen then draw through ONE RenderType. Falls back to the
+     * per-texture type otherwise (UVs restored first).
+     */
+    @Override
+    public RenderType getRenderType(GeoGunItem animatable, ResourceLocation texture,
+                                    @org.jetbrains.annotations.Nullable MultiBufferSource bufferSource,
+                                    float partialTick) {
+        GunGeoModel model = (GunGeoModel) getGeoModel();
+        BakedGeoModel baked = model.getBakedModel(model.getModelResource(animatable));
+        GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);
+        if (baked != null && slot != null && GunTextureAtlas.retarget(baked, slot))
+            return GunTextureAtlas.CUTOUT;
+        if (baked != null) GunTextureAtlas.retarget(baked, null);
+        return super.getRenderType(animatable, texture, bufferSource, partialTick);
+    }
+
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack poseStack,
                              MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
@@ -114,7 +133,13 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         try {
             float partialTick = net.minecraft.client.Minecraft.getInstance().getFrameTime();
             ResourceLocation texture = model.getTextureResource(gunItem);
-            RenderType type = model.getRenderType(gunItem, texture);
+            GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);
+            RenderType type;
+            if (slot != null && GunTextureAtlas.retarget(baked, slot)) type = GunTextureAtlas.CUTOUT;
+            else {
+                GunTextureAtlas.retarget(baked, null);
+                type = model.getRenderType(gunItem, texture);
+            }
             VertexConsumer buffer = bufferSource.getBuffer(type);
             BENCH_RENDERER.reRender(baked, poseStack, bufferSource, gunItem, type, buffer,
                     partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);

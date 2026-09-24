@@ -50,6 +50,10 @@ public class Config {
             .comment("Simulate charm/pendant swing in first person; when false, charms hang in their rest pose")
             .define("charmPhysics", true);
 
+    public static final ForgeConfigSpec.BooleanValue GUN_ATLAS = CLIENT_BUILDER
+            .comment("Merge gun part textures into one runtime atlas (big FPS win with many guns on screen)")
+            .define("gunAtlas", true);
+
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean bloodParticles;
@@ -61,6 +65,7 @@ public class Config {
     public static int gunHudOffsetX;
     public static int gunHudOffsetY;
     public static boolean charmPhysics;
+    public static boolean gunAtlas;
 
 
     @SubscribeEvent
@@ -75,6 +80,7 @@ public class Config {
             gunHudOffsetX = GUN_HUD_OFFSET_X.get();
             gunHudOffsetY = GUN_HUD_OFFSET_Y.get();
             charmPhysics = CHARM_PHYSICS.get();
+            gunAtlas = GUN_ATLAS.get();
         }
     }
 }
