@@ -209,6 +209,15 @@ public final class GunTextureAtlas {
      * Points the model's quads at the slot (or back at the original texture
      * when slot == null). Returns false when the model can't live in the
      * atlas — caller must use the legacy path (UVs are left untouched).
+     *
+     * <p>Baked models are SHARED between consumers (GeckoLib's cache; the
+     * module item renderer and the on-gun layers resolve the same geo
+     * path to the same instance) and this class rewrites their UVs in
+     * place. The rewrite persists after the draw — batching only needs
+     * the UVs at vertex-emit time — so any consumer that binds the
+     * ORIGINAL per-texture path instead of the atlas MUST consult the
+     * registry before drawing, with the slot it intends to use:
+     * typically {@code retarget(model, null)} first.
      */
     public static boolean retarget(BakedGeoModel model, @Nullable Slot slot) {
         ModelState st = STATES.get(model);

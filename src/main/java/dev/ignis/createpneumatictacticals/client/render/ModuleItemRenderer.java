@@ -40,7 +40,16 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
         // then restore — restoring (not re-resetting) matters: a leftover
         // reset would leak the rest pose into the same-frame world render
         // (GunModulesLayer uses this exact snapshot pattern for GUI guns).
-        ((ModuleGeoModel) getGeoModel()).getBakedModel(getGeoModel().getModelResource(animatable));
+        software.bernie.geckolib.cache.object.BakedGeoModel baked =
+                ((ModuleGeoModel) getGeoModel()).getBakedModel(getGeoModel().getModelResource(animatable));
+        // the baked model is SHARED with the on-gun pass (same geo path =
+        // same GeckoLib cache entry): a gun render can leave this model's
+        // UVs rewritten to atlas slot coordinates (GunTextureAtlas), while
+        // this pass binds the ORIGINAL standalone texture — consult the
+        // registry first like every atlas consumer does; retarget(null)
+        // restores the snapshot original (and short-circuits for models
+        // that never entered the atlas).
+        if (baked != null) GunTextureAtlas.retarget(baked, null);
         java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
                 GunAnimations.snapshotBones(getGeoModel());
         GunAnimations.resetToRestPose(getGeoModel());

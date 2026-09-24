@@ -2,7 +2,6 @@
   "name": "createpneumatictacticals:charm_crystal",
   "module_type": "charm",
   "gun_properties": {
-    "ergonomics": -0.02
   },
   "charm": {
     "gravity_scale": 1.0,
