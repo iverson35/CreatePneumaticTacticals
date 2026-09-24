@@ -30,6 +30,17 @@ public final class DyedTextures {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    /** (texture, colors) -> resolved id, cleared on resource reload:
+     * each resolve walks the pack chain up to three times, and a
+     * failed bake would otherwise re-decode the PNG every frame */
+    private static final java.util.Map<DyeKey, ResourceLocation> RESOLVED = new java.util.HashMap<>();
+    private record DyeKey(ResourceLocation texture, int c0, int c1, int c2) {}
+
+    /** clears the resolve cache; called by the client reload listener */
+    public static void invalidateCaches() {
+        RESOLVED.clear();
+    }
+
     private DyedTextures() {}
 
     /** companion-mask convention: <id>.png -> <id>_dye.png */
@@ -55,6 +66,15 @@ public final class DyedTextures {
         // Java int (e.g. -3975987), so "undyed" must be == -1, not < 0
         if (argbRegions[0] == -1 && argbRegions[1] == -1 && argbRegions[2] == -1) return textureId;
 
+        DyeKey key = new DyeKey(textureId, argbRegions[0], argbRegions[1], argbRegions[2]);
+        ResourceLocation cached = RESOLVED.get(key);
+        if (cached != null) return cached;
+        ResourceLocation out = resolveUncached(textureId, argbRegions);
+        RESOLVED.put(key, out);
+        return out;
+    }
+
+    private static ResourceLocation resolveUncached(ResourceLocation textureId, int[] argbRegions) {
         var rm = Minecraft.getInstance().getResourceManager();
         if (rm.getResource(textureId).isEmpty()) return textureId;
         Resource maskRes = rm.getResource(maskIdFor(textureId)).orElse(null);

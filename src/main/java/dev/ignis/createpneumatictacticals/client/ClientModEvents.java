@@ -30,6 +30,17 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
+    public static void onRegisterReloadListeners(net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(new net.minecraft.server.packs.resources.ResourceManagerReloadListener() {
+            @Override
+            public void onResourceManagerReload(net.minecraft.server.packs.resources.ResourceManager manager) {
+                dev.ignis.createpneumatictacticals.client.render.GunGlowLayer.invalidateCaches();
+                dev.ignis.createpneumatictacticals.client.render.DyedTextures.invalidateCaches();
+            }
+        });
+    }
+
+    @SubscribeEvent
     public static void onRegisterParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
         net.minecraft.core.particles.ParticleType<?> type = dev.ignis.createpneumatictacticals.client.particle.ModParticles.MUZZLE_SMOKE.get();
         event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType) type,

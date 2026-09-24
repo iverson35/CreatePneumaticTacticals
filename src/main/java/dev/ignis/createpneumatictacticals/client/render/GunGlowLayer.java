@@ -38,6 +38,16 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
     private static final int FULLBRIGHT = 15728640;
     private static final int NO_OVERLAY = 0;
 
+    /** glowmask existence per texture id (the resource-manager lookup
+     * walks the whole pack chain, ~0.1ms per miss — times every module
+     * of every rendered gun every frame); cleared on resource reload */
+    private static final java.util.Map<ResourceLocation, Boolean> GLOWMASK = new java.util.HashMap<>();
+
+    /** clears the glowmask cache; called by the client reload listener */
+    public static void invalidateCaches() {
+        GLOWMASK.clear();
+    }
+
     public GunGlowLayer(GeoRenderer<GeoGunItem> renderer) {
         super(renderer);
     }
@@ -70,8 +80,8 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
 
     /**
      * True if {@code <path>_glowmask.png} exists next to the given texture.
-     * Checked through the vanilla resource manager, so F3+T resource reloads
-     * are picked up without any invalidation logic.
+     * Cached per texture id; a resource reload clears the cache, so F3+T
+     * swaps are still picked up.
      */
     public static boolean hasGlowMask(ResourceLocation textureId) {
         String path = textureId.getPath();
@@ -79,7 +89,11 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
         if (dot < 0) return false;
         ResourceLocation maskId = new ResourceLocation(textureId.getNamespace(),
                 path.substring(0, dot) + "_glowmask" + path.substring(dot));
+        Boolean cached = GLOWMASK.get(textureId);
+        if (cached != null) return cached;
         ResourceManager rm = Minecraft.getInstance().getResourceManager();
-        return rm.getResource(maskId).isPresent();
+        boolean present = rm.getResource(maskId).isPresent();
+        GLOWMASK.put(textureId, present);
+        return present;
     }
 }
