@@ -114,6 +114,10 @@ public final class GunActionHandler {
      * unloaded — the exact inverse of the reload's pod consumption (one pod per
      * round). Overflow past a full inventory drops at the player's feet.
      * False when the loaded type has no content item to put in a pod.
+     *
+     * Deliberate: the overflow is dropped and reported, never refused — the
+     * swap itself must not be blocked by a full inventory (no "make room
+     * first" prompt, no aborted ammo switch).
      */
     private static boolean unloadMagazine(ServerPlayer player, ItemStack gun, GunStats stats, int rounds) {
         String loaded = GunNbt.getAmmo(gun);
