@@ -35,11 +35,14 @@ public final class ClientGunInput {
     private static boolean wasFiring = false;
     /** controller busy with the fire animation (fire length + transition); reloads wait it out */
     private static long fireAnimBusyUntilMs = 0;
-    /** fire animation length + 2-tick GeckoLib transition, in ms (from the receiver animation file) */
+    /** fire animation length + margin, in ms (from the receiver animation file) */
     private static long fireAnimMs(ItemStack gun) {
         double fireTicks = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .animLengthTicks(gun, "fire", 2.5);
-        return (long) ((fireTicks + 4) * 50.0) + 50; // +4: two 2-tick stage transitions, +1 tick slack
+        // +2: the fire's own single-tick transition plus a tick of margin, so
+        // the reload's 2-tick blend starts from the fire's settled end pose
+        // instead of a mid-fire one (see GunAnimationDriver.onFire)
+        return (long) ((fireTicks + 2) * 50.0) + 50;
     }
     /** manual R pressed during the fire-animation window; retried next tick */
     private static boolean reloadPending = false;
@@ -296,11 +299,9 @@ public final class ClientGunInput {
         if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, pitch);
         lastLocalShotMs = now;
         wasFiring = true;
-        // fire animation occupancy: the controller is busy for fire length +
-        // its 2-tick transition (transitionLength is not scaled by speed, but
-        // the 1.2x playback only shortens the fire stage itself). startReload
-        // must wait this out or it snapshots the bolt mid-fire and the reload
-        // chain's stage transitions then blend from that stale pose.
+        // fire animation occupancy (fire length + the reload's blend margin):
+        // startReload must wait this out or it snapshots the pose mid-fire and
+        // the reload's transition then blends from that stale pose.
         fireAnimBusyUntilMs = now + fireAnimMs(gun);
         // local feel: recoil + bloom + fire animation
         boolean aiming = ModKeybinds.isAiming();

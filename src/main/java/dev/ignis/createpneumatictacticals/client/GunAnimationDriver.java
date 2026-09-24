@@ -64,7 +64,7 @@ public final class GunAnimationDriver {
         // divided by reloadSpeed, so the animation MUST be sped up
         // identically or the visual tail (bolt) outlives the lock and the
         // gun fires mid-bolt
-        broadcast(gun, anim, stats.reloadSpeed);
+        broadcast(gun, anim, stats.reloadSpeed, 2);
     }
 
     /**
@@ -76,33 +76,44 @@ public final class GunAnimationDriver {
     public static void onBolt(double speed) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
-        broadcast(player.getMainHandItem(), GunAnimations.BOLT, speed);
+        broadcast(player.getMainHandItem(), GunAnimations.BOLT, speed, 2);
     }
 
-    /** fire animation (charge handle / bolt cycle / mag feed) on all parts */
+    /**
+     * Fire animation (charge handle / bolt cycle / mag feed) on all parts,
+     * with a single-tick transition. GeckoLib keeps the controller in
+     * TRANSITIONING for transitionLength ticks before the animation runs, so
+     * the 2-tick blend the reload/bolt use reads as the whole fire animation
+     * lagging a beat behind the shot (sound and the recoil punch are local
+     * and land on the trigger tick). 0 would be ideal but is not usable: with
+     * a zero length the controller enters RUNNING before polling the queue,
+     * and the poll in processCurrentAnimation is then skipped because
+     * adjustTick already consumed shouldResetTick — a retrigger replays the
+     * previous animation instead of the new one.
+     */
     public static void onFire(ItemStack gun) {
-        broadcast(gun, GunAnimations.FIRE, 1.0);
+        broadcast(gun, GunAnimations.FIRE, 1.0, 1);
     }
 
     /** receiver + every installed module (each plays the animation only if it defines it) */
-    private static void broadcast(ItemStack gun, RawAnimation anim, double speed) {
-        triggerReceiver(gun, anim, speed);
+    private static void broadcast(ItemStack gun, RawAnimation anim, double speed, int transitionTicks) {
+        triggerReceiver(gun, anim, speed, transitionTicks);
         // per-gun-stack module animation instances (mirrors GunModulesLayer)
         long gunId = GeoItem.getId(gun);
         Set<ResourceLocation> seen = new HashSet<>();
         for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
             if (def.type != ModuleType.RECEIVER && seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId, speed);
+                triggerModule(def.id, anim, gunId, speed, transitionTicks);
             }
         }
         for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
             if (seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId, speed);
+                triggerModule(def.id, anim, gunId, speed, transitionTicks);
             }
         }
     }
 
-    private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed) {
+    private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed, int transitionTicks) {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
         RawAnimation filtered = GunAnimations.filterExisting(anim,
                 dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation());
@@ -112,19 +123,26 @@ public final class GunAnimationDriver {
         // follows the last-rendered stack; pin it to this gun or the lookup
         // can land on another gun / the placeholder (silent no-op stubs)
         dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel()
-                .withStack(gun, () -> triggerOn("recv", id, item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed));
+                .withStack(gun, () -> triggerOn("recv", id,
+                        item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed, transitionTicks));
     }
 
-    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId, double speed) {
+    private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId, double speed,
+            int transitionTicks) {
         RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
-        triggerOn("mod:" + moduleId, gunId, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered, speed);
+        triggerOn("mod:" + moduleId, gunId, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered,
+                speed, transitionTicks);
     }
-    private static void triggerOn(String scope, long instanceId, AnimatableManager<? extends GeoAnimatable> manager, RawAnimation anim, double speed) {
+    private static void triggerOn(String scope, long instanceId, AnimatableManager<? extends GeoAnimatable> manager,
+            RawAnimation anim, double speed, int transitionTicks) {
         if (manager == null) return;
         AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
         if (controller == null) return;
+        // per-trigger: 2 ticks for reload/bolt (they blend in from whatever
+        // the gun was doing), 1 for fire (see onFire)
+        controller.transitionLength(transitionTicks);
         // GeckoLib blends the transition start from its bone-snapshot table,
         // which went stale the moment the previous animation finished (it
         // only updates while an animation is RUNNING). Replay the pose the
