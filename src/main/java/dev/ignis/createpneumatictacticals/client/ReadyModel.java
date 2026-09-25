@@ -50,8 +50,11 @@ public final class ReadyModel {
     /** 0 = low, 1 = high; eased blend between the two ready poses */
     private static float highMix = 0f;
     private static float prevHighMix = 0f;
-    /** main-hand item last tick; a change onto a gun is a draw */
+    /** main-hand item + selected hotbar slot last tick; a change onto a gun
+     *  is a draw (the slot is part of the key so swapping between two
+     *  identical guns in different slots counts as a draw too) */
     private static Item lastHeldItem;
+    private static int lastHeldSlot = -1;
 
     private ReadyModel() {}
     public static void tick(Player player, boolean holdingGun) {
@@ -62,8 +65,10 @@ public final class ReadyModel {
         // it up — the draw tick itself only sets the pose, so the full delay
         // still runs from the next tick.
         Item held = player.getMainHandItem().getItem();
-        if (holdingGun && held != lastHeldItem) {
+        int slot = player.getInventory().selected;
+        if (holdingGun && (held != lastHeldItem || slot != lastHeldSlot)) {
             lastHeldItem = held;
+            lastHeldSlot = slot;
             progress = 1f;
             prevProgress = 1f; // snap into the pose: the gun only just appeared
             stowed = true;     // reads as low ready this tick (pose broadcast)
@@ -73,6 +78,7 @@ public final class ReadyModel {
             return;
         }
         lastHeldItem = held;
+        lastHeldSlot = slot;
         double ergo = holdingGun
                 ? dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(player.getMainHandItem())
                 : 1.0;
