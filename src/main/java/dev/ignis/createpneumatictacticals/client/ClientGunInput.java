@@ -233,6 +233,21 @@ public final class ClientGunInput {
         return reloading;
     }
 
+    /**
+     * True while a reload is deferred behind the fire animation (R pressed or
+     * auto-reload triggered, waiting for the controller to free). The HUD
+     * treats this window as reloading too — without it the readout flashes
+     * the raw empty magazine between the trigger and the reload start.
+     */
+    public static boolean isReloadPending() {
+        return reloadPending;
+    }
+
+    /** True while a round-by-round reload is running (vs a magazine swap). */
+    public static boolean isReloadingRoundMode() {
+        return reloading && reloadRoundMode;
+    }
+
     /** wall-clock ms of the last local shot (0 = never); ReadyModel reads
      *  it for the sprint-fire return-to-ready timing */
     public static long lastShotMs() {

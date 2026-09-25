@@ -245,51 +245,99 @@ public final class GunHudOverlay implements IGuiOverlay {
 
     // --- ammo widget ---
 
+    private static final ResourceLocation FIRE_SEMI =
+            new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/fire_mode/semi.png");
+    private static final ResourceLocation FIRE_AUTO =
+            new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/fire_mode/auto.png");
+    private static final ResourceLocation FIRE_BURST =
+            new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/fire_mode/burst.png");
+    private static final int AMMO_ICON_SIZE = 16;
+
+    /**
+     * COD-style ammo block: the clip number large on top, the reserve below
+     * it with the fire-mode glyph to its left, a vertical divider, and the
+     * loaded ammo's item icon right of the divider. The internal-tank air
+     * readout stays a text line above the block.
+     */
     private void renderAmmoWidget(GuiGraphics g, Minecraft mc, LocalPlayer player, ItemStack gun,
                                   GunStats stats, int width, int height) {
-        int x = width - 8 + Config.gunHudOffsetX;
-        int y = height - 8 + Config.gunHudOffsetY;
-
         String ammoId = GunNbt.getAmmo(gun);
         boolean backpack = stats.feed != null && stats.feed.feedType == FeedType.BACKPACK;
 
-        // line 1 (bottom): clip / reserve
-        String countText;
-        int countColor = TEXT_COLOR;
+        // the whole block (icon included) keeps the old corner anchor
+        int anchorRight = width - 8 + Config.gunHudOffsetX;
+        int blockBottom = height - 8 + Config.gunHudOffsetY;
+
+        int clip = GunNbt.getAmmoCount(gun);
+        // the deferred window (fire animation still blending after the last
+        // shot) counts too, or the readout would flash a red 0 between the
+        // trigger and the reload actually starting
+        boolean reloading = ClientGunInput.isReloading() || ClientGunInput.isReloadPending();
         // creative: reserve is bottomless, show the infinity sign
         String reserveText = player.isCreative() ? "∞" : String.valueOf(reserveCount(player, stats, ammoId));
-        if (backpack) {
-            // backpack feed has no clip; creative reserve is already "∞", don't double it
-            countText = player.isCreative() ? "∞" : "∞ " + reserveText;
-        } else {
-            int clip = GunNbt.getAmmoCount(gun);
-            String clipText = ClientGunInput.isReloading()
-                    ? Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".hud.reloading").getString()
-                    : String.valueOf(clip);
-            countText = clipText + " / " + reserveText;
-            if (clip == 0 && !ClientGunInput.isReloading()) countColor = WARN_COLOR;
-        }
-        drawRightAligned(g, mc, countText, x, y - 9, countColor);
+        // during a reload the magazine counts as out: show 0 (no localized
+        // "reloading" word — it fits the block badly). Round feeds keep the
+        // optimistic count, which grows batch by batch.
+        int displayClip = (reloading && !ClientGunInput.isReloadingRoundMode()) ? 0 : clip;
+        String clipText = backpack ? "∞" : String.valueOf(displayClip);
+        int clipColor = (!backpack && clip == 0 && !reloading) ? WARN_COLOR : TEXT_COLOR;
 
-        // line 2: fire mode — the only readout of the state the fire-mode key
-        // (V by default) cycles, and the only one that matters while aiming.
-        // The loaded ammo type is not repeated here: the wheel shows it on
-        // selection and the gun's tooltip always has it.
+        // 8px reserve row at the bottom, a 2x clip row above it, a 1px divider
+        // spanning both rows, and a 16px ammo icon right of the divider
+        int reserveTop = blockBottom - 8;
+        int clipTop = reserveTop - 17;
+        int dividerX = anchorRight - AMMO_ICON_SIZE - 4;
+        int numbersRight = dividerX - 3;
+
+        g.pose().pushPose();
+        g.pose().scale(2f, 2f, 1f);
+        g.drawString(mc.font, clipText,
+                numbersRight / 2f - mc.font.width(clipText),
+                clipTop / 2f, clipColor, true);
+        g.pose().popPose();
+
+        // reserve row: the fire glyph sits at a FIXED x (a three-digit slot
+        // left of the divider) with the reserve number immediately right of
+        // it — anchoring to the text made the glyph slide with the digit
+        // count. A reserve wider than the slot nudges the pair left instead.
+        int reserveW = mc.font.width(reserveText);
+        int glyphX = Math.min(numbersRight - mc.font.width("999") - 2 - 8,
+                numbersRight - reserveW - 2 - 8);
         FireMode mode = GunNbt.getFireMode(gun);
-        drawRightAligned(g, mc, Component.translatable(
-                        "fire_mode." + CreatePneumaticTacticals.MODID + "."
-                                + (mode == null ? "semi" : mode.getSerializedName())).getString(),
-                x, y - 19, TEXT_COLOR);
+        ResourceLocation glyph = switch (mode == null ? FireMode.SEMI : mode) {
+            case SEMI -> FIRE_SEMI;
+            case AUTO -> FIRE_AUTO;
+            case BURST -> FIRE_BURST;
+        };
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        g.blit(glyph, glyphX, reserveTop, 8, 8, 0f, 0f, 16, 16, 16, 16);
+        g.drawString(mc.font, reserveText, glyphX + 10, reserveTop, TEXT_COLOR, true);
 
-        // line 3 (top): internal tank air pressure
+        g.fill(dividerX, clipTop, dividerX + 1, blockBottom, CROSSHAIR_COLOR);
+
+        ItemStack ammo = ammoStack(mc, ammoId);
+        if (!ammo.isEmpty()) {
+            g.renderFakeItem(ammo, anchorRight - AMMO_ICON_SIZE,
+                    clipTop + (blockBottom - clipTop - AMMO_ICON_SIZE) / 2);
+        }
+
+        // air pressure above the block (internal-tank guns only)
         if (stats.supply != null && stats.supply.supplyType == SupplyType.INTERNAL_TANK) {
             int max = gun.getMaxDamage();
             int air = max > 0 ? max - gun.getDamageValue() : 0;
             int pct = max > 0 ? Math.round(100f * air / max) : 0;
             int color = pct <= 20 ? WARN_COLOR : TEXT_COLOR;
             drawRightAligned(g, mc, Component.translatable(
-                    "gui." + CreatePneumaticTacticals.MODID + ".hud.air", pct).getString(), x, y - 29, color);
+                    "gui." + CreatePneumaticTacticals.MODID + ".hud.air", pct).getString(),
+                    anchorRight, clipTop - 9, color);
         }
+    }
+
+    private static ItemStack ammoStack(Minecraft mc, String ammoId) {
+        if (ammoId == null || ammoId.isEmpty() || mc.level == null) return ItemStack.EMPTY;
+        net.minecraft.world.item.Item item = AmmoExtension.contentItemFor(mc.level.registryAccess(), ammoId);
+        return item == null ? ItemStack.EMPTY : new ItemStack(item);
     }
 
     private static int reserveCount(LocalPlayer player, GunStats stats, String ammoId) {
