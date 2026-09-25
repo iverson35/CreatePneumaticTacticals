@@ -1,5 +1,7 @@
 {
   "itemGroup.createpneumatictacticals": "机械动力：气动战术",
+  "itemGroup.createpneumatictacticals.gear": "气动战术：工具",
+  "itemGroup.createpneumatictacticals.gunpacks": "气动战术：模块",
   "item.createpneumatictacticals.gun": "气动枪",
   "item.createpneumatictacticals.pod": "封装弹",
   "item.createpneumatictacticals.pod.named": "封装弹 [%s]",

@@ -1,5 +1,19 @@
 {
   "variants": {
-    "": {"model": "createpneumatictacticals:block/gun_workbench"}
+    "facing=north": {
+      "model": "createpneumatictacticals:block/module_workbench"
+    },
+    "facing=east": {
+      "model": "createpneumatictacticals:block/module_workbench",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "createpneumatictacticals:block/module_workbench",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "createpneumatictacticals:block/module_workbench",
+      "y": 270
+    }
   }
 }

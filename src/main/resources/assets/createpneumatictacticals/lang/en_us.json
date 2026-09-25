@@ -1,5 +1,7 @@
 {
   "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals",
+  "itemGroup.createpneumatictacticals.gear": "Pneumatic Tacticals: Tools",
+  "itemGroup.createpneumatictacticals.gunpacks": "Pneumatic Tacticals: Modules",
   "item.createpneumatictacticals.gun": "Air Gun",
   "item.createpneumatictacticals.pod": "Pod",
   "item.createpneumatictacticals.pod.named": "Pod [%s]",

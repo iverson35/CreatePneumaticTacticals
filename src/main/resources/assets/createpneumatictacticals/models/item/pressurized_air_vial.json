@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "createpneumatictacticals:item/placeholder"
+    "layer0": "createpneumatictacticals:item/pressurized_air_vial"
   }
 }
