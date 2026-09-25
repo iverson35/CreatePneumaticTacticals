@@ -132,6 +132,7 @@ public final class ModCreativeTabs {
                 com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
         for (var holder : lookup.listElements().toList()) {
             String ammoId = holder.unwrapKey().orElseThrow().location().toString();
+            if (!dev.ignis.createpneumatictacticals.gun.AmmoTypes.isSelectable(ammoId)) continue;
             if (receiver.gunType.accepts(AmmoExtension.get(ammoId).gunType)) {
                 out.add(holder);
             }

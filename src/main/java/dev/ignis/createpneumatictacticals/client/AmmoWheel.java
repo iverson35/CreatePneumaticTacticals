@@ -54,8 +54,6 @@ public final class AmmoWheel implements IGuiOverlay {
     private static final float SELECTED_SCALE = 1.5f;
     private static final int SLOT_COLOR = 0x80101010;
     private static final int SELECT_COLOR = 0xFFFFFFFF;
-    /** marker around the entry the gun is currently set to */
-    private static final int CURRENT_COLOR = 0xFF7FC87F;
     private static final int LABEL_COLOR = 0xFFFFFF;
 
     private static boolean wasDown = false;
@@ -100,8 +98,12 @@ public final class AmmoWheel implements IGuiOverlay {
                 if (!active) {
                     active = true;
                     // list the held gun's ammo at activation, not at press: the
-                    // player may have drawn the gun during the hold
-                    entries = AmmoTypes.compatibleFor(mc.player, GunStats.ofGun(mc.player.getMainHandItem()));
+                    // player may have drawn the gun during the hold. The loaded
+                    // type is excluded: the centre is the pick that keeps it,
+                    // so the ring only offers actual switches
+                    String current = ClientGunInput.effectiveAmmo(mc.player.getMainHandItem());
+                    entries = AmmoTypes.compatibleFor(mc.player, GunStats.ofGun(mc.player.getMainHandItem()))
+                            .stream().filter(id -> !id.equals(current)).toList();
                     mc.player.playSound(SoundEvents.LEVER_CLICK, 0.6f, 1.2f);
                 }
                 updateSelection(mc);
@@ -175,8 +177,6 @@ public final class AmmoWheel implements IGuiOverlay {
             drawIcon(g, contentStack(mc, id), ix, iy, isSelected ? SELECTED_SCALE : 1f);
             if (isSelected) {
                 frame(g, ix, iy, 12, SELECT_COLOR);
-            } else if (id.equals(currentId)) {
-                frame(g, ix, iy, 10, CURRENT_COLOR);
             }
         }
 
@@ -191,9 +191,9 @@ public final class AmmoWheel implements IGuiOverlay {
         if (selected >= 0 && selected < entries.size()) {
             return GunItem.ammoDisplayName(gun, mc.level, entries.get(selected));
         }
-        if (entries.isEmpty()) {
-            return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".ammo_wheel.empty");
-        }
+        // current type first: with the loaded type excluded from the ring,
+        // a single-type gun has an empty ring while still having ammo —
+        // that reads "keep <type>", not "no ammo"
         if (currentId == null || currentId.isEmpty()) {
             return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".ammo_wheel.empty");
         }

@@ -23,6 +23,20 @@ public final class AmmoTypes {
 
     private AmmoTypes() {}
 
+    /**
+     * Create's debug placeholder type (AllPotatoProjectileTypes.FALLBACK,
+     * registered as create:fallback): no content items, zero damage.
+     * Selecting it on a gun crashes the client (its empty items() list
+     * yields a null content item where Create's getTypeForItem NPEs),
+     * so it never shows up as a selectable ammo. Both enumeration sites
+     * (the creative branch here, ModCreativeTabs.compatibleTypes) and the
+     * server-side wheel validation share this filter.
+     */
+    public static boolean isSelectable(String ammoId) {
+        return !com.simibubi.create.content.equipment.potatoCannon.AllPotatoProjectileTypes
+                .FALLBACK.location().toString().equals(ammoId);
+    }
+
     public static List<String> compatibleFor(Player player, GunStats stats) {
         Set<String> out = new TreeSet<>();
         if (stats.receiver == null || stats.receiver.gunType == null) return new ArrayList<>(out);
@@ -31,6 +45,7 @@ public final class AmmoTypes {
                     .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
             for (var entry : registry.entrySet()) {
                 String key = entry.getKey().location().toString();
+                if (!isSelectable(key)) continue;
                 if (stats.receiver.gunType.accepts(AmmoExtension.get(key).gunType)) out.add(key);
             }
             return new ArrayList<>(out);
