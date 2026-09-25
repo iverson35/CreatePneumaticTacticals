@@ -6,7 +6,7 @@
     "fire_rate_multiplier": 5.0,
     "damage_multiplier": -0.5
   },
-  "gun_type": "light",
+  "gun_type": "medium",
   "burst_count": 3,
   "fire_modes": [
     "semi",

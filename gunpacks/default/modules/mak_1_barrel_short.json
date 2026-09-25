@@ -1,7 +1,7 @@
 {
   "name": "createpneumatictacticals:mak_1_barrel_short",
   "module_type": "barrel",
-  "gun_type": "light",
+  "gun_type": "medium",
   "gun_properties": {
     "bullet_speed": 2,
     "gravity_multiplier": -0.8,
