@@ -43,7 +43,7 @@
       "module_type": "sight",
       "mode": "include",
       "value": [
-        "REGEX=pica_sight_small.+"
+        "REGEX=psts_sight_small.+"
       ]
     },
     {

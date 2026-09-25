@@ -316,6 +316,7 @@
 					"name": "hammer",
 					"parent": "lower",
 					"pivot": [0, 1.17233, 2.83272],
+					"rotation": [-45, 0, 0],
 					"cubes": [
 						{
 							"origin": [-0.2, 2.0369, 2.56883],
@@ -562,7 +563,7 @@
 				{
 					"name": "loc_barrel",
 					"parent": "main",
-					"pivot": [0, 2.10521, -0.14044]
+					"pivot": [0, 2.1, -0.14044]
 				},
 				{
 					"name": "ads_camera",
