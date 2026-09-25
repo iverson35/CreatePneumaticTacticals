@@ -72,6 +72,18 @@ public class ModuleItem extends Item implements GeoItem {
         }
     }
 
+    /**
+     * Item name = the module's own name (module.<ns>.<path>, same key the
+     * workbench and the old tooltip line use) instead of the generic
+     * "Module". Unassigned stacks keep the generic registry name.
+     */
+    @Override
+    public Component getName(ItemStack stack) {
+        ResourceLocation id = getModuleId(stack);
+        if (id == null) return super.getName(stack);
+        return Component.translatable("module." + id.getNamespace() + "." + id.getPath());
+    }
+
     public static void setModuleId(ItemStack stack, @Nullable ResourceLocation id) {
         if (id == null) {
             stack.removeTagKey(TAG_MODULE_ID);
@@ -136,8 +148,8 @@ public class ModuleItem extends Item implements GeoItem {
             return;
         }
         ModuleDefinition def = ModuleManager.get(id);
-        String nameKey = "module." + id.getNamespace() + "." + id.getPath();
-        tooltip.add(Component.translatable(nameKey).withStyle(ChatFormatting.AQUA));
+        // no name line here: the stack's title already shows the module name
+        // (getName above); the tooltip starts directly with the stats
         if (def == null) return;
         if (def.gunType != null) {
             tooltip.add(Component.translatable("stat.createpneumatictacticals.gun_type")
