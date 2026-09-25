@@ -251,7 +251,6 @@ public final class GunHudOverlay implements IGuiOverlay {
         int y = height - 8 + Config.gunHudOffsetY;
 
         String ammoId = GunNbt.getAmmo(gun);
-        boolean selected = ammoId != null && !ammoId.isEmpty();
         boolean backpack = stats.feed != null && stats.feed.feedType == FeedType.BACKPACK;
 
         // line 1 (bottom): clip / reserve
@@ -272,14 +271,15 @@ public final class GunHudOverlay implements IGuiOverlay {
         }
         drawRightAligned(g, mc, countText, x, y - 9, countColor);
 
-        // line 2: fire mode + ammo name
+        // line 2: fire mode — the only readout of the state the fire-mode key
+        // (V by default) cycles, and the only one that matters while aiming.
+        // The loaded ammo type is not repeated here: the wheel shows it on
+        // selection and the gun's tooltip always has it.
         FireMode mode = GunNbt.getFireMode(gun);
-        Component modeText = Component.translatable(
-                "fire_mode." + CreatePneumaticTacticals.MODID + "." + (mode == null ? "semi" : mode.getSerializedName()));
-        Component ammoName = selected
-                ? GunItem.ammoDisplayName(gun, player.level(), ammoId)
-                : Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".hud.no_ammo");
-        drawRightAligned(g, mc, modeText.getString() + " · " + ammoName.getString(), x, y - 19, TEXT_COLOR);
+        drawRightAligned(g, mc, Component.translatable(
+                        "fire_mode." + CreatePneumaticTacticals.MODID + "."
+                                + (mode == null ? "semi" : mode.getSerializedName())).getString(),
+                x, y - 19, TEXT_COLOR);
 
         // line 3 (top): internal tank air pressure
         if (stats.supply != null && stats.supply.supplyType == SupplyType.INTERNAL_TANK) {
