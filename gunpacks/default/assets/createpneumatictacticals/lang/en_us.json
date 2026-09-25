@@ -17,5 +17,5 @@
   "module.createpneumatictacticals.711_barrel": "SPICCATO 711 Barrel",
   "module.createpneumatictacticals.711_cartridge_supply": "SPICCATO 711 Cartridge Supply",
   "module.createpneumatictacticals.711_ammo_15": "SPICCATO 711 15-Round Magazine",
-  "itemGroup.createpneumatictacticals": "Create: Pneumatic Tacticals"
-}
+  "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 Handgun Red Dot Sight"
+  }

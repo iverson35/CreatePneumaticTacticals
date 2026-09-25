@@ -17,5 +17,5 @@
   "module.createpneumatictacticals.711_barrel": "SPICCATO 711 标准枪管",
   "module.createpneumatictacticals.711_cartridge_supply": "SPICCATO 711 气瓶击针",
   "module.createpneumatictacticals.711_ammo_15": "SPICCATO 711 15发弹匣",
-  "itemGroup.createpneumatictacticals": "机械动力：气动战术"
-}
+  "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 手枪红点瞄具"
+  }
