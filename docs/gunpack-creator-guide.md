@@ -99,6 +99,7 @@ gunpacks/<枪包目录名>/
 - `<namespace>` 可以是**你自己的命名空间**（不必是 `createpneumatictacticals`），只要和 `name` 一致即可。
 - **文件名必须等于模块 id 的 path**。geo JSON 内部的 `description.identifier`（Blockbench 导出常是 `geometry.unknown`）**不参与校验**，随便写。
 - 找不到模型/贴图时不会崩：物品用 `placeholder` 模型顶替，装到枪上则**不渲染并打一条一次性警告**。
+- 命名前缀有约定：制退器 `8dvo` / `1vo` / `14dvo` / `12dvo`（数字 = 口径直径去掉小数点）、导轨件 `pica*`——见 §2.7。
 
 ### 1.6 热重载与调试
 
@@ -371,7 +372,33 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - 动画 JSON 里可以写 GeckoLib 的 `sound_effects` 关键帧来触发音效（默认包未使用）。
 - 动画只在**手持**渲染时播放；物品栏图标、掉落物、展示框固定为静态 rest pose。
 
-### 2.7 导出为 GeckoLib 格式（Blockbench 步骤）
+### 2.7 命名与尺寸规范（口径 / 导轨）
+
+这两条是**作者约定**：不照着做也能跑，但照着做能保证不同枪包的零件在视觉上对得上、命名一眼能懂。
+
+**① 口径 → 枪管直径 → 制退器命名**
+
+| 口径 `gun_type` | 枪管横截面直径 | 制退器名字前缀 |
+|---|---|---|
+| `light` 小口径 | **0.8** px | `8dvo` |
+| `medium` 中口径 | **1.0** px | `1vo` |
+| `heavy` 大口径 | **1.4** px | `14dvo` |
+| `shotgun` 霰弹 | **1.2** px | `12dvo` |
+
+- 名字里的数字 = 对应直径**去掉小数点**（0.8→`8`、1.0→`1`、1.4→`14`、1.2→`12`），后缀 `dvo`（1.0 习惯写作 `1vo`）。
+- 制退器模型的**内径必须等于同口径枪管的直径**；外轮廓随意（默认包两个制退器的外轮廓分别是 1.4×1.4 与 1.4×1.3）。
+- 实例：`711_barrel` 横截面 0.8×0.8（light）↔ `8dvo_muzzle_brake_competition`；`mak_1_barrel_short` 横截面 1.0×1.0（medium）↔ `1vo_muzzle_brake_a`。
+- `muzzle` 模块本身**没有 `gun_type` 字段**，所以「哪个制退器能装哪根枪管」由枪管的 `module_affected` 白名单表达（§3.5），尺寸规范靠你自觉遵守。
+
+**② `pica` 前缀 = 皮卡丁尼导轨件**
+
+- `pica*` = **皮卡丁尼导轨（Picatinny rail）上的配件与瞄具**：默认包里 `pica_grip_rvg`（握把）、`pica_laser_dbg`（激光）、`pica_sight_small_mounted_md1`（导轨瞄具）。不是导轨件就别用 `pica` 前缀（例：直接装在套筒顶上的 `psts_sight_small_doc1`）。
+- 导轨标准尺寸：**宽 1 px、高 0.4 px**（横截面 1×0.4）。默认包里机匣顶面、护木的 top / bottom / left 三个安装面，都是这个尺寸的导轨立方体。
+- **定位骨的 pivot 落在导轨的安装面上**（不是导轨中心）：机匣 `loc_sight` = 顶导轨上表面，护木 `loc_handguard_bottom` = 底导轨下表面，`loc_handguard_left` = 侧导轨外表面。
+- 导轨件建模：**原点 = 安装面**（模块 y = 0 就是贴着导轨的那个面），夹持结构高 **0.4**、向里包住安装面一点（默认包握把/激光的夹子占 y ∈ [−0.1, 0.3]）。
+- 导轨长在**宿主**上（机匣、护木），配件只负责夹持；护木配件还要两边都声明位置（护木的 `attachment_points` + 配件的 `positions`，§3.6）。
+
+### 2.8 导出为 GeckoLib 格式（Blockbench 步骤）
 
 1. **工程**：用 Blockbench + GeckoLib 插件；工程格式 `animated_entity_model`（本仓库所有 `.bbmodel` 都是这个格式）。
 2. **导出模型**：`File → Export → Export GeckoLib Model`，得到 `format_version: "1.12.0"` 的几何 JSON，保存为
@@ -382,7 +409,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 5. **模块定义**：`modules/<模块id>.json`，`name` 写完整 id（建议文件名与 id 的 path 一致，方便对照）。
 6. 没有离线构建脚本：**导出物手工拷进枪包**即可（仓库里的 `gecko/` 只是作者的工作区）。
 
-### 2.8 建模自检清单
+### 2.9 建模自检清单
 
 - [ ] 模块模型围绕自己的原点 (0,0,0) 建模，朝向与「枪口 = −Z」一致。
 - [ ] 机匣有需要的 `loc_*` 空骨；护木的 `loc_handguard_*` 与 JSON `attachment_points` 对得上。
@@ -391,6 +418,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - [ ] 贴图 ≤64×64、UV 不越界、掩码同尺寸同命名。
 - [ ] 动画名与时长符合 §2.6；模块动画与机匣同名。
 - [ ] 文件名 = 模块 id 的 path（模型、贴图、动画、定义四处一致）。
+- [ ] 枪管横截面直径符合口径规范（0.8 / 1.0 / 1.4 / 1.2 px），制退器内径与名字（`8dvo` / `1vo` / `14dvo` / `12dvo`）对得上。
+- [ ] 导轨件（`pica*`）按 1×0.4 的导轨尺寸建模，原点落在导轨安装面上。
 - [ ] 客户端与服务端的 `modules/` 内容一致。
 
 ---
@@ -576,6 +605,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `positions` | 数组 | **必需，非空** | 自己能装的位置：`top` / `bottom` / `left` / `right`；非法值直接拒绝该文件 |
+
+导轨件（`pica*`）的尺寸与命名规范见 §2.7：导轨横截面 1×0.4，配件原点落在导轨安装面上。
 
 #### sight（瞄具）
 
@@ -813,7 +844,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 |---|---|---|
 | `mak_1_receiver.json` | receiver | 完整机匣字段、6 条 `include` + 正则白名单、动画（fire/reload/bolt）；含一个**无效死键** `burst_count` |
 | `spiccato_711.json` | receiver | 高射速手枪机匣：`ergonomics`/`hipfire_accuracy_multiplier`、`fire_modes: ["semi"]` |
-| `mak_1_barrel_short.json` / `711_barrel.json` | barrel | 口径字段 + 用正则白名单限定可用枪口装置（`REGEX=(1vo\|8dvo).+`） |
+| `mak_1_barrel_short.json` / `711_barrel.json` | barrel | 口径字段 + 用正则白名单限定可用枪口装置 |
 | `mak_1_ammo_20.json` / `711_ammo_15.json` | feed | 弹匣（`load_type: magazine` + `clip_size`）+ 换弹动画（驱动 `mag` 骨） |
 | `mak_1_cartridge_supply.json` / `711_cartridge_supply.json` | supply | 整装气瓶（`supply_type: cartridge`） |
 | `1vo_muzzle_brake_a.json` | muzzle | 两个侧向导气孔（±90° 偏航）+ 气体抑制 |
