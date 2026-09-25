@@ -36,7 +36,7 @@ public final class ModBlocks {
 
     public static final RegistryObject<Block> AMMO_BOX = BLOCKS.register("ammo_box",
             () -> new AmmoBoxBlock(BlockBehaviour.Properties.of()
-                    .strength(0.5F, 6.0F)));
+                    .strength(0.5F, 6.0F).noOcclusion()));
 
     public static final RegistryObject<Item> AMMO_BOX_ITEM = BLOCK_ITEMS.register("ammo_box",
             () -> new AmmoBoxBlockItem(AMMO_BOX.get(), new Item.Properties().stacksTo(1)));

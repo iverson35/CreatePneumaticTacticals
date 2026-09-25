@@ -70,8 +70,7 @@ public class AmmoBoxBlockItem extends BlockItem {
             ItemStack template = AmmoBoxBlockEntity.boxTemplate(stack);
             tooltip.add(Component.translatable(
                     "tooltip.createpneumatictacticals.ammo_box_content",
-                    template.getHoverName().getString(), rounds,
-                    AmmoBoxBlockEntity.CAPACITY));
+                    template.getHoverName().getString(), rounds));
         }
         super.appendHoverText(stack, level, tooltip, flag);
     }

@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=north": {
       "model": "createpneumatictacticals:block/ammo_box"
+    },
+    "facing=east": {
+      "model": "createpneumatictacticals:block/ammo_box",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "createpneumatictacticals:block/ammo_box",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "createpneumatictacticals:block/ammo_box",
+      "y": 270
     }
   }
 }

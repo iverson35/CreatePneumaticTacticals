@@ -32,8 +32,10 @@ import net.minecraft.world.level.block.state.BlockState;
  * {@code BlockEntityTag} (shulker-style); placement restores it via the
  * vanilla {@code BlockItem.updateCustomBlockEntityTag} path.
  *
- * <p>The full {@link WorldlyContainer} (all six faces) is exposed so
- * hoppers/pipes can push and pull. Right-click bypasses the GUI-less block:
+ * <p>The full {@link WorldlyContainer} (all six faces) plus the Forge
+ * {@code ITEM_HANDLER} capability (per-face {@code SidedInvWrapper}) are
+ * exposed, so vanilla hoppers AND Create chutes/funnels/pipes can push and
+ * pull. Right-click bypasses the GUI-less block:
  * insert the held stack / pull one group / Shift-pull a single loose round.
  */
 public class AmmoBoxBlockEntity extends BlockEntity implements WorldlyContainer {
@@ -389,5 +391,47 @@ public class AmmoBoxBlockEntity extends BlockEntity implements WorldlyContainer 
     @Override
     public void handleUpdateTag(CompoundTag tag) {
         this.load(tag);
+    }
+
+    // --- Forge item-handler capability: Create chutes/funnels/farms talk
+    // to this, never to the raw Container (vanilla hoppers use the Container
+    // path above, which is why they worked without it) ---
+
+    @SuppressWarnings("unchecked")
+    private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler>[] handlers =
+            (net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler>[])
+                    (net.minecraftforge.common.util.LazyOptional<?>[]) net.minecraftforge.items.wrapper.SidedInvWrapper.create(
+                            this, net.minecraft.core.Direction.values());
+
+    @Override
+    public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
+            net.minecraftforge.common.capabilities.Capability<T> cap, @org.jetbrains.annotations.Nullable Direction side) {
+        if (!this.remove && cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER
+                && side != null) {
+            // WorldlyContainer exposes slots per face; the wrapper maps the
+            // requested side to the matching handler
+            for (Direction dir : net.minecraft.core.Direction.values()) {
+                if (dir == side) {
+                    return handlers[dir.ordinal()].cast();
+                }
+            }
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        for (net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler> handler : handlers) {
+            handler.invalidate();
+        }
+    }
+
+    @Override
+    public void reviveCaps() {
+        super.reviveCaps();
+        handlers = (net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler>[])
+                (net.minecraftforge.common.util.LazyOptional<?>[]) net.minecraftforge.items.wrapper.SidedInvWrapper.create(
+                        this, net.minecraft.core.Direction.values());
     }
 }
