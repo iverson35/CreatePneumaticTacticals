@@ -184,8 +184,12 @@ public final class ClientGunInput {
         if (ModKeybinds.FIRE_MODE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.NEXT_FIRE_MODE));
         }
-        // ammo key: tap cycles, hold opens the wheel (AmmoWheel owns it)
-        if (ModKeybinds.AIM_STANCE.consumeClick()) {
+        // aim-stance key: only while aiming -- the stance drives the ADS sight
+        // picture, so a press with the gun down flips a state the player
+        // cannot see. consumeClick() stays the left operand so an ignored
+        // press is still consumed; otherwise it would sit in the queue and
+        // fire the moment the player does aim.
+        if (ModKeybinds.AIM_STANCE.consumeClick() && AimHandler.isAiming()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.CYCLE_AIM_STANCE));
         }
     }
