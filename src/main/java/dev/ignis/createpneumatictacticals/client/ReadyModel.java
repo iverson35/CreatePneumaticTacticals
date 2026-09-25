@@ -3,6 +3,7 @@ package dev.ignis.createpneumatictacticals.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 
 /**
  * Low/high ready pose state machine (plan_v2): sprinting or elytra flying
@@ -13,6 +14,10 @@ import net.minecraft.world.entity.player.Player;
  * table, and this gate only exists so the gun cannot shoot while it is still
  * visibly coming up. Aiming suppresses the
  * pose (aim wins), and so does a blocked muzzle.
+ *
+ * <p>Drawing a gun counts as a stow too: switching the main hand onto a gun
+ * starts it in low ready, so it comes up over the same recovery instead of
+ * firing the instant it appears.
  *
  * <p>Sprint-fire guns (ergonomics &gt; SPRINT_FIRE_ERGO) rest in the ready
  * pose while running as well, but holding attack — or a shot within the
@@ -45,11 +50,29 @@ public final class ReadyModel {
     /** 0 = low, 1 = high; eased blend between the two ready poses */
     private static float highMix = 0f;
     private static float prevHighMix = 0f;
+    /** main-hand item last tick; a change onto a gun is a draw */
+    private static Item lastHeldItem;
 
     private ReadyModel() {}
     public static void tick(Player player, boolean holdingGun) {
         prevProgress = progress;
         prevHighMix = highMix;
+        // Draw: the main hand just changed onto a gun (hotbar switch, picking
+        // one up, login). Start in low ready and let the recovery below bring
+        // it up — the draw tick itself only sets the pose, so the full delay
+        // still runs from the next tick.
+        Item held = player.getMainHandItem().getItem();
+        if (holdingGun && held != lastHeldItem) {
+            lastHeldItem = held;
+            progress = 1f;
+            prevProgress = 1f; // snap into the pose: the gun only just appeared
+            stowed = true;     // reads as low ready this tick (pose broadcast)
+            highReady = false;
+            highMix = 0f;
+            prevHighMix = 0f;
+            return;
+        }
+        lastHeldItem = held;
         double ergo = holdingGun
                 ? dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(player.getMainHandItem())
                 : 1.0;
