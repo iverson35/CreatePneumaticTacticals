@@ -6,7 +6,7 @@
   "module.createpneumatictacticals.mak_1_cartridge_supply": "MAK-1 Cartridge Supply",
   "module.createpneumatictacticals.mak_1_tactical_handguard": "MAK-1 Tactical Handguard",
   "module.createpneumatictacticals.pica_grip_rvg": "RVG Grip (Rail)",
-  "module.createpneumatictacticals.1vo_muzzle_brake_a": "1VO Muzzle Brake A",
+  "module.createpneumatictacticals.1vo_muzzle_brake_a": "1vo Enhanced Muzzle Brake",
   "module.createpneumatictacticals.mak_1_wire_stock": "MAK-1 Wire Stock",
   "module.createpneumatictacticals.pica_laser_dbg": "PICA Green Laser (Rail)",
   "module.createpneumatictacticals.pica_sight_small_mounted_md1": "MD-1 Raised Red Dot Sight",
@@ -17,5 +17,6 @@
   "module.createpneumatictacticals.711_barrel": "SPICCATO 711 Barrel",
   "module.createpneumatictacticals.711_cartridge_supply": "SPICCATO 711 Cartridge Supply",
   "module.createpneumatictacticals.711_ammo_15": "SPICCATO 711 15-Round Magazine",
-  "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 Handgun Red Dot Sight"
-  }
+  "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 Handgun Red Dot Sight",
+  "module.createpneumatictacticals.8dvo_muzzle_brake_competition": ".8vo Competition Muzzle Brake"
+}

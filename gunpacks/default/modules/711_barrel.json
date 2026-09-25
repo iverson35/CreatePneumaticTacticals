@@ -13,7 +13,7 @@
       "module_type": "muzzle",
       "mode": "include",
       "value": [
-        "REGEX=1vo.+"
+        "REGEX=(1vo|8dvo).+"
       ]
     }
   ]

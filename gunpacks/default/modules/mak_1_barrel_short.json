@@ -9,6 +9,6 @@
     "ergonomics": 0.2
   },
   "module_affected": [
-    { "module_type": "muzzle", "mode": "include", "value": ["REGEX=1vo.+"] }
+    { "module_type": "muzzle", "mode": "include", "value": ["REGEX=(1vo|8dvo).+"] }
   ]
 }

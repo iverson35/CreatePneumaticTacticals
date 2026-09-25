@@ -1,0 +1,20 @@
+{
+  "name": "createpneumatictacticals:8dvo_muzzle_brake_competition",
+  "module_type": "muzzle",
+  "gun_properties": {
+    "recoil_vertical_multiplier": -0.2,
+    "recoil_horizontal_multiplier": -0.1,
+    "gas_suppression": -2,
+    "gas_pass_through": 0.4,
+    "ergonomics": -0.2,
+    "gas_guides": [
+      {
+        "weight": 1,
+        "velocity_multiplier": 0.8,
+        "spread_multiplier": 0.8,
+        "direction_x": 0,
+        "direction_y": -90
+      }
+    ]
+  }
+}
