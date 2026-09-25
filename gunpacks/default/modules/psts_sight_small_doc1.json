@@ -1,0 +1,8 @@
+{
+  "name": "createpneumatictacticals:psts_sight_small_doc1",
+  "module_type": "sight",
+  "aim_zoom": 1.25,
+  "gun_properties": {
+    "ergonomics": 0.05
+  }
+}
