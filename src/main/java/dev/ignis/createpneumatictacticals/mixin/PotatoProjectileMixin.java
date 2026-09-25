@@ -156,7 +156,10 @@ public abstract class PotatoProjectileMixin {
      * without the stamped scales (plain potato cannon, or a gun with no
      * ballistics modules) takes the untouched path, bit-identical to Create.
      */
-    @Redirect(method = "tick", remap = false, at = @At(value = "INVOKE",
+    // remap stays ENABLED (default) here: tick/setDeltaMovement are vanilla
+    // names and the refmap rewrites them to SRG in production. remap = false
+    // works in dev (official names) but crashes every production launch.
+    @Redirect(method = "tick", at = @At(value = "INVOKE",
             target = "Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
     private void createpneumatictacticals$ballistics(PotatoProjectileEntity self, Vec3 physics) {
         Vec3 before = self.getDeltaMovement();
@@ -187,7 +190,8 @@ public abstract class PotatoProjectileMixin {
      * The gun-shot flag rides along for the same reason: ForgeData never goes
      * over the network, and the renderer needs the flag to size gun ammo.
      */
-    @Inject(method = "addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
+    // vanilla Entity NBT hooks: same remap rule as above, NEVER remap = false.
+    @Inject(method = "addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", at = @At("TAIL"))
     private void createpneumatictacticals$saveBallistics(CompoundTag nbt, CallbackInfo ci) {
         CompoundTag data = cpt$self().getPersistentData();
         if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
@@ -209,7 +213,7 @@ public abstract class PotatoProjectileMixin {
         }
     }
 
-    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", remap = false, at = @At("TAIL"))
+    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", at = @At("TAIL"))
     private void createpneumatictacticals$readBallistics(CompoundTag nbt, CallbackInfo ci) {
         CompoundTag data = cpt$self().getPersistentData();
         if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));

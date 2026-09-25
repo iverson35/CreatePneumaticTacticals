@@ -84,18 +84,35 @@ public final class GunTextureAtlas {
     /** glow pass type: GeckoLib geo_glowing_layer recipe bound to the glow canvas */
     public static final RenderType GLOW = Shards.GLOW;
 
+    /**
+     * Glow type bound to an arbitrary emissive image. The legacy path uses
+     * this instead of GeckoLib's {@code AutoGlowingTexture}: that one's
+     * loadTexture HOLES THE BASE TEXTURE IN PLACE and re-uploads the holed
+     * image into the base texture's own id, destroying it for every other
+     * consumer — the module item icon binds exactly that id, so its glow
+     * pixels came back as transparent holes.
+     */
+    static RenderType glowTypeFor(ResourceLocation texture) {
+        return Shards.glowType(texture);
+    }
+
     /** protected-state access: TRANSLUCENT_TRANSPARENCY and friends need a subclass */
     private static final class Shards extends RenderStateShard {
         Shards() { super("cpt_gun_atlas_shards", () -> {}, () -> {}); }
 
-        private static final RenderType GLOW = RenderType.create("cpt_gun_atlas_glow",
-                DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, false, true,
-                RenderType.CompositeState.builder()
-                        .setShaderState(new ShaderStateShard(GameRenderer::getRendertypeEntityTranslucentEmissiveShader))
-                        .setTextureState(new TextureStateShard(GLOW_ATLAS_ID, false, false))
-                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                        .setWriteMaskState(COLOR_DEPTH_WRITE)
-                        .createCompositeState(false));
+        private static final RenderType GLOW = glowType(GLOW_ATLAS_ID);
+
+        /** GeckoLib's geo_glowing_layer recipe bound to one texture */
+        static RenderType glowType(ResourceLocation texture) {
+            return RenderType.create("cpt_glow", DefaultVertexFormat.NEW_ENTITY,
+                    VertexFormat.Mode.QUADS, 256, false, true,
+                    RenderType.CompositeState.builder()
+                            .setShaderState(new ShaderStateShard(GameRenderer::getRendertypeEntityTranslucentEmissiveShader))
+                            .setTextureState(new TextureStateShard(texture, false, false))
+                            .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                            .setWriteMaskState(COLOR_DEPTH_WRITE)
+                            .createCompositeState(false));
+        }
     }
 
     /** atlas slot: canvas origin, the texture's true pixel size, its size class and glow */
@@ -106,18 +123,28 @@ public final class GunTextureAtlas {
 
     /** one size-class band of the canvas */
     private static final class Region {
-        final int size, cols, y0;
+        final int size, cols, rows, y0;
         final ArrayDeque<Integer> free = new ArrayDeque<>();
         int next = 0;
 
         Region(int size, int cols, int rows, int y0) {
             this.size = size;
             this.cols = cols;
+            this.rows = rows;
             this.y0 = y0;
         }
 
+        /**
+         * Slots the band physically holds. Deriving this from the canvas
+         * height (CANVAS - y0) instead overcommits every band but the last:
+         * the 64px band then hands out y >= 512 and the 32px band y >= 768,
+         * i.e. slots that sit ON TOP of another size class' pixels. The
+         * overlapping slot silently clobbers whatever texture landed there
+         * first, and both sample the merged result — solid blocks of the
+         * other texture or nothing where the other wrote transparent.
+         */
         int capacity() {
-            return cols * ((CANVAS - y0) / size);
+            return cols * rows;
         }
 
         /** @return {x, y} slot origin, or null when the band is full */
@@ -197,12 +224,10 @@ public final class GunTextureAtlas {
             return slot;
         }
         if (NO_SLOT.contains(key)) return null;
-        slot = bake(key, dyed);
-        if (slot == null) {
-            NO_SLOT.add(key);
-            return null;
-        }
-        return slot;
+        // null means "stay on the legacy path": bake() remembers only the
+        // PERMANENT reasons (missing resource, oversized). A full band is
+        // retried, because evicting a variant frees its slot again.
+        return bake(key, dyed);
     }
 
     /**
@@ -234,6 +259,13 @@ public final class GunTextureAtlas {
 
     /** clears every registry and the canvases; called by the client reload listener */
     public static void invalidate() {
+        // live models still carry slot UVs right now. Restore them before the
+        // registry and the canvases (blanked below) go away: otherwise the
+        // next retarget snapshots ATLAS coordinates as that model's original
+        // UVs and every later draw samples the wrong region for good.
+        for (Map.Entry<BakedGeoModel, ModelState> e : STATES.entrySet()) {
+            if (e.getValue().current != null) rewrite(e.getValue(), null);
+        }
         SLOTS.clear();
         VARIANTS.clear();
         NO_SLOT.clear();
@@ -258,9 +290,15 @@ public final class GunTextureAtlas {
 
     private static @Nullable Slot bake(TexKey key, boolean dyed) {
         NativeImage base = decode(key.tex());
-        if (base == null) return null;
+        if (base == null) {
+            NO_SLOT.add(key);
+            return null;
+        }
         int w = base.getWidth(), h = base.getHeight();
-        if (Math.max(w, h) > MAX_SLOT) return null;
+        if (Math.max(w, h) > MAX_SLOT) {
+            NO_SLOT.add(key);
+            return null;
+        }
 
         int[] origin = null;
         int usedSize = 0;
@@ -273,7 +311,7 @@ public final class GunTextureAtlas {
                 break;
             }
         }
-        if (origin == null) return null;
+        if (origin == null) return null; // every fitting band is full: retry later
 
         ensureCanvas();
         NativeImage pixels = new NativeImage(w, h, true);

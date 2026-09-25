@@ -2,17 +2,22 @@ package dev.ignis.createpneumatictacticals.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
+import org.slf4j.Logger;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.cache.texture.AutoGlowingTexture;
 import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+
+import java.io.IOException;
 
 /**
  * Emissive pass for any gun part whose texture has a sibling
@@ -38,14 +43,22 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
     static final int FULLBRIGHT = 15728640;
     static final int NO_OVERLAY = 0;
 
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     /** glowmask existence per texture id (the resource-manager lookup
      * walks the whole pack chain, ~0.1ms per miss — times every module
      * of every rendered gun every frame); cleared on resource reload */
     private static final java.util.Map<ResourceLocation, Boolean> GLOWMASK = new java.util.HashMap<>();
 
+    /** per-texture emissive type for the legacy (non-atlas) path; a
+     * RenderType is identity-compared by the buffer source, so one instance
+     * per texture matters (a fresh one per frame would split the batch) */
+    private static final java.util.Map<ResourceLocation, RenderType> LEGACY_GLOW = new java.util.HashMap<>();
+
     /** clears the glowmask cache; called by the client reload listener */
     public static void invalidateCaches() {
         GLOWMASK.clear();
+        LEGACY_GLOW.clear();
     }
 
     public GunGlowLayer(GeoRenderer<GeoGunItem> renderer) {
@@ -67,7 +80,8 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
             return;
         }
         if (!hasGlowMask(texture)) return;
-        RenderType glow = AutoGlowingTexture.getRenderType(texture);
+        RenderType glow = legacyGlow(texture);
+        if (glow == null) return;
         getRenderer().reRender(model, poseStack, bufferSource, animatable, glow,
                 bufferSource.getBuffer(glow), partialTick, FULLBRIGHT, NO_OVERLAY, 1, 1, 1, 1);
     }
@@ -82,9 +96,62 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
                                        float partialTick, ResourceLocation textureId,
                                        GeoRenderer<GeoGunItem> renderer) {
         if (!hasGlowMask(textureId)) return;
-        RenderType glow = AutoGlowingTexture.getRenderType(textureId);
+        RenderType glow = legacyGlow(textureId);
+        if (glow == null) return;
         renderer.reRender(model, poseStack, bufferSource, animatable, glow,
                 bufferSource.getBuffer(glow), partialTick, FULLBRIGHT, NO_OVERLAY, 1, 1, 1, 1);
+    }
+
+    /**
+     * Emissive type for a texture that is NOT in the atlas: reads the base
+     * and glowmask RESOURCES, bakes the glow image (glow pixel = base RGB +
+     * mask alpha, GeckoLib's createImageMask recipe) and registers it as its
+     * own texture. The base texture is never touched, so every other pass
+     * that binds it — most visibly the module item icon — keeps its pixels.
+     * The glow image keeps the base RGB, so blending it over the base pass
+     * reproduces the holed-base look.
+     */
+    private static @org.jetbrains.annotations.Nullable RenderType legacyGlow(ResourceLocation texture) {
+        RenderType cached = LEGACY_GLOW.get(texture);
+        if (cached != null) return cached;
+        ResourceManager rm = Minecraft.getInstance().getResourceManager();
+        var baseRes = rm.getResource(texture);
+        var maskRes = rm.getResource(glowmaskIdFor(texture));
+        if (baseRes.isEmpty() || maskRes.isEmpty()) return null;
+        try (var baseIn = baseRes.get().open(); var maskIn = maskRes.get().open()) {
+            NativeImage base = NativeImage.read(baseIn);
+            NativeImage mask = NativeImage.read(maskIn);
+            int w = base.getWidth(), h = base.getHeight();
+            if (mask.getWidth() != w || mask.getHeight() != h) {
+                LOGGER.warn("glowmask size mismatch for {}: mask {}x{}, base {}x{} — glow skipped",
+                        texture, mask.getWidth(), mask.getHeight(), w, h);
+                base.close();
+                mask.close();
+                return null;
+            }
+            NativeImage glow = new NativeImage(w, h, true);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int m = mask.getPixelRGBA(x, y);
+                    if (m == 0) continue; // GeckoLib skips fully-black mask pixels
+                    int alpha = (m >>> 24) & 0xFF;
+                    int p = base.getPixelRGBA(x, y);
+                    // ABGR: base channels kept, alpha swapped for the mask's
+                    glow.setPixelRGBA(x, y, alpha > 0 ? (alpha << 24) | (p & 0xFFFFFF) : p);
+                }
+            }
+            base.close();
+            mask.close();
+            ResourceLocation id = new ResourceLocation(texture.getNamespace(),
+                    texture.getPath() + "_cptglow");
+            Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(glow));
+            RenderType type = GunTextureAtlas.glowTypeFor(id);
+            LEGACY_GLOW.put(texture, type);
+            return type;
+        } catch (IOException | RuntimeException e) {
+            LOGGER.warn("legacy glow bake failed for {}: {}", texture, e.toString());
+            return null;
+        }
     }
 
     /**

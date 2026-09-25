@@ -68,13 +68,6 @@ mandatory = true
 versionRange = "${create_version_range}"
 ordering = "NONE"
 side = "BOTH"
-# Armourer's Workshop is optional - integration loads after it when present
-[[dependencies."${mod_id}"]]
-modId = "armourers_workshop"
-mandatory = false
-versionRange = "${armourers_workshop_version_range}"
-ordering = "AFTER"
-side = "BOTH"
 # GeckoLib is a hard dependency - the mod will not load without it
 [[dependencies."${mod_id}"]]
 modId = "geckolib"
