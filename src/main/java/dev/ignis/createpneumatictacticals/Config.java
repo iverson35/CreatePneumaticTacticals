@@ -12,16 +12,6 @@ import net.minecraftforge.fml.event.config.ModConfigEvent;
 public class Config {
     private static final ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
 
-    public static final ForgeConfigSpec.BooleanValue RECOIL_VIEW_RESET = CLIENT_BUILDER
-            .comment("Whether the view snaps back after recoil")
-            .define("recoilViewReset", false);
-
-    public static final ForgeConfigSpec.IntValue READY_DELAY_MS = CLIENT_BUILDER
-            .comment("Delay in ms before the gun can fire after leaving low/high ready pose")
-            .defineInRange("readyDelayMs", 250, 0, 2000);
-
-
-
     public static final ForgeConfigSpec.BooleanValue BLOOD_PARTICLES = CLIENT_BUILDER
             .comment("Show blood on bullet hits; when false, hits spray green lily-pad sap instead")
             .define("bloodParticles", true);
@@ -61,8 +51,6 @@ public class Config {
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean bloodParticles;
-    public static boolean recoilViewReset;
-    public static int readyDelayMs;
     public static boolean hitmarkerEnabled;
     public static boolean gunHudEnabled;
     public static boolean gunCrosshairEnabled;
@@ -77,8 +65,6 @@ public class Config {
     static void onLoad(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == CLIENT_SPEC) {
             bloodParticles = BLOOD_PARTICLES.get();
-            recoilViewReset = RECOIL_VIEW_RESET.get();
-            readyDelayMs = READY_DELAY_MS.get();
             hitmarkerEnabled = HITMARKER_ENABLED.get();
             gunHudEnabled = GUN_HUD_ENABLED.get();
             gunCrosshairEnabled = GUN_CROSSHAIR_ENABLED.get();

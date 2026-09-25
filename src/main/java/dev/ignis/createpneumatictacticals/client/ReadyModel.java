@@ -1,6 +1,5 @@
 package dev.ignis.createpneumatictacticals.client;
 
-import dev.ignis.createpneumatictacticals.Config;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -8,8 +7,11 @@ import net.minecraft.world.entity.player.Player;
 /**
  * Low/high ready pose state machine (plan_v2): sprinting or elytra flying
  * with a gun holsters it into the ready pose; after stopping, the gun needs
- * {@code readyDelayMs} (scaled by ergonomics) to return to the firing
- * stance — firing is locked until fully recovered. Aiming suppresses the
+ * {@link #READY_DELAY_MS} (scaled by ergonomics) to return to the firing
+ * stance — firing is locked until fully recovered. That lock is client-side
+ * on purpose: the server's authoritative answer to a pose is the spread
+ * table, and this gate only exists so the gun cannot shoot while it is still
+ * visibly coming up. Aiming suppresses the
  * pose (aim wins), and so does a blocked muzzle.
  *
  * <p>Sprint-fire guns (ergonomics &gt; SPRINT_FIRE_ERGO) rest in the ready
@@ -22,6 +24,10 @@ import net.minecraft.world.entity.player.Player;
 public final class ReadyModel {
 
     private static final float HOLSTER_MS = 150f;
+
+    /** base recovery delay (ms) before the gun can fire again after the ready
+     * pose; divided by the gun's ergonomics and clamped to 1/3..4x below */
+    private static final float READY_DELAY_MS = 250f;
     private static final float TICK_MS = 50f;
 
     /** cross-fade duration between low and high ready (ms) */
@@ -91,8 +97,8 @@ public final class ReadyModel {
             }
         } else {
             // ergonomics shortens the sprint->fire recovery delay: recovery
-            // takes readyDelayMs / ergo, clamped to 1/3..4x the base delay
-            float recoveryMs = (float) (Config.readyDelayMs / ergo);
+            // takes READY_DELAY_MS / ergo, clamped to 1/3..4x the base delay
+            float recoveryMs = (float) (READY_DELAY_MS / ergo);
             progress = Math.max(0f, progress - TICK_MS / Math.max(1f, recoveryMs));
         }
     }
