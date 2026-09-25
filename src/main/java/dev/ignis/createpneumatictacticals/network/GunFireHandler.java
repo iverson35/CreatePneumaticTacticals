@@ -355,6 +355,27 @@ public final class GunFireHandler {
                 return stack;
             }
         }
+        // deep reserve: surface one boxed round as a loose pod; the caller
+        // shrinks it, which lands back in the inventory as usual
+        for (ItemStack stack : player.getInventory().items) {
+            if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.block
+                    .AmmoBoxBlockItem)) continue;
+            ItemStack template = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.boxTemplate(stack);
+            if (template.isEmpty()
+                    || template.getItem() != dev.ignis.createpneumatictacticals.item.ModItems.POD.get()) continue;
+            String typeId = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.ammoTypeId(player.level().registryAccess(), stack);
+            if (!ammoId.equals(typeId)) continue;
+            java.util.List<ItemStack> out = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.take(stack, 1);
+            if (out.isEmpty()) continue;
+            ItemStack surfaced = out.get(0);
+            player.getInventory().add(surfaced);
+            if (!surfaced.isEmpty()) player.drop(surfaced, false);
+            for (ItemStack s : player.getInventory().items) {
+                if (s.getItem() == dev.ignis.createpneumatictacticals.item.ModItems.POD.get()
+                        && ItemStack.isSameItemSameTags(s, template)) return s;
+            }
+            return null;
+        }
         return null;
     }
 

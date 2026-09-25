@@ -20,6 +20,11 @@ public final class ModBlockEntities {
                     .of(ModuleWorkbenchBlockEntity::new, ModBlocks.MODULE_WORKBENCH.get())
                     .build(null));
 
+    public static final RegistryObject<BlockEntityType<AmmoBoxBlockEntity>> AMMO_BOX =
+            BLOCK_ENTITIES.register("ammo_box", () -> BlockEntityType.Builder
+                    .of(AmmoBoxBlockEntity::new, ModBlocks.AMMO_BOX.get())
+                    .build(null));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus modBus) {
         BLOCK_ENTITIES.register(modBus);
     }

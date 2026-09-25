@@ -393,7 +393,9 @@ public final class ClientGunInput {
         boolean cartridge = stats.supply != null && stats.supply.supplyType
                 == dev.ignis.createpneumatictacticals.module.SupplyType.CARTRIDGE;
         if (!player.isCreative() && countMatchingPods(player, cartridge, ammoId) <= 0) {
-            feedback(player, cartridge ? "no_pressurized_pod" : "no_pod");
+            // no rounds anywhere (loose or boxed): no reload to run — flash
+            // the reserve readout red instead of an actionbar line
+            dev.ignis.createpneumatictacticals.client.GunHudOverlay.flashReserve();
             return;
         }
         reloadRoundMode = stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.ROUND;
@@ -471,6 +473,18 @@ public final class ClientGunInput {
                     && typeRef.get().unwrapKey().orElseThrow().location().toString().equals(ammoId)) {
                 n += stack.getCount();
             }
+        }
+        // deep reserve: boxed pods of the same kind
+        for (ItemStack stack : player.getInventory().items) {
+            if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.block
+                    .AmmoBoxBlockItem)) continue;
+            ItemStack template = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.boxTemplate(stack);
+            if (template.isEmpty()) continue;
+            boolean boxedCartridge = template.getItem()
+                    == dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get();
+            if (boxedCartridge != cartridge) continue;
+            String typeId = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.ammoTypeId(player.level().registryAccess(), stack);
+            if (ammoId.equals(typeId)) n += dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.roundsIn(stack);
         }
         return n;
     }

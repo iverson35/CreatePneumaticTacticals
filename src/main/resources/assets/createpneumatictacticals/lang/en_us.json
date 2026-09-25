@@ -9,6 +9,8 @@
   "item.createpneumatictacticals.module": "Module",
   "block.createpneumatictacticals.gun_workbench": "Gun Assembly Bench",
   "block.createpneumatictacticals.module_workbench": "Module Workbench",
+  "block.createpneumatictacticals.ammo_box": "Ammo Box",
+  "tooltip.createpneumatictacticals.ammo_box_content": "Contains: %s x%s / %s",
   "tooltip.createpneumatictacticals.stats_hint": "Hold Shift for stats",
   "gui.createpneumatictacticals.stats_full_hint": "Hold Shift for the full spec",
   "key.categories.createpneumatictacticals": "Create: Pneumatic Tacticals",

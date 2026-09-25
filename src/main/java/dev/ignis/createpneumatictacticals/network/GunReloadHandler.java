@@ -70,6 +70,29 @@ public final class GunReloadHandler {
         net.minecraft.world.item.Item requiredItem = cartridge
                 ? dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get()
                 : dev.ignis.createpneumatictacticals.item.ModItems.POD.get();
+        int consumed = consumeLoose(player, requiredItem, ammoId, n);
+        if (consumed < n && !player.isCreative()) {
+            // deep reserve: boxed pods of the same type, drained box by box
+            for (ItemStack stack : player.getInventory().items) {
+                if (consumed >= n) break;
+                if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.block
+                        .AmmoBoxBlockItem)) continue;
+                if (!boxFeeds(player, stack, cartridge, ammoId)) continue;
+                for (ItemStack pods : dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.drain(stack, n - consumed)) {
+                    consumed += pods.getCount();
+                    if (consumed >= n) break;
+                }
+            }
+        }
+        return consumed;
+    }
+
+    /**
+     * The original loose-pod scan, unchanged: up to n matching pods out of
+     * the bare inventory, 1 pod = 1 round.
+     */
+    private static int consumeLoose(ServerPlayer player,
+                                    net.minecraft.world.item.Item requiredItem, String ammoId, int n) {
         int consumed = 0;
         for (ItemStack stack : player.getInventory().items) {
             if (consumed >= n) break;
@@ -89,5 +112,19 @@ public final class GunReloadHandler {
             consumed += take;
         }
         return consumed;
+    }
+
+    /**
+     * True when {@code box} holds pressurized pods iff the gun needs them,
+     * and their projectile type is the loaded one.
+     */
+    private static boolean boxFeeds(ServerPlayer player, ItemStack box, boolean cartridge, String ammoId) {
+        ItemStack template = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.boxTemplate(box);
+        if (template.isEmpty()) return false;
+        boolean boxedCartridge = template.getItem()
+                == dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get();
+        if (boxedCartridge != cartridge) return false;
+        String typeId = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.ammoTypeId(player.level().registryAccess(), box);
+        return ammoId.equals(typeId);
     }
 }

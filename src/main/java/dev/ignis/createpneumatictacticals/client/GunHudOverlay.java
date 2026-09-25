@@ -252,12 +252,21 @@ public final class GunHudOverlay implements IGuiOverlay {
     private static final ResourceLocation FIRE_BURST =
             new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/fire_mode/burst.png");
     private static final int AMMO_ICON_SIZE = 16;
+    /** reserve-flash window after a dry R press, in wall-clock ms */
+    private static final long RESERVE_FLASH_MS = 1200;
+    private static long reserveFlashUntilMs = 0;
+
+    /** Dry R press with no rounds anywhere: blink the reserve count red. */
+    public static void flashReserve() {
+        reserveFlashUntilMs = System.currentTimeMillis() + RESERVE_FLASH_MS;
+    }
 
     /**
-     * COD-style ammo block: the clip number large on top, the reserve below
-     * it with the fire-mode glyph to its left, a vertical divider, and the
-     * loaded ammo's item icon right of the divider. The internal-tank air
-     * readout stays a text line above the block.
+     * COD-style ammo block: the clip number large on top, the fire-mode
+     * glyph right-aligned under the number's right edge, and the reserve
+     * count right-aligned against the glyph's left edge; a vertical divider,
+     * and the loaded ammo's item icon right of the divider. The internal-tank
+     * air readout stays a text line above the block.
      */
     private void renderAmmoWidget(GuiGraphics g, Minecraft mc, LocalPlayer player, ItemStack gun,
                                   GunStats stats, int width, int height) {
@@ -296,13 +305,13 @@ public final class GunHudOverlay implements IGuiOverlay {
                 clipTop / 2f, clipColor, true);
         g.pose().popPose();
 
-        // reserve row: the fire glyph sits at a FIXED x (a three-digit slot
-        // left of the divider) with the reserve number immediately right of
-        // it — anchoring to the text made the glyph slide with the digit
-        // count. A reserve wider than the slot nudges the pair left instead.
+        // reserve row: the fire glyph is right-aligned with the big clip
+        // number (its right edge sits under the number's right edge), and the
+        // reserve count is right-aligned against the glyph's left edge —
+        // anchoring the glyph to the digits made it slide as the count
+        // changed width
         int reserveW = mc.font.width(reserveText);
-        int glyphX = Math.min(numbersRight - mc.font.width("999") - 2 - 8,
-                numbersRight - reserveW - 2 - 8);
+        int glyphX = numbersRight - 8;
         FireMode mode = GunNbt.getFireMode(gun);
         ResourceLocation glyph = switch (mode == null ? FireMode.SEMI : mode) {
             case SEMI -> FIRE_SEMI;
@@ -312,7 +321,11 @@ public final class GunHudOverlay implements IGuiOverlay {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         g.blit(glyph, glyphX, reserveTop, 8, 8, 0f, 0f, 16, 16, 16, 16);
-        g.drawString(mc.font, reserveText, glyphX + 10, reserveTop, TEXT_COLOR, true);
+        // dry-R flash: ~4 red blinks over the window, then back to white
+        boolean flashing = System.currentTimeMillis() < reserveFlashUntilMs;
+        int reserveColor = flashing && (System.currentTimeMillis() / 150) % 2 == 0
+                ? WARN_COLOR : TEXT_COLOR;
+        g.drawString(mc.font, reserveText, glyphX - 2 - reserveW, reserveTop, reserveColor, true);
 
         g.fill(dividerX, clipTop, dividerX + 1, blockBottom, CROSSHAIR_COLOR);
 

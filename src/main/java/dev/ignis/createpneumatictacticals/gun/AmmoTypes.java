@@ -52,6 +52,18 @@ public final class AmmoTypes {
             String typeId = typeRef.get().unwrapKey().orElseThrow().location().toString();
             if (stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) out.add(typeId);
         }
+        // deep reserve: a box feeds its own type even with no loose pods
+        for (ItemStack stack : player.getInventory().items) {
+            if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.block
+                    .AmmoBoxBlockItem)) continue;
+            String typeId = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.ammoTypeId(player.level().registryAccess(), stack);
+            if (typeId != null && stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) {
+                ItemStack template = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.boxTemplate(stack);
+                boolean boxedCartridge = template.getItem()
+                        == dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get();
+                if (boxedCartridge == cartridge) out.add(typeId);
+            }
+        }
         return new ArrayList<>(out);
     }
 }

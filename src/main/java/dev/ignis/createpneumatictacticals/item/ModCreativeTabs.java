@@ -61,6 +61,7 @@ public final class ModCreativeTabs {
         output.accept(new ItemStack(ModItems.PRESSURIZED_POD.get()));
         output.accept(new ItemStack(ModItems.AIR_VIAL.get()));
         output.accept(new ItemStack(ModItems.PRESSURIZED_AIR_VIAL.get()));
+        output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.AMMO_BOX_ITEM.get()));
 
         // --- every module definition ---
         for (ModuleDefinition def : ModuleManager.all().values()) {
