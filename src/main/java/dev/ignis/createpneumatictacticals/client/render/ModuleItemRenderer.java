@@ -19,6 +19,24 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
         super(new ModuleGeoModel());
     }
 
+    /**
+     * ImmediatelyFast HUD batching: GeckoLib's GUI branch ends with a forced
+     * endBatch + depth/lighting flips; inside IF's hotbar batch that draws
+     * this slot and every queued slot to its left against the world's
+     * leftover depth buffer (translucent icons) — see GeoGuiBatchCompat.
+     * Queue-only while batching, vanilla GeckoLib path otherwise.
+     */
+    @Override
+    protected void renderInGui(ItemDisplayContext transformType, PoseStack poseStack,
+                               MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        if (GeoGuiBatchCompat.isHudBatching()) {
+            GeoGuiBatchCompat.renderQueued(this, animatable, currentItemStack,
+                    poseStack, bufferSource, packedLight);
+            return;
+        }
+        super.renderInGui(transformType, poseStack, bufferSource, packedLight, packedOverlay);
+    }
+
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack poseStack,
                              MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
