@@ -10,15 +10,20 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.InputStream;
+import java.net.JarURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 /**
@@ -33,90 +38,15 @@ import java.util.stream.Stream;
  * <p>Module content is hashed at startup and used as the network protocol
  * version, so a client whose gunpack modules differ from the server's is
  * rejected by Forge's handshake before joining.
- * <p>The mod ships a built-in example pack ({@code gunpack_defaults/mak-1} in
- * the jar) which is extracted on first launch — never overwritten afterwards.
+ * <p>The mod ships the default pack as jar resources under {@code gunpack_defaults/}
+ * (gradle packages the repo-root {@code gunpacks/} folder there). Every file found
+ * under it is extracted on first launch — never overwritten afterwards.
  */
 public final class GunPacks {
 
     public static final Path ROOT = FMLPaths.GAMEDIR.get().resolve("gunpacks");
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    /** files of the built-in "default" pack, relative to jar {@code gunpack_defaults/}.
-     *  Dev note: the canonical source is the repo-root {@code gunpacks/default/}
-     *  folder, packaged into the jar by gradle (processResources). */
-    private static final String[] DEFAULT_FILES = {
-            "default/modules/mak_1_receiver.json",
-            "default/modules/mak_1_ammo_20.json",
-            "default/modules/mak_1_barrel_short.json",
-            "default/modules/mak_1_cartridge_supply.json",
-            "default/modules/mak_1_tactical_handguard.json",
-            "default/modules/1vo_muzzle_brake_a.json",
-            "default/modules/8dvo_muzzle_brake_competition.json",
-            "default/modules/pica_grip_rvg.json",
-            "default/modules/mak_1_wire_stock.json",
-            "default/modules/pica_laser_dbg.json",
-            "default/modules/pica_sight_small_mounted_md1.json",
-            "default/modules/charm_crystal.json",
-            "default/modules/charm_delta_coin.json",
-            "default/modules/spiccato_711.json",
-            "default/modules/711_barrel.json",
-            "default/modules/711_ammo_15.json",
-            "default/modules/711_cartridge_supply.json",
-            "default/modules/psts_sight_small_doc1.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_receiver.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_ammo_20.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_barrel_short.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_cartridge_supply.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_tactical_handguard.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/1vo_muzzle_brake_a.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/8dvo_muzzle_brake_competition.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/pica_grip_rvg.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/mak_1_wire_stock.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/pica_laser_dbg.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/pica_sight_small_mounted_md1.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/psts_sight_small_doc1.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/charm_crystal.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/charm_delta_coin.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/spiccato_711.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/711_barrel.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/711_ammo_15.geo.json",
-            "default/assets/createpneumatictacticals/geo/gun/711_cartridge_supply.geo.json",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_receiver.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_ammo_20.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_barrel_short.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_cartridge_supply.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_tactical_handguard.png",
-            "default/assets/createpneumatictacticals/textures/gun/1vo_muzzle_brake_a.png",
-            "default/assets/createpneumatictacticals/textures/gun/8dvo_muzzle_brake_competition.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_grip_rvg.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_wire_stock.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_laser_dbg.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_laser_dbg_glowmask.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_sight_small_mounted_md1.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_sight_small_mounted_md1_glowmask.png",
-            "default/assets/createpneumatictacticals/textures/gun/psts_sight_small_doc1.png",
-            "default/assets/createpneumatictacticals/textures/gun/psts_sight_small_doc1_glowmask.png",
-            "default/assets/createpneumatictacticals/textures/gun/charm_crystal.png",
-            "default/assets/createpneumatictacticals/textures/gun/charm_delta_coin.png",
-            "default/assets/createpneumatictacticals/textures/gun/spiccato_711.png",
-            "default/assets/createpneumatictacticals/textures/gun/711_barrel.png",
-            "default/assets/createpneumatictacticals/textures/gun/711_ammo_15.png",
-            "default/assets/createpneumatictacticals/textures/gun/711_cartridge_supply.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_tactical_handguard_dye.png",
-            "default/assets/createpneumatictacticals/textures/gun/pica_grip_rvg_dye.png",
-            "default/assets/createpneumatictacticals/textures/gun/mak_1_wire_stock_dye.png",
-            "default/assets/createpneumatictacticals/animations/gun/mak_1_receiver.animation.json",
-            "default/assets/createpneumatictacticals/animations/gun/mak_1_ammo_20.animation.json",
-            "default/assets/createpneumatictacticals/animations/gun/spiccato_711.animation.json",
-            "default/assets/createpneumatictacticals/animations/gun/711_ammo_15.animation.json",
-            "default/assets/createpneumatictacticals/sounds.json",
-            "default/assets/createpneumatictacticals/sounds/bb_rifile_shoot.ogg",
-            "default/assets/createpneumatictacticals/sounds/bb_rifile_open.ogg",
-            "default/assets/createpneumatictacticals/sounds/pistol_shot_silenced.ogg",
-            "default/assets/createpneumatictacticals/lang/zh_cn.json",
-            "default/assets/createpneumatictacticals/lang/en_us.json",
-    };
 
     private static String contentHash = "0";
     /** extract defaults + compute the module content hash. Both sides, mod construction. */
@@ -204,8 +134,61 @@ public final class GunPacks {
         }
     }
 
+    /**
+     * Relative paths of every file bundled under {@code /gunpack_defaults/} in the
+     * mod's own resources — the jar in production, the resources directory in dev.
+     * Gradle packages the whole repo-root {@code gunpacks/} folder, so scanning
+     * keeps that folder the single source of truth: adding a file there is enough,
+     * nothing to register here.
+     */
+    private static List<String> bundledDefaultFiles() {
+        List<String> files = new ArrayList<>();
+        URL url = GunPacks.class.getResource("/gunpack_defaults");
+        if (url == null) {
+            LOGGER.error("Built-in gunpack defaults are not on the classpath");
+            return files;
+        }
+        try {
+            if ("jar".equals(url.getProtocol())) {
+                JarURLConnection connection = (JarURLConnection) url.openConnection();
+                // no cache: getJarFile() then hands back a private handle we may close
+                connection.setUseCaches(false);
+                try (JarFile jar = connection.getJarFile()) {
+                    String prefix = "gunpack_defaults/";
+                    jar.stream()
+                            .map(JarEntry::getName)
+                            .filter(name -> name.startsWith(prefix) && !name.endsWith("/"))
+                            .map(name -> name.substring(prefix.length()))
+                            .sorted()
+                            .forEach(files::add);
+                }
+            } else {
+                // file: exploded mod (dev); union: Forge's mod file system, which
+                // is what a production mod jar is reached through. Both are real
+                // NIO file systems, so the same walk covers them.
+                Path root = Paths.get(url.toURI());
+                try (Stream<Path> walk = Files.walk(root)) {
+                    walk.filter(Files::isRegularFile)
+                            .map(f -> root.relativize(f).toString().replace('\\', '/'))
+                            .sorted()
+                            .forEach(files::add);
+                }
+            }
+        } catch (Exception ex) {
+            LOGGER.error("Failed to list built-in gunpack defaults ({} {}): {}",
+                    url.getProtocol(), url, ex.getMessage());
+        }
+        return files;
+    }
+
     private static void extractDefaults() {
-        for (String rel : DEFAULT_FILES) {
+        List<String> files = bundledDefaultFiles();
+        if (files.isEmpty()) {
+            LOGGER.error("No built-in gunpack defaults found — nothing extracted");
+            return;
+        }
+        int extracted = 0;
+        for (String rel : files) {
             Path target = ROOT.resolve(rel);
             if (Files.exists(target)) continue; // never clobber user edits
             try (InputStream in = GunPacks.class.getResourceAsStream("/gunpack_defaults/" + rel)) {
@@ -215,9 +198,13 @@ public final class GunPacks {
                 }
                 Files.createDirectories(target.getParent());
                 Files.write(target, in.readAllBytes());
+                extracted++;
             } catch (Exception ex) {
                 LOGGER.error("Failed to extract gunpack default {}: {}", rel, ex.getMessage());
             }
+        }
+        if (extracted > 0) {
+            LOGGER.info("Extracted {} built-in gunpack file(s) into {}", extracted, ROOT);
         }
     }
 
