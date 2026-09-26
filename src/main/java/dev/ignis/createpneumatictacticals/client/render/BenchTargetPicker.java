@@ -211,7 +211,9 @@ public final class BenchTargetPicker {
             return false;
         }
 
-        // no marker hovered: staging a gun/receiver by clicking the bench block
+        // no marker hovered: clicking the bench block itself — staging a
+        // gun/receiver (either hand), or taking the staged gun with an empty
+        // acting hand (same packet the [▼] marker sends)
         if (!(mc.hitResult instanceof BlockHitResult hit)) return false;
         BlockPos pos = hit.getBlockPos();
         if (!(mc.level != null
@@ -234,6 +236,17 @@ public final class BenchTargetPicker {
                 || (offDef != null && offDef.type == ModuleType.RECEIVER)) {
             CptNetwork.CHANNEL.sendToServer(new Workbench3dPacket(
                     Workbench3dPacket.Action.STAGE, pos, true, null));
+            return true;
+        }
+        // empty acting hand on the bench = the [▼] take click: same packet,
+        // same server path, same "main hand must be empty" rule. Gated on a gun
+        // actually staged, so an empty bench falls through to the block's
+        // harmless no-op use instead of swallowing the click.
+        if (main.isEmpty()
+                && mc.level.getBlockEntity(pos) instanceof GunWorkbenchBlockEntity bench
+                && !bench.getGunSlot().getItem(0).isEmpty()) {
+            CptNetwork.CHANNEL.sendToServer(new Workbench3dPacket(
+                    Workbench3dPacket.Action.TAKE, pos, false, null));
             return true;
         }
         return false;

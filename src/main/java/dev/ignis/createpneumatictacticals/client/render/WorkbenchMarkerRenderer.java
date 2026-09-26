@@ -53,8 +53,9 @@ final class WorkbenchMarkerRenderer {
         return new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/" + name + ".png");
     }
 
-    /** label text height relative to the marker's half-size (9px font line) */
-    private static final float LABEL_SCALE = 0.055f;
+    /** label text height relative to the marker's half-size (9px font line);
+     *  ~1.55x the original 0.055 so the hovered slot name reads at a glance */
+    private static final float LABEL_SCALE = 0.12f;
     /** gap between the icon's bottom edge and the label, × half-size */
     private static final float LABEL_GAP = 0.1f;
     /** label colour: white, like the marker quads themselves */
