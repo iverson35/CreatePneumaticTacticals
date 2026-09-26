@@ -83,7 +83,7 @@
   "fire_mode.createpneumatictacticals.semi": "Semi",
   "fire_mode.createpneumatictacticals.auto": "Auto",
   "fire_mode.createpneumatictacticals.burst": "Burst",
-    "gui.createpneumatictacticals.hud.air": "Air %d%%",
+  "gui.createpneumatictacticals.hud.air": "Air %d%%",
   "gui.createpneumatictacticals.reject.no_mount_point": "Handguard lacks this mount point",
   "gui.createpneumatictacticals.reject.occupied": "The bench already holds a gun",
   "gui.createpneumatictacticals.reject.wrong_position": "Attachment doesn't support this position",
@@ -107,5 +107,9 @@
   "feed_type.createpneumatictacticals.backpack": "Backpack Feed",
   "supply_type.createpneumatictacticals.cartridge": "Cartridge",
   "supply_type.createpneumatictacticals.internal_tank": "Internal Tank",
-  "supply_type.createpneumatictacticals.backpack_tank": "Backpack Tank"
+  "supply_type.createpneumatictacticals.backpack_tank": "Backpack Tank",
+  "tooltip.createpneumatictacticals.aw_skin": "Armourer's Workshop skin applied",
+  "gui.createpneumatictacticals.visible": "Visible",
+  "gui.createpneumatictacticals.show_module": "Hidden: click to show",
+  "recipe.createpneumatictacticals.receiver_disassembly": "Receiver disassembly"
 }

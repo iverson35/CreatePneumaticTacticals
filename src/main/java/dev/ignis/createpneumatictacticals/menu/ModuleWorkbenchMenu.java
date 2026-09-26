@@ -228,6 +228,25 @@ public class ModuleWorkbenchMenu extends AbstractContainerMenu {
             broadcastChanges();
         }
     }
+
+    /** Server-side visibility toggle for the module in the dye slot: flips
+     *  the item's Hidden NBT (the sole authority). Rendering follows the
+     *  item: a module hidden BEFORE install simply never renders on the gun;
+     *  one hidden while installed is updated through the normal install path
+     *  on next assemble (the toggle here is aimed at items while they're
+     *  staged, mirroring how dyeing works). */
+    public void toggleVisible(Player player) {
+        Level level = getLevel();
+        if (level == null || level.isClientSide) return;
+        if (!blockEntity.hasModule()) return;
+        ItemStack module = blockEntity.getDyeModule();
+        ResourceLocation moduleId = ModuleItem.getModuleId(module);
+        if (moduleId == null) return;
+        boolean nowHidden = !ModuleItem.isHidden(module);
+        ModuleItem.setHidden(module, nowHidden);
+        blockEntity.setDyeModule(module.copy());
+        broadcastChanges();
+    }
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = this.slots.get(index);

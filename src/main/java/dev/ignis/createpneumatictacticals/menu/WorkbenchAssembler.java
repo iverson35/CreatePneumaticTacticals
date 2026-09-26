@@ -72,10 +72,26 @@ public final class WorkbenchAssembler {
         initial.put(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER, receiverDef);
         dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(newGun, initial,
                 new EnumMap<>(dev.ignis.createpneumatictacticals.module.HandguardPosition.class));
-        // the receiver item is consumed here: its roll has to move onto the gun
+        // the receiver item is consumed here: its roll, dye colors, AW skin
+        // and hidden flag all move onto the gun (same item-as-authority
+        // contract as installModule — the receiver gets the full treatment
+        // because it never passes through the install path)
         dev.ignis.createpneumatictacticals.gun.GunNbt.setModuleRolls(newGun,
                 dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER.getSerializedName(),
                 dev.ignis.createpneumatictacticals.item.ModuleItem.getRolls(held));
+        int[] itemColors = dev.ignis.createpneumatictacticals.item.ModuleItem.getDyeColors(held);
+        if (itemColors != null) {
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setColor(newGun, receiverDef.id, 0, itemColors[0]);
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setColor(newGun, receiverDef.id, 1, itemColors[1]);
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setColor(newGun, receiverDef.id, 2, itemColors[2]);
+        }
+        net.minecraft.nbt.CompoundTag itemSkin =
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getSkinTag(held);
+        if (itemSkin != null) {
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setSkin(newGun, receiverDef.id, itemSkin);
+        }
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setHidden(newGun, receiverDef.id,
+                dev.ignis.createpneumatictacticals.item.ModuleItem.isHidden(held));
         if (receiverDef.gunName != null) {
             newGun.setHoverName(net.minecraft.network.chat.Component.translatable(receiverDef.gunName));
         }
@@ -155,6 +171,21 @@ public final class WorkbenchAssembler {
         } else {
             dev.ignis.createpneumatictacticals.gun.GunNbt.clearColors(gun, def.id);
         }
+        // item-as-skin-authority: same contract as the dye colors — an
+        // unskinned held item clears the gun's stale copy, a skinned item
+        // overwrites it. The whole "ArmourersWorkshop" Compound travels
+        // verbatim (skin + its own dye scheme), never parsed here.
+        net.minecraft.nbt.CompoundTag itemSkin =
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getSkinTag(held);
+        if (itemSkin != null) {
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setSkin(gun, def.id, itemSkin);
+        } else {
+            dev.ignis.createpneumatictacticals.gun.GunNbt.clearSkin(gun, def.id);
+        }
+        // item-as-hidden-authority: unconditional copy (false = clear), so a
+        // shown module can never inherit the previous occupant's hidden flag
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setHidden(gun, def.id,
+                dev.ignis.createpneumatictacticals.item.ModuleItem.isHidden(held));
         held.shrink(1);
         bench.setChanged();
         click(player, pos, ModSoundEvents.MODULE_ASSEMBLE.get());
@@ -209,6 +240,18 @@ public final class WorkbenchAssembler {
             dev.ignis.createpneumatictacticals.item.ModuleItem.setDyeColors(out, gunColors);
             dev.ignis.createpneumatictacticals.gun.GunNbt.clearColors(gun, moduleId);
         }
+        // skin copy travels back out of the gun's NBT (materialize), then the
+        // gun's render copy is dropped — the reinstalled item is the authority
+        net.minecraft.nbt.CompoundTag gunSkin =
+                dev.ignis.createpneumatictacticals.gun.GunNbt.getSkin(gun, moduleId);
+        if (gunSkin != null) {
+            dev.ignis.createpneumatictacticals.item.ModuleItem.setSkinTag(out, gunSkin);
+            dev.ignis.createpneumatictacticals.gun.GunNbt.clearSkin(gun, moduleId);
+        }
+        // hidden flag travels back out, then the gun's copy is dropped
+        dev.ignis.createpneumatictacticals.item.ModuleItem.setHidden(out,
+                dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(gun, moduleId));
+        dev.ignis.createpneumatictacticals.gun.GunNbt.clearHidden(gun, moduleId);
         // dependency ejection mirrors the old menu: removing the barrel drops
         // the muzzle; removing the handguard drops its attachments
         var dependents = dependentsOf(removed, installed, atts);
@@ -221,6 +264,15 @@ public final class WorkbenchAssembler {
                 dev.ignis.createpneumatictacticals.item.ModuleItem.setDyeColors(depOut, depColors);
                 dev.ignis.createpneumatictacticals.gun.GunNbt.clearColors(gun, dep.getValue().id);
             }
+            net.minecraft.nbt.CompoundTag depSkin =
+                    dev.ignis.createpneumatictacticals.gun.GunNbt.getSkin(gun, dep.getValue().id);
+            if (depSkin != null) {
+                dev.ignis.createpneumatictacticals.item.ModuleItem.setSkinTag(depOut, depSkin);
+                dev.ignis.createpneumatictacticals.gun.GunNbt.clearSkin(gun, dep.getValue().id);
+            }
+            dev.ignis.createpneumatictacticals.item.ModuleItem.setHidden(depOut,
+                    dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(gun, dep.getValue().id));
+            dev.ignis.createpneumatictacticals.gun.GunNbt.clearHidden(gun, dep.getValue().id);
             give(player, depOut);
         }
         give(player, out);

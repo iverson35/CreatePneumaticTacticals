@@ -26,6 +26,9 @@ import java.util.Map;
  *   FireMode: string
  *   AimStance: string ("hip"|"ads"|"tactical") — per-gun memory
  *   Colors: CompoundTag module-id -> 3 packed ARGB ints (dye regions)
+ *   Skins: CompoundTag module-id -> the item's whole "ArmourersWorkshop"
+ *          descriptor Compound, copied verbatim (AW item skins; never parsed)
+ *   Hidden: CompoundTag module-id -> byte 1/0 (module hidden by the player)
  */
 public final class GunNbt {
 
@@ -39,6 +42,16 @@ public final class GunNbt {
     public static final String KEY_FIRE_MODE = "FireMode";
     public static final String KEY_AIM_STANCE = "AimStance";
     public static final String KEY_COLORS = "Colors";
+    /** AW skin descriptors: module-id -> the item's whole "ArmourersWorkshop"
+     *  descriptor Compound, copied verbatim (never parsed — see plan §3.2) */
+    public static final String KEY_SKINS = "Skins";
+    /** the NBT key Armourer's Workshop stores its SkinDescriptor in on any
+     *  skinned ItemStack (AW ModDataComponents.SKIN, tag "ArmourersWorkshop") */
+    public static final String TAG_AW_SKIN = "ArmourersWorkshop";
+    /** hidden flag: module-id -> 1 (hidden) / 0 (shown). Authority = the
+     *  module item's own Hidden NBT; the gun keeps a render copy, same
+     *  contract as Colors/Skins */
+    public static final String KEY_HIDDEN = "Hidden";
 
     private GunNbt() {}
 
@@ -216,6 +229,68 @@ public final class GunNbt {
         CompoundTag colors = root.getCompound(KEY_COLORS);
         colors.remove(moduleId.toString());
         if (colors.isEmpty()) root.remove(KEY_COLORS);
+    }
+
+    // --- AW skin descriptors (authority = the module item; the gun keeps a
+    // verbatim render copy — same contract as the dye colors above) ---
+
+    /** Copies the item's whole "ArmourersWorkshop" descriptor Compound into
+     *  the gun's render copy for this module. Verbatim: CPT never parses the
+     *  descriptor internals (identifier/type/options/paintScheme), so an AW
+     *  NBT format change can't break us and the skin's own dye data survives. */
+    public static void setSkin(ItemStack stack, ResourceLocation moduleId, CompoundTag descriptorTag) {
+        CompoundTag skins = root(stack).getCompound(KEY_SKINS);
+        skins.put(moduleId.toString(), descriptorTag.copy());
+        root(stack).put(KEY_SKINS, skins);
+    }
+
+    /** The gun's render copy of the module's skin descriptor, or null. */
+    @Nullable
+    public static CompoundTag getSkin(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_SKINS, Tag.TAG_COMPOUND)) return null;
+        CompoundTag skins = root.getCompound(KEY_SKINS);
+        String key = moduleId.toString();
+        if (!skins.contains(key, Tag.TAG_COMPOUND)) return null;
+        return skins.getCompound(key);
+    }
+
+    /** Drops the gun's render copy of a module's skin (an unskinned module
+     *  must clear any stale gun-side skin — same anti-pollution rule as
+     *  clearColors, or a swap re-shows the previous item's skin). */
+    public static void clearSkin(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_SKINS, Tag.TAG_COMPOUND)) return;
+        CompoundTag skins = root.getCompound(KEY_SKINS);
+        skins.remove(moduleId.toString());
+        if (skins.isEmpty()) root.remove(KEY_SKINS);
+    }
+
+    // --- module visibility (authority = the module item's Hidden NBT byte;
+    // the gun keeps a render copy — same contract as Colors/Skins) ---
+
+    /** Copies the item's hidden flag into the gun's render copy. Writing the
+     *  byte unconditionally (even 0) keeps the copy in step with the item;
+     *  use {@link #clearHidden} to drop the key entirely (uninstall). */
+    public static void setHidden(ItemStack stack, ResourceLocation moduleId, boolean hidden) {
+        CompoundTag hiddenTag = root(stack).getCompound(KEY_HIDDEN);
+        hiddenTag.putByte(moduleId.toString(), hidden ? (byte) 1 : (byte) 0);
+        root(stack).put(KEY_HIDDEN, hiddenTag);
+    }
+
+    public static boolean isHidden(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_HIDDEN, Tag.TAG_COMPOUND)) return false;
+        return root.getCompound(KEY_HIDDEN).getByte(moduleId.toString()) != 0;
+    }
+
+    /** Drops the gun's render copy of a module's hidden flag (uninstall). */
+    public static void clearHidden(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_HIDDEN, Tag.TAG_COMPOUND)) return;
+        CompoundTag hidden = root.getCompound(KEY_HIDDEN);
+        hidden.remove(moduleId.toString());
+        if (hidden.isEmpty()) root.remove(KEY_HIDDEN);
     }
     // --- assembly validation ---
 

@@ -75,3 +75,13 @@ mandatory = true
 versionRange = "${geckolib_version_range}"
 ordering = "NONE"
 side = "BOTH"
+# Armourer's Workshop is OPTIONAL: when present, module items skinned at an
+# AW skinning table render their skin on the gun instead of the module's
+# GeckoLib model. Absent, everything renders vanilla and the skin NBT is
+# inert data. Client-side only: the server just stores the descriptor.
+[[dependencies."${mod_id}"]]
+modId = "armourers_workshop"
+mandatory = false
+versionRange = "${armourers_workshop_version_range}"
+ordering = "NONE"
+side = "CLIENT"

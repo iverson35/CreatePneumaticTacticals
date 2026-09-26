@@ -70,8 +70,10 @@ public final class CharmPhysics {
     private static int points;
     /** bone marking the pendant's center of mass inside the charm model */
     private static final String MASS_BONE = "loc_mass";
-    /** fallback COM marker when {@link #MASS_BONE} is absent */
-    private static final String PENDANT_BONE = "pendant";
+    /** the pendant bone: charm models hang it under the deepest chain link
+     *  (or straight off the body when they ship no chain); GunModulesLayer
+     *  resolves it for the hidden-charm skin swap */
+    static final String PENDANT_BONE = "pendant";
 
     /** fixed simulation timestep: a stable step regardless of frame rate */
     private static final double STEP_SECONDS = 1.0 / 120.0;

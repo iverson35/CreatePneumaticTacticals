@@ -20,7 +20,7 @@ import java.util.function.Supplier;
 public class WorkbenchActionPacket {
 
     public enum Action {
-        CRAFT, SET_REGION, SET_COLOR, DYE_CONFIRM, DYE_CLEAR
+        CRAFT, SET_REGION, SET_COLOR, DYE_CONFIRM, DYE_CLEAR, TOGGLE_VISIBLE
     }
 
     public final Action action;
@@ -86,6 +86,7 @@ public class WorkbenchActionPacket {
                 }
                 case DYE_CONFIRM -> wb.clickMenuButton(player, ModuleWorkbenchMenu.BTN_DYE_CONFIRM);
                 case DYE_CLEAR -> wb.clearDye(player);
+                case TOGGLE_VISIBLE -> wb.toggleVisible(player);
             }
         });
         ctx.get().setPacketHandled(true);

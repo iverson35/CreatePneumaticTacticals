@@ -29,6 +29,100 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
     }
 
     /**
+     * True when the pass's receiver body was replaced by its AW skin (set
+     * per receiver draw in {@link #actuallyRender}). GunGlowLayer reads it
+     * to skip the receiver's emissive reRender — the skin owns its
+     * emissives, and re-drawing the cubes through the glow type would
+     * double-draw the skin's silhouette.
+     */
+    static boolean receiverSkinDrawn;
+
+    /**
+     * Receiver AW skin swap (docs §3.9): a skinned receiver draws its
+     * Armourer's Workshop skin instead of the GeckoLib body. The receiver
+     * is the one part that never goes through GunModulesLayer.mount, so
+     * the swap hooks the shared draw entry instead:
+     * <ul>
+     * <li>guard: only the gun's own baked model takes this path — every
+     * module/ghost reRender re-enters this override too and must pass
+     * through untouched (they also must not clobber the flag the glow
+     * layer is about to read for the enclosing receiver pass),</li>
+     * <li>the animation pass still runs: hidden bones keep their animated
+     * transforms, so the module locator bones (loc_barrel &co) ride the
+     * recoil exactly as before, and the installed modules keep moving,</li>
+     * <li>a hidden receiver (workbench toggle on the receiver item) hides
+     * the body the same way — its own cubes only, modules unaffected,</li>
+     * <li>a failed skin draw (AW absent, async bake window) falls back to
+     * the plain model for that frame, same contract as module skins.</li>
+     * </ul>
+     */
+    @Override
+    public void actuallyRender(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel model,
+                               RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
+                               boolean isReRender, float partialTick, int packedLight, int packedOverlay,
+                               float red, float green, float blue, float alpha) {
+        GunGeoModel gunModel = (GunGeoModel) getGeoModel();
+        ItemStack stack = gunModel.currentStack();
+        boolean receiverPass = stack != null
+                && model == gunModel.getBakedModel(gunModel.getModelResource(animatable));
+        if (!receiverPass) {
+            super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
+                    isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            return;
+        }
+        receiverSkinDrawn = false;
+        var receiverDef = dev.ignis.createpneumatictacticals.gun.GunNbt.readModules(stack)
+                .get(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER);
+        boolean hidden = receiverDef != null
+                && dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(stack, receiverDef.id);
+        net.minecraft.nbt.CompoundTag skinTag = hidden || receiverDef == null ? null
+                : dev.ignis.createpneumatictacticals.gun.GunNbt.getSkin(stack, receiverDef.id);
+        if (skinTag != null) {
+            // advance the gun's isolated AW animation state before the skin
+            // samples it (same per-pass tick the module skins get)
+            dev.ignis.createpneumatictacticals.compat.aw.AwCompat.tickModuleSkin(skinTag,
+                    software.bernie.geckolib.animatable.GeoItem.getId(stack), partialTick);
+            receiverSkinDrawn = dev.ignis.createpneumatictacticals.compat.aw.AwCompat.renderModuleSkin(
+                    skinTag, poseStack, bufferSource,
+                    software.bernie.geckolib.animatable.GeoItem.getId(stack), partialTick, packedLight, packedOverlay);
+        }
+        // plain body when: no skin, or the skin could not draw this frame
+        // (AW absent, async bake window) — the same one-frame fallback the
+        // module skins use. A hidden receiver never draws a plain body:
+        // hiding the receiver hides its whole look, so a failed skin draw
+        // leaves nothing rather than the body popping back in.
+        boolean plainBody = skinTag == null || !receiverSkinDrawn;
+        if (plainBody && !hidden) {
+            super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
+                    isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            return;
+        }
+        // body replaced (skin drawn) or player-hidden: mask every bone's
+        // cubes for the draw, restore right after — the shared BakedGeoModel
+        // must not leak the mask into other guns' passes
+        setAllBonesHidden(model, true);
+        try {
+            super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
+                    isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        } finally {
+            setAllBonesHidden(model, false);
+        }
+    }
+
+    private static void setAllBonesHidden(BakedGeoModel model, boolean hidden) {
+        for (software.bernie.geckolib.cache.object.GeoBone bone : model.topLevelBones()) {
+            setBoneHidden(bone, hidden);
+        }
+    }
+
+    private static void setBoneHidden(software.bernie.geckolib.cache.object.GeoBone bone, boolean hidden) {
+        bone.setHidden(hidden);
+        for (software.bernie.geckolib.cache.object.GeoBone child : bone.getChildBones()) {
+            setBoneHidden(child, hidden);
+        }
+    }
+
+    /**
      * Receiver base pass joins the shared runtime atlas (GunTextureAtlas)
      * when its texture fits: the receiver, every module and every other gun
      * on screen then draw through ONE RenderType. Falls back to the

@@ -83,7 +83,7 @@
   "fire_mode.createpneumatictacticals.semi": "半自动",
   "fire_mode.createpneumatictacticals.auto": "全自动",
   "fire_mode.createpneumatictacticals.burst": "三连发",
-    "gui.createpneumatictacticals.hud.air": "气压 %d%%",
+  "gui.createpneumatictacticals.hud.air": "气压 %d%%",
   "gui.createpneumatictacticals.reject.no_mount_point": "护木没有对应的安装位",
   "gui.createpneumatictacticals.reject.occupied": "工作台上已有一把枪",
   "gui.createpneumatictacticals.reject.wrong_position": "该配件不支持此安装位置",
@@ -107,5 +107,9 @@
   "feed_type.createpneumatictacticals.backpack": "背包供弹",
   "supply_type.createpneumatictacticals.cartridge": "整装气瓶",
   "supply_type.createpneumatictacticals.internal_tank": "内置气罐",
-  "supply_type.createpneumatictacticals.backpack_tank": "背包气罐"
+  "supply_type.createpneumatictacticals.backpack_tank": "背包气罐",
+  "tooltip.createpneumatictacticals.aw_skin": "已应用时装工坊皮肤",
+  "gui.createpneumatictacticals.visible": "可见",
+  "gui.createpneumatictacticals.show_module": "已隐藏:点击显示",
+  "recipe.createpneumatictacticals.receiver_disassembly": "机匣拆解"
 }

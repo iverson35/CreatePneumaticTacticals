@@ -33,6 +33,15 @@ public final class ModRecipes {
             RECIPE_SERIALIZERS.register("pod_assembly",
                     () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(PodAssemblyRecipe::new));
 
+    public static final RegistryObject<RecipeType<ReceiverDisassemblyRecipe>> RECEIVER_DISASSEMBLY =
+            RECIPE_TYPES.register("receiver_disassembly",
+                    () -> RecipeType.simple(new net.minecraft.resources.ResourceLocation(
+                            CreatePneumaticTacticals.MODID, "receiver_disassembly")));
+
+    public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<ReceiverDisassemblyRecipe>> RECEIVER_DISASSEMBLY_SERIALIZER =
+            RECIPE_SERIALIZERS.register("receiver_disassembly",
+                    () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(ReceiverDisassemblyRecipe::new));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus modBus) {
         RECIPE_TYPES.register(modBus);
         RECIPE_SERIALIZERS.register(modBus);

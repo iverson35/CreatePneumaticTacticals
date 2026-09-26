@@ -57,6 +57,8 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     // action buttons
     private static final int BTN_W = 84, BTN_H = 14, BTN_Y = 96, BTN_X = 164;
     private static final int STATUS_Y = 102;
+    // visibility toggle (dye tab, header row right side)
+    private static final int VIS_X = 160, VIS_Y = 16, VIS_W = 92, VIS_H = 13;
 
     private final List<ModuleCraftingRecipe> recipes = new ArrayList<>();
     private int selectedRecipe = -1;
@@ -68,6 +70,7 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     private Button craftButton;
     private Button dyeButton;
     private Button clearButton;
+    private Button visibleButton;
 
     public ModuleWorkbenchScreen(ModuleWorkbenchMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
@@ -102,6 +105,11 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                         b -> sendClearDye())
                 .bounds(this.leftPos + BTN_X, this.topPos + BTN_Y + BTN_H + 2, BTN_W, BTN_H)
                 .build());
+        // visibility toggle (dye tab): label refreshes each frame from the
+        // synced slot stack, click sends TOGGLE_VISIBLE
+        visibleButton = addRenderableWidget(Button.builder(visibleButtonLabel(), b -> sendToggleVisible())
+                .bounds(this.leftPos + VIS_X, this.topPos + VIS_Y, VIS_W, VIS_H)
+                .build());
         // scroll arrows in the recipe panel header
         addRenderableWidget(Button.builder(Component.literal("<"),
                         b -> scrollOffset = Math.max(0, scrollOffset - 1))
@@ -125,10 +133,28 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
                 WorkbenchActionPacket.Action.DYE_CLEAR, null, -1));
     }
 
+    private void sendToggleVisible() {
+        CptNetwork.CHANNEL.sendToServer(new WorkbenchActionPacket(
+                WorkbenchActionPacket.Action.TOGGLE_VISIBLE, null, -1));
+    }
+
+    /** the toggle reflects the module item's own Hidden NBT (synced through
+     *  the dye slot) — the item is the authority, exactly like dye colors */
+    private Component visibleButtonLabel() {
+        ItemStack slotStack = this.menu.getSlot(ModuleWorkbenchMenu.DYE_SLOT).getItem();
+        if (slotStack.isEmpty()) {
+            return Component.translatable("gui.createpneumatictacticals.visible");
+        }
+        return ModuleItem.isHidden(slotStack)
+                ? Component.translatable("gui.createpneumatictacticals.show_module")
+                : Component.translatable("gui.createpneumatictacticals.visible");
+    }
+
     private void applyTab() {
         craftButton.visible = !dyeTab;
         clearButton.visible = dyeTab;
         dyeButton.visible = dyeTab;
+        visibleButton.visible = dyeTab;
     }
 
     private void refreshRecipes() {
@@ -149,6 +175,11 @@ public class ModuleWorkbenchScreen extends AbstractContainerScreen<ModuleWorkben
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partialTick);
+        // keep the visibility toggle in step with the synced slot stack
+        // (server writes the Hidden NBT, the slot broadcast carries it back)
+        boolean hasModule = !this.menu.getSlot(ModuleWorkbenchMenu.DYE_SLOT).getItem().isEmpty();
+        visibleButton.active = hasModule;
+        visibleButton.setMessage(visibleButtonLabel());
         this.renderTooltip(gfx, mouseX, mouseY);
         if (!dyeTab) {
             int hover = hoveredRow(mouseX, mouseY);

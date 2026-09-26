@@ -49,6 +49,22 @@ public final class CptJeiPlugin implements IModPlugin {
 
         Set<ResourceLocation> seen = new HashSet<>();
         List<CraftingRecipe> display = new ArrayList<>();
+        // receiver disassembly: dynamic CustomRecipe, invisible to JEI —
+        // show one display recipe per known receiver definition
+        for (dev.ignis.createpneumatictacticals.module.ModuleDefinition def
+                : dev.ignis.createpneumatictacticals.module.ModuleManager.all().values()) {
+            if (def.type != dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER) continue;
+            ItemStack bareGun = dev.ignis.createpneumatictacticals.item.ModItems.GUN.get().getDefaultInstance();
+            dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(bareGun,
+                    java.util.Map.of(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER, def),
+                    java.util.Map.of());
+            display.add(new ShapelessRecipe(
+                    new ResourceLocation(CreatePneumaticTacticals.MODID,
+                            "jei_receiver_disassembly/" + def.id.getNamespace() + "_" + def.id.getPath()),
+                    "createpneumatictacticals.receiver_disassembly", CraftingBookCategory.MISC,
+                    dev.ignis.createpneumatictacticals.recipe.ReceiverDisassemblyRecipe.disassemble(bareGun),
+                    NonNullList.of(Ingredient.EMPTY, Ingredient.of(bareGun.copy()))));
+        }
         access.lookupOrThrow(CreateRegistries.POTATO_PROJECTILE_TYPE)
                 .listElements()
                 .forEach(ref -> ref.value().items().forEach(holder -> {

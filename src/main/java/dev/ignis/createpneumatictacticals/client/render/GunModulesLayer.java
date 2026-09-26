@@ -3,14 +3,17 @@ package dev.ignis.createpneumatictacticals.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.logging.LogUtils;
+import dev.ignis.createpneumatictacticals.compat.aw.AwCompat;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -101,8 +104,23 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         Map<HandguardPosition, ModuleDefinition> hgAttachments = GunNbt.readHandguardAttachments(stack);
         // module animation state is isolated per gun stack (GeoItem id), so
         // two guns sharing a module definition don't play each other's anims
+        long animId = software.bernie.geckolib.animatable.GeoItem.getId(stack);
+        // AW skins: advance the gun's isolated AW animation state once per
+        // frame before any module skin samples it (skinned modules only;
+        // unskinned guns skip this entirely)
+        if (AwCompat.loaded() && animationsEnabled) {
+            for (ModuleDefinition m : modules.values()) {
+                // receiver skin ticks in GunHandsAwareRenderer's own pass —
+                // ticking here too would double-advance it every frame
+                if (m.type == ModuleType.RECEIVER) continue;
+                CompoundTag skinTag = GunNbt.getSkin(stack, m.id);
+                if (skinTag != null) {
+                    AwCompat.tickModuleSkin(skinTag, animId, partialTick);
+                }
+            }
+        }
         Ctx ctx = new Ctx(animatable, stack, poseStack, bufferSource, partialTick, packedLight,
-                packedOverlay, modules, hgAttachments, software.bernie.geckolib.animatable.GeoItem.getId(stack));
+                packedOverlay, modules, hgAttachments, animId);
 
         mount(receiverModel, "loc_feed", modules.get(ModuleType.FEED), ctx, ghost);
         mount(receiverModel, "loc_supply", modules.get(ModuleType.SUPPLY), ctx, ghost);
@@ -134,6 +152,14 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         }
         if (target == null) return;
         if (ModuleRenderOverrides.isOverridden(ctx.stack, target.id)) return; // claimed by a custom renderer
+        // player-hidden module (workbench dye tab toggle): only the module's
+        // OWN body is skipped — child mounts (muzzle on a hidden barrel,
+        // rail attachments on a hidden handguard) still render, so hiding
+        // a piece never takes its attachments with it. Ghost previews read
+        // the held item's own flag (what install will actually produce),
+        // installed modules the gun's render copy.
+        boolean hidden = ghostHere != null ? ModuleItem.isHidden(ghostHere.stack())
+                : GunNbt.isHidden(ctx.stack, target.id);
         CoreGeoBone loc = parentModel.getBone(locator).orElse(null);
         if (loc == null) {
             // a ghost mount id may live on a child model (barrel's muzzle
@@ -173,51 +199,121 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         ctx.poseStack.pushPose();
         try {
             applyBoneChain(loc, ctx.poseStack);
-            if (target.type == ModuleType.CHARM) {
-                // the simulation has the last word on the chain bones: it runs
-                // after the animation pass (which restores undriven bones) and
-                // before the draw (plan_v4)
-                phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
-            }
-            // texture: the shared runtime atlas when the module fits
-            // (GunTextureAtlas; docs/gun-atlas-design.md), else the
-            // standalone per-texture path below
-            ResourceLocation texture = ModuleGunGeoModel.textureId(target.id);
-            int[] colors = dyeColors(ctx.stack, target);
-            boolean ghostPass = ghostHere != null;
-            GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, colors);
-            if (slot != null && GunTextureAtlas.retarget(model, slot)) {
-                RenderType type = ghostPass ? GunTextureAtlas.TRANSLUCENT : GunTextureAtlas.CUTOUT;
-                getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                        ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
-                        ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
-                        ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
-                if (ghostPass) return; // a preview is one module, no glow pass, no children
-                if (slot.glow()) {
-                    // fullbright emissive pass from the glow atlas (the
-                    // geo_glowing_layer recipe bound to the glow canvas)
-                    getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable,
-                            GunTextureAtlas.GLOW, ctx.bufferSource.getBuffer(GunTextureAtlas.GLOW),
-                            ctx.partialTick, GunGlowLayer.FULLBRIGHT, GunGlowLayer.NO_OVERLAY, 1, 1, 1, 1);
+            // AW skin replacement (plan §3.3): a skinned module renders its
+            // Armourer's Workshop skin INSTEAD of the GeckoLib body — the
+            // skin brings its own texture, so the dye atlas and the glow
+            // passes are skipped for it. Ghost previews and AW-absent or
+            // still-baking cases fall through to the regular model below
+            // (a one-frame fallback rather than an invisible module).
+            boolean ghostPassHere = ghostHere != null;
+            // hidden charm WITH a skin keeps its chain: the skin replaces
+            // only the pendant (drawn at the pendant bone below), the
+            // chain/support cubes render normally. Hidden without a skin =
+            // the whole module stays invisible.
+            boolean charmSkinSwap = hidden && target.type == ModuleType.CHARM && !ghostPassHere
+                    && GunNbt.getSkin(ctx.stack, target.id) != null;
+            boolean skinRendered = false;
+            if (!ghostPassHere && !hidden) {
+                CompoundTag skinTag = GunNbt.getSkin(ctx.stack, target.id);
+                if (skinTag != null && AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource,
+                        ctx.animId, ctx.partialTick, ctx.packedLight, ctx.packedOverlay)) {
+                    skinRendered = true;
                 }
-            } else {
-                // legacy path: UVs back at the model original first (no-op
-                // when this model was never rewritten)
-                GunTextureAtlas.retarget(model, null);
-                // dye regions: bake the module's NBT colors (or the pack's
-                // defaults) into a cached dynamic texture when a companion
-                // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
-                texture = DyedTextures.resolve(texture, colors);
-                RenderType type = ghostPass ? RenderType.entityTranslucent(texture)
-                        : RenderType.entityCutoutNoCull(texture);
-                getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                        ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
-                        ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
-                        ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
-                if (ghostPass) return; // a preview is one module, no glow pass, no children
-                // fullbright emissive pass for modules with a <name>_glowmask.png
-                GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
-                        ctx.partialTick, texture, getRenderer());
+            }
+            if (!skinRendered && !hidden) {
+                if (target.type == ModuleType.CHARM) {
+                    // the simulation has the last word on the chain bones: it runs
+                    // after the animation pass (which restores undriven bones) and
+                    // before the draw (plan_v4)
+                    phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
+                }
+                // texture: the shared runtime atlas when the module fits
+                // (GunTextureAtlas; docs/gun-atlas-design.md), else the
+                // standalone per-texture path below
+                ResourceLocation texture = ModuleGunGeoModel.textureId(target.id);
+                int[] colors = dyeColors(ctx.stack, target);
+                boolean ghostPass = ghostHere != null;
+                GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, colors);
+                if (slot != null && GunTextureAtlas.retarget(model, slot)) {
+                    RenderType type = ghostPass ? GunTextureAtlas.TRANSLUCENT : GunTextureAtlas.CUTOUT;
+                    getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                            ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                            ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
+                            ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+                    if (ghostPass) return; // a preview is one module, no glow pass, no children
+                    if (slot.glow()) {
+                        // fullbright emissive pass from the glow atlas (the
+                        // geo_glowing_layer recipe bound to the glow canvas)
+                        getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable,
+                                GunTextureAtlas.GLOW, ctx.bufferSource.getBuffer(GunTextureAtlas.GLOW),
+                                ctx.partialTick, GunGlowLayer.FULLBRIGHT, GunGlowLayer.NO_OVERLAY, 1, 1, 1, 1);
+                    }
+                } else {
+                    // legacy path: UVs back at the model original first (no-op
+                    // when this model was never rewritten)
+                    GunTextureAtlas.retarget(model, null);
+                    // dye regions: bake the module's NBT colors (or the pack's
+                    // defaults) into a cached dynamic texture when a companion
+                    // <id>_dye.png mask exists (DyedTextures; plan_v2 配件染色)
+                    texture = DyedTextures.resolve(texture, colors);
+                    RenderType type = ghostPass ? RenderType.entityTranslucent(texture)
+                            : RenderType.entityCutoutNoCull(texture);
+                    getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                            ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                            ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
+                            ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+                    if (ghostPass) return; // a preview is one module, no glow pass, no children
+                    // fullbright emissive pass for modules with a <name>_glowmask.png
+                    GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
+                            ctx.partialTick, texture, getRenderer());
+                }
+            }
+            // hidden-charm skin swap: the chain (and physics) stays alive,
+            // the pendant's cubes are masked out and the AW skin draws at
+            // the pendant bone's animated position — the skin replaces the
+            // pendant and swings with the chain
+            if (charmSkinSwap) {
+                phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
+                CoreGeoBone pendant = model.getBone(CharmPhysics.PENDANT_BONE).orElse(null);
+                // no pendant bone: the model has nothing to hang a skin
+                // from, so a hidden charm stays fully hidden
+                if (pendant != null) {
+                    // the physics pass above has already written the chain
+                    // bone rotations, so the pendant bone's transform
+                    // (parented under the deepest chain link, or directly
+                    // under the body in a chainless charm) carries the swing
+                    ctx.poseStack.pushPose();
+                    try {
+                        applyBoneChain(pendant, ctx.poseStack);
+                        AwCompat.renderModuleSkin(GunNbt.getSkin(ctx.stack, target.id), ctx.poseStack,
+                                ctx.bufferSource, ctx.animId, ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
+                    } finally {
+                        ctx.poseStack.popPose();
+                    }
+                    // the pendant's cubes stay masked for the chain draw —
+                    // the skin is the only thing allowed back at its spot.
+                    // When the skin can't draw (AW absent, async bake
+                    // window) the chain hangs empty rather than the hidden
+                    // pendant popping back in.
+                    ResourceLocation texture = ModuleGunGeoModel.textureId(target.id);
+                    int[] colors = dyeColors(ctx.stack, target);
+                    GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, colors);
+                    RenderType type;
+                    if (slot != null && GunTextureAtlas.retarget(model, slot)) {
+                        type = GunTextureAtlas.CUTOUT;
+                    } else {
+                        GunTextureAtlas.retarget(model, null);
+                        type = RenderType.entityCutoutNoCull(DyedTextures.resolve(texture, colors));
+                    }
+                    pendant.setHidden(true);
+                    try {
+                        getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
+                                ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                                1, 1, 1, 1);
+                    } finally {
+                        pendant.setHidden(false);
+                    }
+                }
             }
             // child mounts (barrel -> muzzle, handguard -> attachments); their
             // locator lookup sees this module's animated bone state

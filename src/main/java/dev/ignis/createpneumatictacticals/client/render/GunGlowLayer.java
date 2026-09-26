@@ -69,6 +69,10 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
     public void render(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel model,
                        RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
                        float partialTick, int packedLight, int packedOverlay) {
+        // skinned receiver: the AW skin owns the emissives, and its cubes
+        // are all hidden anyway — a glow reRender would draw nothing at
+        // best and double-draw at worst
+        if (GunHandsAwareRenderer.receiverSkinDrawn) return;
         ResourceLocation texture = getRenderer().getGeoModel().getTextureResource(animatable);
         // atlas route: same slot the base pass just retargeted the model to
         GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);

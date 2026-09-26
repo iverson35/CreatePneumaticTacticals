@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.client;
 
 import dev.ignis.createpneumatictacticals.client.render.GunAnimations;
+import dev.ignis.createpneumatictacticals.compat.aw.AwCompat;
 import dev.ignis.createpneumatictacticals.client.render.ModuleAnimatable;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
@@ -111,6 +112,17 @@ public final class GunAnimationDriver {
                 triggerModule(def.id, anim, gunId, speed, transitionTicks);
             }
         }
+        // AW skins ride the same broadcast: play() no-ops on skins that
+        // don't define the name, so unskinned guns pay nothing (the guard
+        // inside is a cheap static boolean when AW is absent)
+        if (AwCompat.loaded()) {
+            AwCompat.onGunAnimation(gunId, animName(anim), speed);
+        }
+    }
+
+    /** the single animation name of a RawAnimation built with thenPlay */
+    private static String animName(RawAnimation anim) {
+        return anim.getAnimationStages().get(0).animationName();
     }
 
     private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed, int transitionTicks) {
@@ -189,6 +201,8 @@ public final class GunAnimationDriver {
         for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
             interruptModule(def.id, gunId);
         }
+        // AW skins stop with the same event (cheap guard when absent)
+        AwCompat.interruptGunAnimations(gunId);
     }
 
     private static void interruptModule(ResourceLocation moduleId, long gunId) {

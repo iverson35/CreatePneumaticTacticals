@@ -1,5 +1,5 @@
 package dev.ignis.createpneumatictacticals.item;
-
+import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
 import dev.ignis.createpneumatictacticals.module.ModuleRoll;
@@ -39,6 +39,10 @@ public class ModuleItem extends Item implements GeoItem {
 
     /** dye color storage: CompoundTag "Colors" -> moduleId -> int[3] (matches GunNbt schema) */
     public static final String TAG_COLORS = "Colors";
+
+    /** player-hidden flag on the module item (sole authority; the gun's
+     *  Hidden CompoundTag is only a render copy) */
+    public static final String TAG_HIDDEN = "Hidden";
 
     public ModuleItem(Properties properties) {
         super(properties);
@@ -134,6 +138,47 @@ public class ModuleItem extends Item implements GeoItem {
         colorTag.putIntArray(id.toString(), colors);
         tag.put(TAG_COLORS, colorTag);
     }
+
+    // --- AW skin descriptor (whole-Compound, verbatim — never parsed here) ---
+
+    /**
+     * The item's AW skin descriptor Compound ("ArmourersWorkshop" NBT key,
+     * written by AW's own skinning table). Null when the item carries no
+     * skin. The stack is the sole authority; the gun only keeps a render copy.
+     */
+    @Nullable
+    public static CompoundTag getSkinTag(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(GunNbt.TAG_AW_SKIN, CompoundTag.TAG_COMPOUND)) return null;
+        return tag.getCompound(GunNbt.TAG_AW_SKIN);
+    }
+
+    /** Writes (or clears, with null) the AW skin descriptor onto the stack's
+     *  "ArmourersWorkshop" NBT key — used when the workbench materializes a
+     *  removed module item back out of the gun's render copy. */
+    public static void setSkinTag(ItemStack stack, @Nullable CompoundTag descriptorTag) {
+        if (descriptorTag == null || descriptorTag.isEmpty()) {
+            stack.removeTagKey(GunNbt.TAG_AW_SKIN);
+        } else {
+            stack.getOrCreateTag().put(GunNbt.TAG_AW_SKIN, descriptorTag.copy());
+        }
+    }
+
+    // --- module visibility (this item's own Hidden byte; sole authority,
+    // the gun only keeps a render copy) ---
+
+    public static boolean isHidden(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        return tag != null && tag.getBoolean(TAG_HIDDEN);
+    }
+
+    public static void setHidden(ItemStack stack, boolean hidden) {
+        if (hidden) {
+            stack.getOrCreateTag().putBoolean(TAG_HIDDEN, true);
+        } else {
+            stack.removeTagKey(TAG_HIDDEN);
+        }
+    }
     public static ItemStack of(ResourceLocation moduleId) {
         ItemStack stack = new ItemStack(dev.ignis.createpneumatictacticals.item.ModItems.MODULE.get());
         stack.getOrCreateTag().putString(TAG_MODULE_ID, moduleId.toString());
@@ -151,6 +196,12 @@ public class ModuleItem extends Item implements GeoItem {
         // no name line here: the stack's title already shows the module name
         // (getName above); the tooltip starts directly with the stats
         if (def == null) return;
+        // a module with an AW skin keeps it through install/remove; surface
+        // it so the skin isn't a surprise on the assembled gun
+        if (getSkinTag(stack) != null) {
+            tooltip.add(Component.translatable("tooltip.createpneumatictacticals.aw_skin")
+                    .withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
         if (def.gunType != null) {
             tooltip.add(Component.translatable("stat.createpneumatictacticals.gun_type")
                     .append(": ")
