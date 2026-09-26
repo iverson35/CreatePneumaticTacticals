@@ -23,6 +23,9 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
  * the vanilla animation untouched, and the vanilla state
  * ({@code mainHandHeight}) itself is left alone — only the value handed to the
  * arm transform for a gun is replaced.
+ *
+ * <p>{@code require = 0}: if another mod moves the injection point, guns just
+ * get the vanilla raise back. No state, no crash.
  */
 @Mixin(ItemInHandRenderer.class)
 public abstract class ItemInHandRendererMixin {
@@ -31,7 +34,7 @@ public abstract class ItemInHandRendererMixin {
      * @param equipRaise vanilla 0..1 raise offset for this frame
      *                   (0 = settled, 1 = fully raised from below)
      */
-    @ModifyVariable(method = "renderArmWithItem", at = @At("HEAD"), argsOnly = true, ordinal = 3)
+    @ModifyVariable(method = "renderArmWithItem", at = @At("HEAD"), argsOnly = true, ordinal = 3, require = 0)
     private float createpneumatictacticals$skipGunEquipRaise(float equipRaise,
             AbstractClientPlayer player, float partialTick, float pitch, InteractionHand hand,
             float swingProgress, ItemStack stack) {

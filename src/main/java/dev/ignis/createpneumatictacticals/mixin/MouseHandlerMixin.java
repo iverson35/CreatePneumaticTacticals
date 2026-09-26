@@ -11,12 +11,16 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * Scales mouse sensitivity while aiming so screen-space turn speed stays
  * consistent under zoom (same eased factor as the FOV transition). Mirrors
  * pointblank's ClientSystem#modifyMouseSensitivity injection point.
+ *
+ * <p>{@code require = 0}: without the redirect, aim sensitivity falls back to
+ * vanilla (the mouse just feels faster while zoomed) — no state involved.
  */
 @Mixin(MouseHandler.class)
 public abstract class MouseHandlerMixin {
 
     @Redirect(method = "turnPlayer",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"))
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"),
+            require = 0)
     private Object createpneumatictacticals$aimSensitivity(OptionInstance<?> self) {
         Object value = self.get();
         if (value instanceof Double d) {

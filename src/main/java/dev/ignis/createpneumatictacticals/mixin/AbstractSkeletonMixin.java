@@ -24,6 +24,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * the tail just added) are removed and a GunAttackGoal is installed at the
  * same priority 4. Idempotent across repeated reassess calls (remove
  * first, add later); no-op for vanilla skeletons.
+ *
+ * <p>{@code require = 0}: without the injection a gun-armed skeleton just
+ * falls back to the vanilla melee goal and the vanilla drop chance — the goal
+ * swap is a single remove/add at the tail, so nothing is half-applied.
  */
 @Mixin(AbstractSkeleton.class)
 public abstract class AbstractSkeletonMixin {
@@ -36,7 +40,7 @@ public abstract class AbstractSkeletonMixin {
     @Unique
     private final GunAttackGoal cpt$gunGoal = new GunAttackGoal((AbstractSkeleton) (Object) this, 1.0, 20, 15.0F);
 
-    @Inject(method = "reassessWeaponGoal", at = @At("TAIL"))
+    @Inject(method = "reassessWeaponGoal", at = @At("TAIL"), require = 0)
     private void cpt$installGunGoal(CallbackInfo ci) {
         AbstractSkeleton self = (AbstractSkeleton) (Object) this;
         if (self.level().isClientSide()) return; // server-authoritative AI

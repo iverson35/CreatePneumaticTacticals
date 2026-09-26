@@ -29,6 +29,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * </ul>
  * Both scales ride the same pivot, the item's visual center, so shrinking
  * never slides the projectile off the crosshair or off its hitbox.
+ *
+ * <p>{@code require = 0} on both halves: they share one target method, so the
+ * push/pop pair is placed or skipped together. Skipping only drops the visual
+ * scaling — hitbox, damage and sync never go through here.
  */
 @Mixin(PotatoProjectileRenderer.class)
 public abstract class PotatoProjectileRendererMixin {
@@ -48,7 +52,7 @@ public abstract class PotatoProjectileRendererMixin {
     // remap = false + explicit descriptor: Create's typed override keeps its
     // official name in the release jar (only the compiler bridge m_7392_ is
     // SRG-renamed), and the descriptor excludes that bridge in dev
-    @Inject(method = "render(Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", remap = false, at = @At("HEAD"))
+    @Inject(method = "render(Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", remap = false, at = @At("HEAD"), require = 0)
     private void cpt$shrinkNearby(PotatoProjectileEntity entity, float yaw, float pt, PoseStack ms,
                                   MultiBufferSource buffer, int light, CallbackInfo ci) {
         // mirror Create's own early return: empty item never pushes, so the
@@ -75,7 +79,7 @@ public abstract class PotatoProjectileRendererMixin {
         cpt$shrunk = true;
     }
 
-    @Inject(method = "render(Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", remap = false, at = @At("TAIL"))
+    @Inject(method = "render(Lcom/simibubi/create/content/equipment/potatoCannon/PotatoProjectileEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", remap = false, at = @At("TAIL"), require = 0)
     private void cpt$popShrink(PotatoProjectileEntity entity, float yaw, float pt, PoseStack ms,
                                MultiBufferSource buffer, int light, CallbackInfo ci) {
         if (cpt$shrunk) {

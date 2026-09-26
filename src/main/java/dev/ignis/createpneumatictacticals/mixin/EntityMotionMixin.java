@@ -30,11 +30,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * tracking range long before tick 20, which is why the SPAWN packet is the
  * channel that actually bites (see PotatoProjectileMixin's cpt_vel_* restore).
  * This guard covers the remaining case: a shooter who keeps up with the bullet.
+ *
+ * <p>{@code require = 0}: without the guard the replica simply takes the
+ * clamped sync again (a visual bend above 3.9 b/t). Damage, hits and positions
+ * are server-side and unaffected — this is a client-replica visual only.
  */
 @Mixin(Entity.class)
 public abstract class EntityMotionMixin {
 
-    @Inject(method = "lerpMotion", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "lerpMotion", at = @At("HEAD"), cancellable = true, require = 0)
     private void createpneumatictacticals$keepGunShotVelocity(double x, double y, double z, CallbackInfo ci) {
         Entity self = (Entity) (Object) this;
         if (!(self instanceof PotatoProjectileEntity projectile)) return;

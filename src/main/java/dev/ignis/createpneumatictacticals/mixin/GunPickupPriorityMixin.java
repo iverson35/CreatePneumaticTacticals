@@ -21,11 +21,15 @@ import net.minecraft.world.item.ItemStack;
  * e.g. zombies don't run off with dropped guns): a gun replaces anything;
  * between two guns the one with more rounds in the magazine wins; a held
  * gun is never swapped for a non-gun.
+ *
+ * <p>{@code require = 0}: without the injection skeletons keep vanilla pickup
+ * rules (a gun is ignored). The handler only ever overrides the return value
+ * for gun candidates, so there is nothing to leave half-applied.
  */
 @Mixin(Mob.class)
 public abstract class GunPickupPriorityMixin {
 
-    @Inject(method = "canReplaceCurrentItem", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "canReplaceCurrentItem", at = @At("HEAD"), cancellable = true, require = 0)
     private void cpt$gunPickupPriority(ItemStack candidate, ItemStack current,
                                         CallbackInfoReturnable<Boolean> cir) {
         if (!((Mob) (Object) this instanceof AbstractSkeleton)) return;

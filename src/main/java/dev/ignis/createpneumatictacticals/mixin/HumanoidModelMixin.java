@@ -21,6 +21,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *  - LOW/HIGH_READY: arm offsets from ReadyArmPoseTuning, blended in/out over
  *    ~150ms so stance changes don't snap. Additive only: composes with
  *    whatever other mods did to the arms.
+ *
+ * <p>{@code require = 0}: a missing injection point only costs the extra arm
+ * offsets — the base CROSSBOW_HOLD pose still applies, and nothing is stored.
  */
 @Mixin(HumanoidModel.class)
 public abstract class HumanoidModelMixin {
@@ -31,7 +34,7 @@ public abstract class HumanoidModelMixin {
     @Shadow
     public ModelPart rightArm;
 
-    @Inject(method = "setupAnim", at = @At("TAIL"))
+    @Inject(method = "setupAnim", at = @At("TAIL"), require = 0)
     private void cpt$gunPoses(LivingEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
                               float netHeadYaw, float headPitch, CallbackInfo ci) {
         PoseBroadcastPacket.Pose pose = ClientPoses.get(entity.getId());
