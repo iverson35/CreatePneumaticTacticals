@@ -177,8 +177,6 @@ public final class ClientGunInput {
                 CptNetwork.CHANNEL.sendToServer(
                         new GunActionPacket(GunActionPacket.Action.CANCEL_AMMO_SWAP));
             } else if (!reloading && System.currentTimeMillis() >= fireAnimBusyUntilMs) {
-                reloadPending = false;
-                reloadPendingGun = null;
                 startReload(player, gun, stats);
             }
         }
@@ -386,6 +384,14 @@ public final class ClientGunInput {
      * auto-reload re-evaluates its own conditions every tick anyway.
      */
     private static void requestReload(Player player, ItemStack gun, GunStats stats) {
+        // a reload already running owns the trigger: a request made mid-reload
+        // (R pressed again, an ammo pick) is a no-op, not a deferred one — the
+        // running reload's result packet is what applies a pick, and a latch
+        // set here would outlive that reload and start a second one after it
+        if (reloading) {
+            reloadSwapAmmo = null; // the running reload's result applies the pick
+            return;
+        }
         if (System.currentTimeMillis() < fireAnimBusyUntilMs) {
             reloadPending = true;
             reloadPendingGun = gun;
@@ -396,6 +402,14 @@ public final class ClientGunInput {
     }
 
     private static void startReload(Player player, ItemStack gun, GunStats stats) {
+        // the deferred request is consumed here: a started reload satisfies it.
+        // A latch that outlives its own reload — the auto trigger latched behind
+        // the fire animation, a later tick then started the reload through the
+        // free-animation path — would otherwise fire the moment the controller
+        // frees again, with the magazine already refilled: a reload nobody
+        // asked for, on the non-empty chain.
+        reloadPending = false;
+        reloadPendingGun = null;
         // consumed here: a swap shapes only the reload it was requested for
         String swapAmmo = reloadSwapAmmo;
         reloadSwapAmmo = null;
