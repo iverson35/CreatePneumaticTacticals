@@ -159,12 +159,21 @@ final class AwSkins {
     }
 
     /** broadcast: plays the named animation on every skin of this gun that
-     *  defines it (play() no-ops on skins lacking the controller). */
+     *  defines it, restarting from the top when a previous instance of the
+     *  same name is still running (play() no-ops on skins lacking the
+     *  controller, and stop() no-ops likewise). */
     static void onGunAnimation(long gunId, String name, double speed) {
         AnimationManager manager = MANAGERS.get(gunId);
         if (manager == null) return;
         var tag = new CompoundTag();
         tag.putFloat("speed", (float) speed);
+        // re-trigger semantics: AW's play() silently ignores a name that is
+        // already the current triggerable animation (SkinAnimationManager
+        // .addAnimation: newValue == playing -> no-op), so a fire anim
+        // longer than the shot interval would swallow the next shot's
+        // trigger. stop(name) clears the in-flight instance first, leaving
+        // play() to start it fresh from time 0.
+        manager.stop(name);
         manager.play(name, TickUtils.animationTicks(), tag);
     }
 

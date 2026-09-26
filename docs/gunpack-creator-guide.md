@@ -723,7 +723,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 |---|---|
 | 皮肤类型 | `armourers:item`（物品皮肤，在 AW 皮肤台中可对任意物品应用） |
 | 坐标空间 | 1 单位 = 1/16 方块；渲染时会自动对齐到模块挂点骨骼，+Y 向下（AW 物品皮肤惯例） |
-| 动画名称 | `fire` / `reload` / `reload_round` / `bolt`——与 GeckoLib 模块动画同名触发；`parallel1` 等 `parallel<N>` 动画在待机时自动循环 |
+| 动画名称 | `fire` / `reload` / `reload_round` / `bolt`——与 GeckoLib 模块动画同名触发；**同名重复触发会从头重启**（长 `fire` 不会吞掉下一次击发）；`parallel1` 等 `parallel<N>` 动画在待机时自动循环 |
 | 纹理 | 64×64 皮肤纹理（AW 标准皮肤尺寸） |
 | 注意 | 皮肤是纯外观：不改变命中体积、属性、枪口位置 |
 
