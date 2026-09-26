@@ -69,15 +69,23 @@ public final class AwCompat {
     }
 
     /**
-     * Per-frame animation sample for the module's skin: advances the gun's
-     * AW animation manager so the drawn skin uses the current keyframe pose.
-     * Must be called immediately before {@link #renderModuleSkin} on the same
-     * descriptor. Safe no-op when AW is absent or the descriptor is missing.
+     * Per-frame animation tick for the gun's whole AW skin set: binds every
+     * skinned part (receiver, modules, handguard attachments) to the gun's
+     * isolated manager in ONE call and advances the clock once. Call once
+     * per pass, before any of the gun's skins draw. Safe no-op when AW is
+     * absent or the gun carries no skins.
+     *
+     * <p>Whole-set binding is required, not an optimization: AW's
+     * {@code load()}/{@code active()} expire every skin missing from the
+     * passed map ({@code stopAll} + action-map cleanup), so per-part binding
+     * made each skinned part evict the others every frame — {@code play()}
+     * only reaches active items, and triggered animations died within the
+     * same frame on any gun with two or more skinned parts.
      */
-    public static void tickModuleSkin(net.minecraft.nbt.CompoundTag descriptorTag, long gunId, float partialTick) {
-        if (!loaded() || descriptorTag == null) return;
+    public static void tickGunSkin(net.minecraft.world.item.ItemStack gun, long gunId) {
+        if (!loaded()) return;
         try {
-            AwSkins.tick(descriptorTag, gunId, partialTick);
+            AwSkins.tickGun(gun, gunId);
         } catch (Throwable ignored) {
         }
     }

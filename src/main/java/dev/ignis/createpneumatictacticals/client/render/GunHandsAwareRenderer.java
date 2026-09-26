@@ -70,6 +70,13 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                     isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
             return;
         }
+        long gunId = software.bernie.geckolib.animatable.GeoItem.getId(stack);
+        // one per-gun tick for the WHOLE skin set (receiver + modules +
+        // handguard attachments) before any of them draws: AW's load/active
+        // expire every skin missing from the bound map, so binding parts one
+        // at a time made each skinned part evict the others every frame and
+        // triggered animations died (see AwSkins.tickGun)
+        dev.ignis.createpneumatictacticals.compat.aw.AwCompat.tickGunSkin(stack, gunId);
         receiverSkinDrawn = false;
         var receiverDef = dev.ignis.createpneumatictacticals.gun.GunNbt.readModules(stack)
                 .get(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER);
@@ -78,28 +85,41 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         net.minecraft.nbt.CompoundTag skinTag = hidden || receiverDef == null ? null
                 : dev.ignis.createpneumatictacticals.gun.GunNbt.getSkin(stack, receiverDef.id);
         if (skinTag != null) {
-            // advance the gun's isolated AW animation state before the skin
-            // samples it (same per-pass tick the module skins get)
-            dev.ignis.createpneumatictacticals.compat.aw.AwCompat.tickModuleSkin(skinTag,
-                    software.bernie.geckolib.animatable.GeoItem.getId(stack), partialTick);
-            receiverSkinDrawn = dev.ignis.createpneumatictacticals.compat.aw.AwCompat.renderModuleSkin(
-                    skinTag, poseStack, bufferSource,
-                    software.bernie.geckolib.animatable.GeoItem.getId(stack), partialTick, packedLight, packedOverlay);
+            // masked body pass FIRST: GeckoLib writes this frame's bone
+            // transforms inside super (handleAnimations only runs on the
+            // !isReRender passes), so the skin drawn afterwards rides the
+            // animated main bone — receiver skins follow recoil/idle exactly
+            // like module skins
+            setAllBonesHidden(model, true);
+            try {
+                super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
+                        isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            } finally {
+                setAllBonesHidden(model, false);
+            }
+            boolean pushed = GunModulesLayer.pushMainBoneFrame(model, poseStack);
+            try {
+                receiverSkinDrawn = dev.ignis.createpneumatictacticals.compat.aw.AwCompat.renderModuleSkin(
+                        skinTag, poseStack, bufferSource, gunId, partialTick, packedLight, packedOverlay);
+            } finally {
+                if (pushed) poseStack.popPose();
+            }
+            if (!receiverSkinDrawn) {
+                // async bake window: fall back to the plain body this frame
+                // (the same one-frame contract the module skins use)
+                super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
+                        isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            }
+            return;
         }
-        // plain body when: no skin, or the skin could not draw this frame
-        // (AW absent, async bake window) — the same one-frame fallback the
-        // module skins use. A hidden receiver never draws a plain body:
-        // hiding the receiver hides its whole look, so a failed skin draw
-        // leaves nothing rather than the body popping back in.
-        boolean plainBody = skinTag == null || !receiverSkinDrawn;
-        if (plainBody && !hidden) {
+        if (!hidden) {
             super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
                     isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
             return;
         }
-        // body replaced (skin drawn) or player-hidden: mask every bone's
-        // cubes for the draw, restore right after — the shared BakedGeoModel
-        // must not leak the mask into other guns' passes
+        // player-hidden receiver: mask every bone's cubes for the draw,
+        // restore right after — the shared BakedGeoModel must not leak the
+        // mask into other guns' passes
         setAllBonesHidden(model, true);
         try {
             super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,

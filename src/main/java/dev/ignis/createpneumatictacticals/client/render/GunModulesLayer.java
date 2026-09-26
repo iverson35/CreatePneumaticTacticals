@@ -109,20 +109,10 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         // module animation state is isolated per gun stack (GeoItem id), so
         // two guns sharing a module definition don't play each other's anims
         long animId = software.bernie.geckolib.animatable.GeoItem.getId(stack);
-        // AW skins: advance the gun's isolated AW animation state once per
-        // frame before any module skin samples it (skinned modules only;
-        // unskinned guns skip this entirely)
-        if (AwCompat.loaded() && animationsEnabled) {
-            for (ModuleDefinition m : modules.values()) {
-                // receiver skin ticks in GunHandsAwareRenderer's own pass —
-                // ticking here too would double-advance it every frame
-                if (m.type == ModuleType.RECEIVER) continue;
-                CompoundTag skinTag = GunNbt.getSkin(stack, m.id);
-                if (skinTag != null) {
-                    AwCompat.tickModuleSkin(skinTag, animId, partialTick);
-                }
-            }
-        }
+        // AW skins: the gun's whole skin set is bound and ticked once per
+        // pass in GunHandsAwareRenderer's receiver pass (which always runs
+        // before these mounts) — a per-part tick here would evict the other
+        // skinned parts from the shared manager (see AwSkins.tickGun)
         Ctx ctx = new Ctx(animatable, stack, poseStack, bufferSource, partialTick, packedLight,
                 packedOverlay, modules, hgAttachments, animId);
 
@@ -401,25 +391,31 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
      * bone draw the skin right at the locator frame, as before.
      */
     private static boolean renderModuleSkinInModelFrame(BakedGeoModel model, CompoundTag skinTag, Ctx ctx) {
-        GeoBone main = null;
-        for (GeoBone b : model.topLevelBones()) {
-            if (MAIN_BONE.equals(b.getName())) {
-                main = b;
-                break;
-            }
-        }
-        if (main == null) {
-            return AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource, ctx.animId,
-                    ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
-        }
-        ctx.poseStack.pushPose();
+        boolean pushed = pushMainBoneFrame(model, ctx.poseStack);
         try {
-            RenderUtils.prepMatrixForBone(ctx.poseStack, main);
             return AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource, ctx.animId,
                     ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
         } finally {
-            ctx.poseStack.popPose();
+            if (pushed) ctx.poseStack.popPose();
         }
+    }
+
+    /**
+     * Pushes the model's top-level "main" bone transform onto the stack when
+     * the model has one. Returns whether a frame was pushed (the caller must
+     * pop). Shared with the receiver skin pass (GunHandsAwareRenderer), which
+     * draws under the same rule: the body renders inside this transform, so
+     * the skin has to as well or a main-driven animation tears it off.
+     */
+    static boolean pushMainBoneFrame(BakedGeoModel model, PoseStack poseStack) {
+        for (GeoBone b : model.topLevelBones()) {
+            if (MAIN_BONE.equals(b.getName())) {
+                poseStack.pushPose();
+                RenderUtils.prepMatrixForBone(poseStack, b);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

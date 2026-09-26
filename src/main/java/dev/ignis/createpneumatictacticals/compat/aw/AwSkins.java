@@ -1,6 +1,8 @@
 package dev.ignis.createpneumatictacticals.compat.aw;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.ignis.createpneumatictacticals.gun.GunNbt;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import moe.plushie.armourers_workshop.compatibility.client.AbstractBufferSource;
 import moe.plushie.armourers_workshop.compatibility.client.AbstractPoseStack;
 import moe.plushie.armourers_workshop.core.client.animation.AnimationManager;
@@ -118,9 +120,10 @@ final class AwSkins {
             tesselator.setUseItemTransforms(false);
             tesselator.setOutlineColor(0);
 
+            // sampling only: the gun's whole skin table is bound once per
+            // frame by tickGun — binding here would expire every other part
             AnimationManager manager = MANAGERS.get(gunId);
             if (manager != null) {
-                contextBind(manager, descriptor, bakedSkin);
                 tesselator.setAnimationManager(manager);
             }
             tesselator.draw();
@@ -132,30 +135,57 @@ final class AwSkins {
 
     // --- animation bridge (per-gun, isolated) ---
 
-    /** keeps the manager's skin table in step with what this gun carries */
-    private static void contextBind(AnimationManager manager, SkinDescriptor descriptor, BakedSkin bakedSkin) {
-        Map<SkinDescriptor, BakedSkin> skins = Map.of(descriptor, bakedSkin);
+    /**
+     * Per-frame tick for the gun's WHOLE skin set: binds every skinned part
+     * (receiver, modules, handguard attachments) to the gun's manager and
+     * advances the clock once. All parts MUST go in as one map — AW's
+     * {@code load()}/{@code active()} treat every skin missing from the
+     * passed map as expired ({@code stopAll()} + action-map cleanup), so
+     * binding parts one at a time made each skinned part evict the others
+     * every frame: {@code play()} only reaches {@code activeItems}, and the
+     * trigger was wiped within the same frame on any gun carrying two or
+     * more skinned parts (one skinned part = stable = animations played).
+     * Creates the manager on first touch — this is the only creation point,
+     * so a gun whose skins never render (AW absent) never allocates one,
+     * and every other entry point (render/play/stop) can rely on the
+     * manager already existing.
+     */
+    static void tickGun(ItemStack gun, long gunId) {
+        Map<SkinDescriptor, BakedSkin> skins = collectSkins(gun);
+        if (skins.isEmpty()) return;
+        AnimationManager manager = managerFor(gunId); // bounded LRU (MANAGERS)
         manager.load(skins);
         manager.active(skins);
+        // any bound skin's tesselator carries the mannequin the state-driven
+        // triggerables sample (INVENTORY tickets hold no entity state)
+        SkinRenderTesselator tesselator = SkinRenderTesselator.create(
+                skins.keySet().iterator().next(), Tickets.INVENTORY);
+        if (tesselator != null) {
+            manager.tick(tesselator.getMannequin(), TickUtils.animationTicks());
+        }
     }
 
+    /** every skinned part of the gun in ONE map — see {@link #tickGun} */
+    private static Map<SkinDescriptor, BakedSkin> collectSkins(ItemStack gun) {
+        Map<SkinDescriptor, BakedSkin> skins = new LinkedHashMap<>();
+        for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
+            addSkin(skins, GunNbt.getSkin(gun, def.id));
+        }
+        for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
+            addSkin(skins, GunNbt.getSkin(gun, def.id));
+        }
+        return skins;
+    }
 
-    /**
-     * Per-frame sample advance (call before render, once per gun). Creates
-     * the gun's isolated manager on first touch — this is the only
-     * creation point, so a gun whose skin never renders (AW absent) never
-     * allocates one, and every other entry point (render/play/stop) can
-     * rely on the manager already existing.
-     */
-    static void tick(CompoundTag descriptorTag, long gunId, float partialTick) {
-        AnimationManager manager = MANAGERS.get(gunId);
+    private static void addSkin(Map<SkinDescriptor, BakedSkin> skins, CompoundTag descriptorTag) {
+        if (descriptorTag == null) return;
         SkinDescriptor descriptor = decode(descriptorTag);
         if (descriptor == null) return;
         SkinRenderTesselator tesselator = SkinRenderTesselator.create(descriptor, Tickets.INVENTORY);
         if (tesselator == null) return;
-        if (manager == null) manager = managerFor(gunId); // bounded LRU (MANAGERS)
-        contextBind(manager, descriptor, tesselator.getSkin());
-        manager.tick(tesselator.getMannequin(), TickUtils.animationTicks());
+        BakedSkin bakedSkin = tesselator.getSkin();
+        if (bakedSkin == null) return; // still baking: binds on a later frame
+        skins.put(descriptor, bakedSkin);
     }
 
     /** broadcast: plays the named animation on every skin of this gun that
