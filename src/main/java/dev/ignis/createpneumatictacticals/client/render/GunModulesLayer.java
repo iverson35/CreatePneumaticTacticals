@@ -88,6 +88,10 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
      * range, which would otherwise blow up the measured gun size.
      */
     public static final String BEAM_BONE = "laser_beam";
+    /** every module model's top-level root bone (author convention); AW
+     *  module skins ride this bone's animated transform so an animation
+     *  driving main moves the skin with the model (docs §3.9) */
+    private static final String MAIN_BONE = "main";
 
     /** [+] preview tint (translucent blue) */
     private static final float PREVIEW_R = 0.4f, PREVIEW_G = 0.6f, PREVIEW_B = 1f, PREVIEW_A = 0.5f;
@@ -215,8 +219,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             boolean skinRendered = false;
             if (!ghostPassHere && !hidden) {
                 CompoundTag skinTag = GunNbt.getSkin(ctx.stack, target.id);
-                if (skinTag != null && AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource,
-                        ctx.animId, ctx.partialTick, ctx.packedLight, ctx.packedOverlay)) {
+                if (skinTag != null && renderModuleSkinInModelFrame(model, skinTag, ctx)) {
                     skinRendered = true;
                 }
             }
@@ -384,6 +387,39 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             RenderUtils.prepMatrixForBone(poseStack, b);
         }
         RenderUtils.translateToPivotPoint(poseStack, locator);
+    }
+
+    /**
+     * Draws the module's AW skin inside the module's own frame: GeckoLib
+     * renders a model under its top-level bones' local transforms, and the
+     * author convention puts the whole module body under a top-level "main"
+     * bone — so the skin has to ride that same transform, or an animation
+     * driving main (recoil kick, tilt) tears the skin off the animated
+     * model. At rest main transforms by nothing (prepMatrixForBone's pivot
+     * terms cancel without rotation/scale), so rest-pose skins keep the
+     * alignment they were authored against. Models without a top-level main
+     * bone draw the skin right at the locator frame, as before.
+     */
+    private static boolean renderModuleSkinInModelFrame(BakedGeoModel model, CompoundTag skinTag, Ctx ctx) {
+        GeoBone main = null;
+        for (GeoBone b : model.topLevelBones()) {
+            if (MAIN_BONE.equals(b.getName())) {
+                main = b;
+                break;
+            }
+        }
+        if (main == null) {
+            return AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource, ctx.animId,
+                    ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
+        }
+        ctx.poseStack.pushPose();
+        try {
+            RenderUtils.prepMatrixForBone(ctx.poseStack, main);
+            return AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource, ctx.animId,
+                    ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
+        } finally {
+            ctx.poseStack.popPose();
+        }
     }
 
     /**
