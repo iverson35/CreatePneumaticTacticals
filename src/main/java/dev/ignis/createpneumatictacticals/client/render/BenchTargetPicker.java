@@ -41,8 +41,13 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = CreatePneumaticTacticals.MODID, value = Dist.CLIENT)
 public final class BenchTargetPicker {
 
-    /** marker hit radius (blocks) — snug on the drawn icon, no more */
-    private static final float HITBOX = 0.08f;
+    /** pick window around a marker centre (blocks, measured perpendicular to
+     *  the eye ray): the drawn icon's own radius (0.035..0.085) plus slack, so
+     *  "point at the icon" stays workable at any distance */
+    private static final double PICK_RADIUS = 0.10;
+    /** perpendicular offsets this close (blocks) count as the same line of
+     *  sight — the nearer icon then wins the tie */
+    private static final double PICK_TIE = 0.01;
     /** interaction reach (blocks) */
     private static final double REACH = 4.5;
     /** ms between packet sends while the use key is held */
@@ -95,7 +100,20 @@ public final class BenchTargetPicker {
         return hover != null;
     }
 
-    /** pick: nearest visible marker of any rendered bench within HITBOX of the eye ray */
+    /**
+     * Pick: of every visible marker within {@link #PICK_RADIUS} of the eye ray,
+     * the one whose centre sits <b>closest to the ray</b> (smallest
+     * perpendicular offset) wins — not the nearest along it. With several
+     * markers packed together on one bench, what the crosshair is actually on
+     * has to decide; distance along the ray only breaks ties between markers
+     * on the same line of sight ({@link #PICK_TIE}).
+     *
+     * <p>Perpendicular-offset ordering is the angular (screen-space) ordering:
+     * the on-screen distance from the crosshair is {@code focal * offset/along},
+     * and {@code along} is the marker's distance — so this needs no projection,
+     * and the {@link #PICK_RADIUS} window scales with distance exactly like the
+     * drawn icon does.
+     */
     private static void updateHover() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || rendered.isEmpty()) {
@@ -105,7 +123,8 @@ public final class BenchTargetPicker {
         Vec3 eye = mc.gameRenderer.getMainCamera().getPosition();
         Vec3 dir = mc.player.getViewVector(1f).normalize();
         Hover best = null;
-        double bestDist = Double.MAX_VALUE;
+        double bestOffset = Double.MAX_VALUE;
+        double bestAlong = Double.MAX_VALUE;
         for (GunWorkbenchBlockEntity bench : rendered) {
             if (!WorkbenchOverlay.uiInRange(bench.getBlockPos())) continue;
             for (WorkbenchOverlay.Marker m : WorkbenchOverlay.markers(bench)) {
@@ -116,10 +135,13 @@ public final class BenchTargetPicker {
                 Vec3 toMarker = m.worldPos().subtract(eye);
                 double along = toMarker.dot(dir);
                 if (along < 0.3 || along > REACH) continue; // behind camera / out of reach
-                Vec3 closest = eye.add(dir.scale(along));
-                if (closest.distanceTo(m.worldPos()) > HITBOX) continue;
-                if (along < bestDist) {
-                    bestDist = along;
+                double offset = toMarker.subtract(dir.scale(along)).length();
+                if (offset > PICK_RADIUS) continue;
+                boolean better = offset < bestOffset - PICK_TIE
+                        || (Math.abs(offset - bestOffset) <= PICK_TIE && along < bestAlong);
+                if (better) {
+                    bestOffset = offset;
+                    bestAlong = along;
                     best = new Hover(m, bench.getBlockPos(), candidate);
                 }
             }

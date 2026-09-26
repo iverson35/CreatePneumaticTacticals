@@ -154,11 +154,13 @@ final class WorkbenchMarkerRenderer {
     /**
      * The slot a marker belongs to: the module type its mount accepts ("后托"
      * for the stock mount), or the handguard position for a handguard
-     * attachment point ("护木(上)"). Null for [▼] — the take marker is the gun
-     * itself, not a slot.
+     * attachment point ("护木(上)"). The [▼] take button is not a slot — it
+     * names its own action ("取下").
      */
     private static @Nullable Component label(WorkbenchOverlay.Marker m) {
-        if (m.isTake()) return null;
+        if (m.isTake()) {
+            return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".take");
+        }
         HandguardPosition pos = WorkbenchAssembler.handguardPosFromMount(m.mountId());
         if (pos != null) {
             return Component.translatable(typeKey(ModuleType.HANDGUARD))

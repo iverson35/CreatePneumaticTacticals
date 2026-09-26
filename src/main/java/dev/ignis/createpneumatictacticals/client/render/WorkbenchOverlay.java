@@ -52,9 +52,11 @@ public final class WorkbenchOverlay {
 
     /**
      * One marker. {@code gunPos} is the mount position in gun space (blocks,
-     * for the preview render frame); {@code worldPos} is absolute (for
-     * picking/drawing). {@code installed} names the module at an occupied
-     * mount (that id is what REMOVE sends); null on [+] / [▼].
+     * px / 16, for the preview render frame) — meaningless for the [▼] take
+     * button, which is pinned to the bench model instead of the gun.
+     * {@code worldPos} is absolute (for picking/drawing). {@code installed}
+     * names the module at an occupied mount (that id is what REMOVE sends);
+     * null on [+] / [▼].
      */
     public record Marker(Vec3 worldPos, Vec3 gunPos, ResourceLocation mountId,
                          @Nullable ModuleDefinition installed) {
@@ -97,12 +99,10 @@ public final class WorkbenchOverlay {
         BakedGeoModel model = GunWorkbenchRenderer.baked(receiver.id);
         if (model == null) return out;
 
-        // [▼] at the gun's bounds center
-        float[] bb = GunWorkbenchRenderer.bounds(gun);
-        if (bb != null) {
-            Vec3 gunPos = new Vec3((bb[0] + bb[3]) / 2f, (bb[1] + bb[4]) / 2f, (bb[2] + bb[5]) / 2f);
-            out.add(new Marker(gunToWorld(bench, gun, gunPos), gunPos, TAKE_ID, null));
-        }
+        // [▼] at a fixed spot on the table itself (not on the gun): model-space
+        // +z 6/16, centre x, 18/16 above the block bottom, turned with the
+        // blockstate so the button follows the bench's facing
+        out.add(new Marker(takeButtonWorld(bench), Vec3.ZERO, TAKE_ID, null));
 
         // receiver single-slot mounts
         for (ModuleType type : MOUNT_ORDER) {
@@ -156,6 +156,39 @@ public final class WorkbenchOverlay {
     /** bone pivot in gun-space blocks (px /16) */
     private static Vec3 pivot(CoreGeoBone bone) {
         return new Vec3(bone.getPivotX() / 16f, bone.getPivotY() / 16f, bone.getPivotZ() / 16f);
+    }
+
+    /**
+     * [▼] button offset from the block centre, model-space +z (blocks)
+     */
+    private static final double TAKE_OFFSET_Z = -6.0 / 16.0;
+    /** [▼] button height above the block's bottom face (blocks) */
+    private static final double TAKE_HEIGHT = 18.0 / 16.0;
+
+    /**
+     * World position of the [▼] take button: fixed on the bench model, not on
+     * the staged gun — model space (centre x, +z {@link #TAKE_OFFSET_Z},
+     * {@link #TAKE_HEIGHT} above the block bottom), turned by the blockstate's
+     * y-rotation. Mirrors {@code GunWorkbenchBlock#rotateCube}: north is as
+     * authored and every facing step turns the offset 90°, so the button keeps
+     * the same place on the table however the bench is placed (model +z ends up
+     * pointing away from the block's front face).
+     */
+    private static Vec3 takeButtonWorld(GunWorkbenchBlockEntity bench) {
+        net.minecraft.core.Direction facing = bench.getBlockState()
+                .getValue(dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock.FACING);
+        double dx = switch (facing) {
+            case EAST -> -TAKE_OFFSET_Z;
+            case WEST -> TAKE_OFFSET_Z;
+            default -> 0.0; // north / south: the offset rides on z
+        };
+        double dz = switch (facing) {
+            case NORTH -> TAKE_OFFSET_Z;
+            case SOUTH -> -TAKE_OFFSET_Z;
+            default -> 0.0; // east / west: the offset rides on x
+        };
+        BlockPos pos = bench.getBlockPos();
+        return new Vec3(pos.getX() + 0.5 + dx, pos.getY() + TAKE_HEIGHT, pos.getZ() + 0.5 + dz);
     }
 
     /**
