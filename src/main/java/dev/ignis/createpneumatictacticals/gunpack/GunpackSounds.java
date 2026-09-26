@@ -26,8 +26,9 @@ import java.util.stream.Stream;
  * client by the resource-pack injection, so the file is the single source of
  * truth for both the registry entry and the audio mapping — no code change
  * needed to add sounds. Scan runs at mod construction (gunpacks are already
- * extracted), before the registry event fires. New/changed sounds require a
- * restart, same as any registry content.
+ * extracted), before the registry event fires. Registry content: added or
+ * removed event keys need a restart. The audio side (entry volume/pitch, the
+ * ogg files) is client resource content: edits apply on F3+T.
  */
 @Mod.EventBusSubscriber(modid = CreatePneumaticTacticals.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class GunpackSounds {

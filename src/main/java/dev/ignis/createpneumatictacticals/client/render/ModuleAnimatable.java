@@ -49,7 +49,10 @@ public final class ModuleAnimatable implements GeoAnimatable {
     public void registerControllers(AnimatableManager.ControllerRegistrar registrar) {
         // one-shot anim controller, mirrored from the gun item ("anim").
         // CONTINUE (not STOP): STOP cancels forced setAnimation, see GeoGunItem.
-        registrar.add(new AnimationController<>(this, "anim", 2, state -> PlayState.CONTINUE));
+        // Sound keyframes (json sound_effects) dispatch only to a registered
+        // handler; same handler as the receiver's — see GunSoundKeyframes.
+        registrar.add(new AnimationController<>(this, "anim", 2, state -> PlayState.CONTINUE)
+                .setSoundKeyframeHandler(GunSoundKeyframes::play));
     }
 
     @Override

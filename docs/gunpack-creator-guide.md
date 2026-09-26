@@ -77,7 +77,7 @@ gunpacks/<枪包目录名>/
     ├── textures/gun/<模块id>_glowmask.png      发光掩码（可选）
     ├── textures/gun/<模块id>_dye.png           染色掩码（可选）
     ├── animations/gun/<模块id>.animation.json  动画（可选）
-    ├── sounds.json                             音效注册（可选，原版格式）
+    ├── sounds.json                             音效注册（可选，原版格式，条目支持 volume/pitch）
     ├── sounds/<文件名>.ogg                     音效文件
     └── lang/zh_cn.json, lang/en_us.json        本地化（可选）
 ```
@@ -101,13 +101,29 @@ gunpacks/<枪包目录名>/
 - 找不到模型/贴图时不会崩：物品用 `placeholder` 模型顶替，装到枪上则**不渲染并打一条一次性警告**。
 - 命名前缀有约定：制退器 `8dvo` / `1vo` / `14dvo` / `12dvo`（数字 = 口径直径去掉小数点）、导轨件 `pica*`——见 §2.7。
 
+### 1.5.1 音效：sounds.json 与响度
+
+`assets/<命名空间>/sounds.json` 是**原版格式**：顶层每个键注册一个音效事件 `<命名空间>:<键>`，事件下的 `sounds` 数组既可用文件名简写，也可用对象形式给每个条目单独设音量/音调：
+
+```json
+"gun.pistol.mag_out": {
+  "sounds": [
+    { "name": "createpneumatictacticals:mag_out_pistol", "volume": 0.6, "pitch": 1.0 }
+  ]
+}
+```
+
+- **响度 = `volume`**（可写 0–1 以上，原版校验 > 0），**音调 = `pitch`**；原版把条目音量乘进播放音量，所以关键帧音效、`fire_sound` 等都吃这个值。
+- `weight`（多条目随机权重）、`stream`、`attenuation_distance`、`preload` 同样是原版键，可用。
+- 事件键（顶层键）**新增/删除需要重启**（注册表内容）；**改 `volume`/`pitch`/ogg 文件本身只要 F3+T**（资源层，见 §1.6）。
+
 ### 1.6 热重载与调试
 
 | 操作 | 作用 |
 |---|---|
-| `F3+T`（客户端） | 重载枪包资源（模型/贴图/动画/语言）+ 重新读取模块定义；图集与掩码缓存一并清空 |
+| `F3+T`（客户端） | 重载枪包资源（模型/贴图/动画/语言/**音效音量音调与 ogg**）+ 重新读取模块定义；图集与掩码缓存一并清空 |
 | `/cpt reload`（服务端，需要 OP 2 级） | 重新读取服务端的模块定义（不改资源） |
-| 重启 | 新增/修改**音效**（`sounds.json`）必须重启 |
+| 重启 | `sounds.json` 新增/删除**事件键**（注册表内容）必须重启 |
 
 - 日志关键字：`Gunpack root: ...`（启动时的枪包根目录与内容哈希）、`Loaded N modules ...`、`Failed to read module file ...`（某个 JSON 坏了，该文件被跳过，其余照常加载）。
 - 创造模式物品栏里有一个 **`gunpacks`** 标签页：列出**所有已加载的模块定义**，以及每种机匣的**示例整枪**——这是最快的测试入口（不需要配方）。
@@ -369,7 +385,19 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - **换弹时长 = 动画长度**：换弹锁定窗口由**机匣动画文件**里 `reload`（+ 空仓时的 `bolt`）的 `animation_length` 决定，再除以 `reload_speed`。动画文件缺失时回退：弹匣 50 tick / 逐发 16 tick / 拉栓 10 tick。**想要 1.75 秒换弹，就把动画做成 1.75 秒。**
 - **同一触发会广播给机匣和每个已装模块**：模块可以自带一份**同名动画**（例如弹匣的 `reload` 驱动自己的 `mag` 骨）；没写动画的模块静默跳过，不会报错。
 - `idle` 可以省略（默认包两个机匣都没写）；`fire`/`reload`/`bolt` 建议机匣一定要有，否则手上什么都不会动。
-- 动画 JSON 里可以写 GeckoLib 的 `sound_effects` 关键帧来触发音效（默认包未使用）。
+- 动画 JSON 里可以写 GeckoLib 的 `sound_effects` 关键帧来触发音效（默认包 `spiccato_711` 已使用）：
+
+  ```json
+  "sound_effects": {
+    "0.0417": { "effect": "createpneumatictacticals:gun.pistol.mag_out" },
+    "0.625":  { "effect": "createpneumatictacticals:gun.pistol.mag_in" }
+  }
+  ```
+
+  - 时间键 = **秒**（×20 转 tick）；`effect` 是 `sounds.json` 的**事件键**：写全 id（`<命名空间>:gun.pistol.mag_out`）或裸键（`gun.pistol.mag_out`，自动按模组命名空间解析）。写错只警告一次并静默跳过。
+  - 只对**触发类动画**（`fire`/`reload`/`reload_round`/`bolt`）生效，且只在**本机玩家手持的枪**上播放（这些动画本来就是客户端预测驱动的）——`idle` 的关键帧不播，避免物品栏图标/其他玩家的枪刷音效。
+  - **响度/音调不在关键帧里**：由 `sounds.json` 对应事件条目的 `volume` / `pitch` 决定（原版会把它乘进播放音量），见 §1.5。
+  - `"locator"` 是**粒子**关键帧的字段，声音关键帧不读它。
 - 动画只在**手持**渲染时播放；物品栏图标、掉落物、展示框固定为静态 rest pose。
 
 ### 2.7 命名与尺寸规范（口径 / 导轨）

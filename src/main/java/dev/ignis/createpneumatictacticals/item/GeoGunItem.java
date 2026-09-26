@@ -94,8 +94,18 @@ public class GeoGunItem extends GunItem implements GeoItem {
         // GeckoLib 4: a STOP predicate cancels a forced setAnimation on the very
         // next process() — must return CONTINUE; the empty-queue guard still
         // stops the controller once the forced animation finishes.
-        registrar.add(new AnimationController<>(this, dev.ignis.createpneumatictacticals.client.GunAnimationDriver.CONTROLLER, 2,
-                state -> PlayState.CONTINUE));
+        AnimationController<GeoGunItem> anim = new AnimationController<>(this,
+                dev.ignis.createpneumatictacticals.client.GunAnimationDriver.CONTROLLER, 2,
+                state -> PlayState.CONTINUE);
+        // animation sound keyframes (json sound_effects): GeckoLib stays silent
+        // unless a handler is attached. The handler is a client class, so the
+        // attach itself is guarded — on a dedicated server the controller keeps
+        // its null handler and GeckoLib just skips the keyframes.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) {
+            anim.setSoundKeyframeHandler(
+                    event -> dev.ignis.createpneumatictacticals.client.render.GunSoundKeyframes.play(event));
+        }
+        registrar.add(anim);
     }
 
     @Override
