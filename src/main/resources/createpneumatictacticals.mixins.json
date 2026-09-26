@@ -12,6 +12,7 @@
   "client": [
     "EntityMotionMixin",
     "HumanoidModelMixin",
+    "ItemInHandRendererMixin",
     "LocalPlayerSprintMixin",
     "MinecraftInvoker",
     "MouseHandlerMixin",
