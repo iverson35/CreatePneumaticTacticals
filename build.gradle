@@ -186,10 +186,10 @@ dependencies {
     // Create: required dependency, present at compile time and in the dev runtime
     implementation fg.deobf("maven.modrinth:create:${create_version}")
 
-    // Armourer's Workshop: optional dependency (mandatory=false in mods.toml).
-    // compileOnly: its compat mixins break in the dev runtime (unmapped refmap);
-    // the integration hook (ModuleRenderOverride) does not reference AW classes yet.
-    compileOnly fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
+    // Armourer's Workshop: optional at mod level (mandatory=false in mods.toml), but
+    // present in the dev client so its wardrobe/render hooks can be exercised.
+    // Version pinned in gradle.properties (3.2.x line - see the note there).
+    implementation fg.deobf("maven.modrinth:armourers-workshop:${armourers_workshop_version}")
     // JEI: recipe browsing in the dev runtime; the CPT plugin exposes the
     // dynamic pod filling/assembly recipes as per-ammo display recipes
     implementation fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.106")
