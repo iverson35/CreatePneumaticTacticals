@@ -1,14 +1,41 @@
 {
-  "gun.mak_1.fire": {
-    "sounds": [{"name": "minecraft:entity.goat.horn_break", "type": "event"}]
+  "gun.gbb.open": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_open", "volume": 1 } ]
   },
-  "gun.bb_rifle.open": {
-    "sounds": ["createpneumatictacticals:bb_rifile_open"]
+  "gun.gbb.shoot": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot", "volume": 1 } ]
   },
-  "gun.bb_rifle.shoot": {
-    "sounds": ["createpneumatictacticals:bb_rifile_shoot"]
+  "gun.gbb.shoot_2": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_2", "volume": 1 } ]
   },
-  "gun.pistol_silenced.shoot": {
-    "sounds": ["createpneumatictacticals:pistol_shot_silenced"]
+  "gun.gbb.shoot_3": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_3", "volume": 1 } ]
+  },
+  "gun.gbb.shoot_4": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_4", "volume": 1 } ]
+  },
+  "gun.gbb.shoot_5": {
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_5", "volume": 1 } ]
+  },
+  "gun.pistol.silenced.shoot": {
+    "sounds": [{ "name": "createpneumatictacticals:pistol_shot_silenced", "volume": 1 } ]
+  },
+  "gun.pistol.slide_pull": {
+    "sounds": [{ "name": "createpneumatictacticals:slide_pull", "volume": 0.3 } ]
+  },
+  "gun.pistol.slide_release": {
+    "sounds": [{ "name": "createpneumatictacticals:slide_release", "volume": 0.3 } ]
+  },
+  "gun.pistol.mag_in": {
+    "sounds": [{ "name": "createpneumatictacticals:mag_in_pistol", "volume": 0.3 } ]
+  },
+  "gun.pistol.mag_out": {
+    "sounds": [{ "name": "createpneumatictacticals:mag_out_pistol", "volume": 0.5 } ]
+  },
+  "gun.rifle.bolt_pull": {
+    "sounds": [{ "name": "createpneumatictacticals:rifle_pull", "volume": 1 } ]
+  },
+  "gun.rifle.bolt_release": {
+    "sounds": [{ "name": "createpneumatictacticals:rifle_release", "volume": 1 } ]
   }
 }

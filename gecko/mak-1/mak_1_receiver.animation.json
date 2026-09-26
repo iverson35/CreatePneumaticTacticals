@@ -45,6 +45,14 @@
 						}
 					}
 				}
+			},
+			"sound_effects": {
+				"0.25": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_out"
+				},
+				"1.25": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_in"
+				}
 			}
 		},
 		"animation.mak_1_receiver.fire": {
@@ -64,7 +72,7 @@
 			}
 		},
 		"animation.mak_1_receiver.bolt": {
-			"animation_length": 0.5,
+			"animation_length": 0.5833,
 			"bones": {
 				"main": {
 					"rotation": {
@@ -79,7 +87,7 @@
 							"vector": [-2.5, 0, 0],
 							"easing": "easeOutBack"
 						},
-						"0.5": {
+						"0.5417": {
 							"vector": [0, 0, 0],
 							"easing": "easeOutBack"
 						}
@@ -96,7 +104,7 @@
 							"vector": [0, 0, 0.5],
 							"easing": "easeOutBack"
 						},
-						"0.5": {
+						"0.5417": {
 							"vector": [0, 0, 0],
 							"easing": "easeOutBack"
 						}
@@ -107,16 +115,24 @@
 						"0.0": {
 							"vector": [0, 0, 0]
 						},
-						"0.2083": {
+						"0.1667": {
 							"vector": [0, 0, 4]
 						},
 						"0.375": {
 							"vector": [0, 0, 4]
 						},
-						"0.5": {
+						"0.4583": {
 							"vector": [0, 0, 0]
 						}
 					}
+				}
+			},
+			"sound_effects": {
+				"0.0417": {
+					"effect": "createpneumatictacticals:gun.rifle.bolt_pull"
+				},
+				"0.375": {
+					"effect": "createpneumatictacticals:gun.rifle.bolt_release"
 				}
 			}
 		}

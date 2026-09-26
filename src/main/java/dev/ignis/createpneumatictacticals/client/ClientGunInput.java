@@ -12,6 +12,7 @@ import dev.ignis.createpneumatictacticals.network.ReloadResultPacket;
 import dev.ignis.createpneumatictacticals.network.GunActionPacket;
 import dev.ignis.createpneumatictacticals.network.SelectAmmoPacket;
 import dev.ignis.createpneumatictacticals.module.FireMode;
+import dev.ignis.createpneumatictacticals.sound.ModSoundEvents;
 import com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
@@ -131,6 +132,10 @@ public final class ClientGunInput {
         // --- fire ---
         if (mc.options.keyAttack.isDown()) {
             if (reloading) {
+                // dry click: the pull cannot fire while the reload runs,
+                // but only when the magazine is actually empty (a
+                // round-mode reload keeps its rounds and stays silent)
+                if (!wasFiring && magazineEmpty(stats, gun)) playAmmoEmpty(player);
                 wasFiring = true;
             } else {
                 tryFire(player, gun, stats);
@@ -147,9 +152,7 @@ public final class ClientGunInput {
 
         // --- auto reload: an empty gun tries to reload on its own (silent when
         // no ammo is selected or no pods are available — no actionbar spam) ---
-        if (!reloading && stats.isComplete() && stats.feed != null
-                && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
-                && GunNbt.getAmmoCount(gun) <= 0) {
+        if (!reloading && stats.isComplete() && magazineEmpty(stats, gun)) {
             String autoAmmoId = GunNbt.getPendingAmmo(gun);
             if (autoAmmoId == null || autoAmmoId.isEmpty()) autoAmmoId = GunNbt.getAmmo(gun);
             if (autoAmmoId != null && !autoAmmoId.isEmpty()) {
@@ -183,6 +186,12 @@ public final class ClientGunInput {
         // --- state cycling ---
         if (ModKeybinds.FIRE_MODE.consumeClick()) {
             CptNetwork.CHANNEL.sendToServer(new GunActionPacket(GunActionPacket.Action.NEXT_FIRE_MODE));
+            // selector click: only when the receiver actually has another
+            // mode to switch to (the server no-ops on a single-mode gun)
+            if (stats.receiver != null && stats.receiver.fireModes != null
+                    && stats.receiver.fireModes.size() > 1) {
+                player.playSound(ModSoundEvents.SWITCH_FIREMODE.get(), 1.0f, 1.0f);
+            }
         }
         // aim-stance key: only while aiming -- the stance drives the ADS sight
         // picture, so a press with the gun down flips a state the player
@@ -273,9 +282,11 @@ public final class ClientGunInput {
             feedback(player, "no_ammo_selected", ModKeybinds.CYCLE_AMMO);
             return;
         }
-        if (stats.feed != null && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
-                && GunNbt.getAmmoCount(gun) <= 0) {
-            return; // empty magazine: silent (the HUD clip counter + auto reload say it)
+        if (magazineEmpty(stats, gun)) {
+            // one click per trigger pull (holding auto fire on an empty
+            // magazine would otherwise click every tick)
+            if (!wasFiring) playAmmoEmpty(player);
+            return; // empty magazine (the HUD clip counter + auto reload say it)
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
         // mirror of the server gate: ammo reload_ticks / multiplier, in ms
@@ -339,6 +350,19 @@ public final class ClientGunInput {
      * Actionbar hint for client-side fire rejection; key names resolve from the
      * player's actual keybinds, never hardcoded.
      */
+    /** nothing loaded: non-backpack feeds with an empty magazine (a gun fed
+     *  straight from the backpack has no magazine to be empty) */
+    private static boolean magazineEmpty(GunStats stats, ItemStack gun) {
+        return stats.feed != null
+                && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
+                && GunNbt.getAmmoCount(gun) <= 0;
+    }
+
+    /** dry-fire click; loudness is the sounds.json entry's volume (0.5) */
+    private static void playAmmoEmpty(Player player) {
+        player.playSound(ModSoundEvents.AMMO_EMPTY.get(), 1.0f, 1.0f);
+    }
+
     private static void feedback(Player player, String key, net.minecraft.client.KeyMapping... hints) {
         net.minecraft.network.chat.MutableComponent c = net.minecraft.network.chat.Component.translatable(
                 "gui." + CreatePneumaticTacticals.MODID + ".fail." + key);

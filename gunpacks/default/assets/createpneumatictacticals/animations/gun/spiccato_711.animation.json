@@ -95,6 +95,14 @@
 						}
 					}
 				}
+			},
+			"sound_effects": {
+				"0.0417": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_out"
+				},
+				"0.625": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_in"
+				}
 			}
 		},
 		"animation.spiccato_711.bolt": {
@@ -170,6 +178,14 @@
 							"vector": [0, 0, 0]
 						}
 					}
+				}
+			},
+			"sound_effects": {
+				"0.0417": {
+					"effect": "createpneumatictacticals:gun.pistol.slide_pull"
+				},
+				"0.4583": {
+					"effect": "createpneumatictacticals:gun.pistol.slide_release"
 				}
 			}
 		}

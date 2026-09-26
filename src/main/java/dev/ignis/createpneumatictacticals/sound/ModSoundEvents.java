@@ -24,6 +24,17 @@ public final class ModSoundEvents {
             () -> SoundEvent.createVariableRangeEvent(
                     new ResourceLocation(CreatePneumaticTacticals.MODID, "shell_drop")));
 
+    /** dry-fire click: the trigger was pulled with nothing loaded (empty
+     *  magazine, or mid-reload); 50% loudness from the sounds.json entry */
+    public static final RegistryObject<SoundEvent> AMMO_EMPTY = SOUNDS.register("ammo_empty",
+            () -> SoundEvent.createVariableRangeEvent(
+                    new ResourceLocation(CreatePneumaticTacticals.MODID, "ammo_empty")));
+
+    /** fire-mode selector click (V); 50% loudness from the sounds.json entry */
+    public static final RegistryObject<SoundEvent> SWITCH_FIREMODE = SOUNDS.register("switch_firemode",
+            () -> SoundEvent.createVariableRangeEvent(
+                    new ResourceLocation(CreatePneumaticTacticals.MODID, "switch_firemode")));
+
     private ModSoundEvents() {}
 
     public static void register(IEventBus bus) {

@@ -257,6 +257,13 @@ tasks.named('processResources', ProcessResources).configure {
     from('gunpacks') {
         into 'gunpack_defaults'
     }
+
+    // the licence and the third-party sound credits must travel with every redistribution
+    // (CC-BY / CC-BY-SA oblige us to pass the notice on), so put them in the jar too
+    into('META-INF') {
+        from file('LICENSE')
+        from file('CREDITS.md')
+    }
 }
 
 // Example for how to get properties into the manifest for reading at runtime.

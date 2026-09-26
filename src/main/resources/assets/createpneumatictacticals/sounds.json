@@ -1,4 +1,10 @@
 {
+  "ammo_empty": {
+    "sounds": [ { "name": "createpneumatictacticals:ammo_empty", "volume": 0.1667 } ]
+  },
+  "switch_firemode": {
+    "sounds": [ { "name": "createpneumatictacticals:switch_firemode", "volume": 0.25 } ]
+  },
   "shell_drop": {
     "subtitle": "subtitles.createpneumatictacticals.shell_drop",
     "sounds": [

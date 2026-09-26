@@ -12,7 +12,7 @@
   "fire_modes": [
     "semi"
   ],
-  "fire_sound": "createpneumatictacticals:gun.pistol_silenced.shoot",
+  "fire_sound": "createpneumatictacticals:gun.gbb.shoot_2",
   "base_recoil_pitch": 2.4,
   "base_recoil_yaw": 1.2,
   "ignore_ammo_pitch": false,

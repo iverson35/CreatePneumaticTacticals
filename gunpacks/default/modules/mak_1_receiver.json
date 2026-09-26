@@ -12,7 +12,7 @@
     "semi",
     "auto"
   ],
-  "fire_sound": "createpneumatictacticals:gun.bb_rifle.shoot",
+  "fire_sound": "createpneumatictacticals:gun.gbb.shoot",
   "base_recoil_pitch": 3.6,
   "base_recoil_yaw": 2.4,
   "ignore_ammo_pitch": false,
