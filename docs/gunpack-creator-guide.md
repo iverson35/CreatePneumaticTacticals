@@ -63,6 +63,7 @@ Blockbench 建模 → 导出 gecko 模型/动画 → 放进 gunpacks/<包名>/as
 - **首次启动**解压到 `gunpacks/default/`；
 - 之后**永不覆盖**：你改过的文件保留，你删掉的文件下次启动会**重新解压**；
 - 想彻底丢掉它，把整个 `gunpacks/default/` 改名或搬走即可（它会以新名字再生成一份，不碍事）。
+- **新增文件不用登记**：打包时整个仓库 `gunpacks/` 目录都会进 jar，启动时按目录扫描解压——在仓库里加文件就够了，没有需要同步维护的文件清单。
 
 ### 1.4 枪包目录结构
 
@@ -215,7 +216,7 @@ gunpacks/<枪包目录名>/
 - [ ] 每个模块 id 都有对应的 `geo/gun/<id>.geo.json` 与 `textures/gun/<id>.png`（缺了会渲染成占位/不显示）。
 - [ ] 附上 `lang/zh_cn.json`（与 `en_us.json`），至少写全模块名与 `gun_name`。
 - [ ] 配方、弹药定义**另附数据包**（枪包不读 `data/`）。
-- [ ] 改过 `sounds.json` 时在说明里注明需要重启。
+- [ ] 新增音效**事件键**时在说明里注明需要重启（只调 `volume`/`pitch`、替换 ogg 的话 `F3+T` 就够）。
 - [ ] 说明依赖版本（本模组 + Create）。
 
 ---
@@ -368,8 +369,6 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - 颜色由玩家在**配件加工台**染色（16 种原版染料，3 个区域各选一种）并存进 NBT，**模块 JSON 里没有默认配色字段**。
 - 机匣贴图不参与染色（但支持 glowmask）。
 
-> 关于图集的完整设计（画布尺寸、档位、降级梯子）见 `docs/gun-atlas-design.md`。创作者视角只需要记住：**一模块一张贴图，不要超过 64×64，掩码同尺寸同命名**。
-
 ### 2.6 动画
 
 **模组会播放的动画名**（写在动画 JSON 里的名字，用裸名 `fire` 或 Blockbench 全名 `animation.<模型名>.fire` 都认）：
@@ -396,7 +395,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
   - 时间键 = **秒**（×20 转 tick）；`effect` 是 `sounds.json` 的**事件键**：写全 id（`<命名空间>:gun.pistol.mag_out`）或裸键（`gun.pistol.mag_out`，自动按模组命名空间解析）。写错只警告一次并静默跳过。
   - 只对**触发类动画**（`fire`/`reload`/`reload_round`/`bolt`）生效，且只在**本机玩家手持的枪**上播放（这些动画本来就是客户端预测驱动的）——`idle` 的关键帧不播，避免物品栏图标/其他玩家的枪刷音效。
-  - **响度/音调不在关键帧里**：由 `sounds.json` 对应事件条目的 `volume` / `pitch` 决定（原版会把它乘进播放音量），见 §1.5。
+  - **响度/音调不在关键帧里**：由 `sounds.json` 对应事件条目的 `volume` / `pitch` 决定（原版会把它乘进播放音量），见 §1.5.1。
   - `"locator"` 是**粒子**关键帧的字段，声音关键帧不读它。
 - 动画只在**手持**渲染时播放；物品栏图标、掉落物、展示框固定为静态 rest pose。
 
@@ -590,7 +589,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 |---|---|---|---|
 | `gun_type` | 字符串 | **必需** | `heavy` / `medium` / `light` / `shotgun`（大口径/中口径/小口径/霰弹）。机匣只吃自己口径的弹药，枪管必须同口径 |
 | `fire_modes` | 数组 | **必需，非空** | `semi` / `auto` / `burst`；**第一个是装好后的默认模式** |
-| `fire_sound` | 字符串 | `null` → 回退 `create:fwoomp` | 音效事件 id（来自枪包 `sounds.json`）；音调跟随弹药的 `sound_pitch` |
+| `fire_sound` | 字符串 | `null` → 回退 `create:fwoomp` | 音效事件 id（来自枪包 `sounds.json`，音量/音调写法见 §1.5.1）；音调跟随弹药的 `sound_pitch` |
 | `ignore_ammo_pitch` | 布尔 | `false` | `true` = 射击音效固定 1.0 音调，不跟弹药变调 |
 | `gun_name` | 字符串 | `null` | 成品枪名的**语言键**，装配时写入 |
 | `base_recoil_pitch` | 数字 | 0 | 基础垂直后座（度级），与 `recoil_vertical_multiplier` 相乘 |
@@ -884,7 +883,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `mak_1_wire_stock.json` | stock | 纯属性模块；带 `_dye` 掩码 |
 | `charm_crystal.json` / `charm_delta_coin.json` | charm | 完整 `charm` 物理参数块（全部默认值） |
 
-资源侧：`assets/createpneumatictacticals/geo/gun/*.geo.json`（18 个模型）、`textures/gun/*.png`（16×16 / 32×32 / 64×64，32×32 为主）、`animations/gun/*.animation.json`（4 个）、`sounds.json`。
+资源侧：`assets/createpneumatictacticals/geo/gun/*.geo.json`（18 个模型）、`textures/gun/*.png`（16×16 / 32×32 / 64×64，32×32 为主）、`animations/gun/*.animation.json`（4 个）、`sounds.json` + `sounds/*.ogg`（13 个）。
 
 ### 5.2 游戏内提示速查
 
