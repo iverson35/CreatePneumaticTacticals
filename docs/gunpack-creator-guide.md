@@ -506,7 +506,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `damage_multiplier` | 伤害 | 0 | ≥ 0.1 | 伤害倍率（**不参与随机**） |
 | `fire_rate_multiplier` | 射速 | 0 | ≥ 0.1 | 射速倍率；单发最小间隔 = 弹药 `reload_ticks` ÷ 本值（**不参与随机**） |
 | `hipfire_accuracy_multiplier` | 腰射 | 0 | ≥ 0.1 | 腰射精度（散布 = 弹药基础散布 ÷ 本值） |
-| `ergonomics` | 人机 | 0 | 0.1 – 5.0 | 瞄准速度、姿态切换、行走惩罚、持枪恢复；**≥1.2 可以边跑边射** |
+| `ergonomics` | 人机 | 0 | 0.1 – 5.0 | 瞄准速度、姿态切换、行走惩罚、持枪恢复；**≥1.2 可以边跑边射**；**<1.2 只能从 ready 姿势起跑**——跑动中按射击会先把枪抬到腰射位（与 ≥1.2 同一套 engaging 逻辑与延迟）再开火，枪未回到 ready 前无法冲刺，停火约 1 秒枪落回 ready 后才能重新跑动 |
 | `bullet_speed` | 初速 | 0 | ≥ 0.1 | 初速倍率（只影响飞行时间，射程由弹药自己决定）（**不参与随机**） |
 | `recoil_vertical_multiplier` | 垂直后座 | 0 | 0.1 – 3.0 | 垂直后座倍率，**负值更好** |
 | `recoil_horizontal_multiplier` | 水平后座 | 0 | 0.1 – 3.0 | 水平后座倍率，**负值更好** |

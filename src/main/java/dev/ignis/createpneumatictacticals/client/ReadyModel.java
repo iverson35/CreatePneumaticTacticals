@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Low/high ready pose state machine (plan_v2): sprinting or elytra flying
@@ -23,6 +24,15 @@ import net.minecraft.world.item.Item;
  * pose while running as well, but holding attack — or a shot within the
  * last second — raises the gun over the recovery time (that recovery is the
  * sprint-fire delay); one second without firing drops it back to ready.
+ *
+ * <p>Sluggish guns (ergonomics &lt;= SPRINT_FIRE_ERGO) may only sprint FROM
+ * the ready pose: pressing fire while running raises the gun and fires (the
+ * same engaging path as the sprint-fire guns), but the firing stance pins
+ * the shooter to a walk — sprinting is denied until the same one-second
+ * window drops the gun back to ready, at which point running resumes. So a
+ * sluggish gun trades "run and gun" for "stop to shoot". The sprint denial
+ * itself is enforced by the LocalPlayer sprint mixin ({@link #blocksSprint(Player)}),
+ * not by the movement input: the walk speed stays untouched.
  *
  * <p>Tick-driven with partial-tick lerp, mirroring AimHandler.
  */
@@ -82,31 +92,7 @@ public final class ReadyModel {
         double ergo = holdingGun
                 ? dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(player.getMainHandItem())
                 : 1.0;
-        boolean sprintFire = ergo > dev.ignis.createpneumatictacticals.gun.GunStats.SPRINT_FIRE_ERGO;
-        // Releasing aim while still holding the sprint key: vanilla drops the
-        // sprint flag for a couple of ticks, so isSprinting() alone would let
-        // the gun fall ALL the way to hipfire before the ready pose kicks
-        // back in — a visible down-then-up jerk, worst in high ready. Treat
-        // the sprint key held + moving forward as sprint intent while the ADS
-        // fade-out still runs, so the ready overlay takes over seamlessly.
-        boolean sprintIntent = Minecraft.getInstance().options.keySprint.isDown()
-                && Minecraft.getInstance().options.keyUp.isDown();
-        boolean sprintStow = player.isSprinting() || sprintIntent;
-        if (sprintStow && sprintFire) {
-            // sprint-fire guns sit in the ready pose while running too, but
-            // engaging raises the gun: holding attack (or a shot within the
-            // last second) unstows it, and the readyDelayMs/ergo recovery
-            // below IS the sprint-fire delay
-            boolean engaging = Minecraft.getInstance().options.keyAttack.isDown()
-                    || System.currentTimeMillis() - ClientGunInput.lastShotMs() < 1000;
-            sprintStow = !engaging;
-        }
-        // elytra always stows; a blocked muzzle forces the ready pose
-        // regardless of ergonomics
-        stowed = holdingGun && !AimHandler.isAiming()
-                && (player.isFallFlying()
-                        || MuzzleClearance.isBlocked()
-                        || sprintStow);
+        stowed = computeStowed(player, holdingGun);
         if (stowed) {
             // pose follows the view pitch: looking up raises the muzzle
             // (high ready), looking down dips it (low ready); inside the
@@ -130,6 +116,61 @@ public final class ReadyModel {
             float recoveryMs = (float) (READY_DELAY_MS / ergo);
             progress = Math.max(0f, progress - TICK_MS / Math.max(1f, recoveryMs));
         }
+    }
+
+    /**
+     * The ready-pose decision, shared by the tick (pose state) and the live
+     * sprint check below.
+     *
+     * <p>Releasing aim while still holding the sprint key: vanilla drops the
+     * sprint flag for a couple of ticks, so isSprinting() alone would let the
+     * gun fall ALL the way to hipfire before the ready pose kicks back in — a
+     * visible down-then-up jerk, worst in high ready. Treat the sprint key
+     * held + moving forward as sprint intent while the ADS fade-out still
+     * runs, so the ready overlay takes over seamlessly.
+     *
+     * <p>Engaging raises the gun out of the ready pose for every gun class:
+     * for sprint-fire guns (high ergonomics) that is the sprint-fire delay,
+     * for sluggish ones the "plant before you fire" rule — the shot only
+     * leaves once the gun is back in the firing stance, and the shooter
+     * cannot sprint until the same delay drops it back to ready.
+     */
+    private static boolean computeStowed(Player player, boolean holdingGun) {
+        if (!holdingGun || AimHandler.isAiming()) return false;
+        // elytra always stows; a blocked muzzle forces the ready pose
+        // regardless of ergonomics
+        if (player.isFallFlying() || MuzzleClearance.isBlocked()) return true;
+        Minecraft mc = Minecraft.getInstance();
+        boolean sprintStow = player.isSprinting()
+                || (mc.options.keySprint.isDown() && mc.options.keyUp.isDown());
+        if (sprintStow && isEngaging()) {
+            return false;
+        }
+        return sprintStow;
+    }
+
+    /** holding attack, or a shot within the last second */
+    private static boolean isEngaging() {
+        return Minecraft.getInstance().options.keyAttack.isDown()
+                || System.currentTimeMillis() - ClientGunInput.lastShotMs() < 1000;
+    }
+
+    /**
+     * Live sprint denial for the LocalPlayer sprint mixin: a sluggish gun
+     * (ergonomics &lt;= SPRINT_FIRE_ERGO) may only sprint FROM the ready pose,
+     * so the firing stance — aiming, attack held, a shot within the last
+     * second — denies it. Evaluated on the spot (not from the tick cache) so
+     * a sprint started this tick counts: the sprint key, a double-tap W and
+     * an already-running sprint all put the gun into the ready pose and are
+     * allowed; only sprinting with the gun ENGAGED is denied. High-ergonomics
+     * guns are exempt — they sprint-fire.
+     */
+    public static boolean blocksSprint(Player player) {
+        ItemStack gun = player.getMainHandItem();
+        if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem)) return false;
+        if (dev.ignis.createpneumatictacticals.gun.GunStats.ergoScale(gun)
+                > dev.ignis.createpneumatictacticals.gun.GunStats.SPRINT_FIRE_ERGO) return false;
+        return !computeStowed(player, true);
     }
 
     /** render interpolation */

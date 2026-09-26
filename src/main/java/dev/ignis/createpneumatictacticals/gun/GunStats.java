@@ -68,14 +68,16 @@ public final class GunStats {
 
     /** handling-speed ratio bounds applied to ergonomics (aim/stance/ready feel) */
     public static final double ERGO_MIN = 0.25, ERGO_MAX = 3.0;
-    /** ergonomics above this keeps the gun firing-ready while sprinting */
+    /** ergonomics above this keeps the gun firing-ready while sprinting;
+     *  at or below it the gun may only sprint FROM the ready pose (firing
+     *  raises it and denies the sprint until the ready pose returns) */
     public static final double SPRINT_FIRE_ERGO = 1.2;
 
     /**
      * Ergonomics handling factor shared by aim/stance/ready recovery: 1 =
      * base feel, clamped to {@link #ERGO_MIN}..{@link #ERGO_MAX} so no module
-     * combination produces degenerate timing. Common code — the server fire
-     * gate mirrors the client's sprint-fire rule with this.
+     * combination produces degenerate timing. Common code — the client's
+     * sprint-fire rule (ReadyModel) reads this.
      */
     public static double ergoScale(net.minecraft.world.item.ItemStack stack) {
         if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.item.GeoGunItem)) return 1.0;

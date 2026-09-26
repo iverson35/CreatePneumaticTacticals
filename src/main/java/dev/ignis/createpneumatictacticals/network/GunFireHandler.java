@@ -132,11 +132,13 @@ public final class GunFireHandler {
 
         GunStats stats = GunStats.ofGun(gun);
 
-        // ready pose: no firing while elytra flying, or sprinting with a gun
-        // too sluggish to stay firing-ready — ergonomics above
-        // SPRINT_FIRE_ERGO keeps the gun up (the client mirrors this gate 1:1)
+        // ready pose: no firing while elytra flying. A sluggish gun
+        // (ergonomics <= SPRINT_FIRE_ERGO) no longer has a server-side sprint
+        // gate: pressing fire while running raises the gun and shoots on the
+        // client (ReadyModel.canFire), and the client-side sprint lock keeps
+        // the shooter walking for as long as the gun is up — the server's
+        // authoritative answer to the pose stays the spread table
         if (shooter.isFallFlying()) return;
-        if (shooter.isSprinting() && GunStats.ergoScale(gun) <= GunStats.SPRINT_FIRE_ERGO) return;
 
         if (!stats.isComplete()) return;
 
