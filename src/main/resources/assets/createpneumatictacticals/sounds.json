@@ -5,6 +5,12 @@
   "switch_firemode": {
     "sounds": [ { "name": "createpneumatictacticals:switch_firemode", "volume": 0.25 } ]
   },
+  "module_assemble": {
+    "sounds": [ { "name": "createpneumatictacticals:module_assemble", "volume": 0.5 } ]
+  },
+  "module_disassemble": {
+    "sounds": [ { "name": "createpneumatictacticals:module_disassemble", "volume": 0.5 } ]
+  },
   "shell_drop": {
     "subtitle": "subtitles.createpneumatictacticals.shell_drop",
     "sounds": [

@@ -1,8 +1,10 @@
 package dev.ignis.createpneumatictacticals.menu;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.sound.ModSoundEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
@@ -155,6 +157,7 @@ public final class WorkbenchAssembler {
         }
         held.shrink(1);
         bench.setChanged();
+        click(player, pos, ModSoundEvents.MODULE_ASSEMBLE.get());
     }
 
     // ---------------------------------------------------------------
@@ -222,6 +225,8 @@ public final class WorkbenchAssembler {
         }
         give(player, out);
         bench.setChanged();
+        // one click per action: ejecting dependents is part of the same pull
+        click(player, pos, ModSoundEvents.MODULE_DISASSEMBLE.get());
     }
 
     /** modules that must leave with `removed` (installed + atts mutated);
@@ -322,6 +327,14 @@ public final class WorkbenchAssembler {
     public static ResourceLocation mountBoneOf(dev.ignis.createpneumatictacticals.module.HandguardPosition pos) {
         return new ResourceLocation(CreatePneumaticTacticals.MODID,
                 "loc_handguard_" + pos.getSerializedName());
+    }
+
+    /** bench click at the block centre; loudness comes from the sounds.json
+     *  entry, so all nearby players hear it */
+    private static void click(ServerPlayer player, BlockPos pos,
+                              net.minecraft.sounds.SoundEvent event) {
+        player.level().playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+                event, SoundSource.BLOCKS, 1.0f, 1.0f);
     }
 
     private static void give(ServerPlayer player, ItemStack stack) {

@@ -35,6 +35,18 @@ public final class ModSoundEvents {
             () -> SoundEvent.createVariableRangeEvent(
                     new ResourceLocation(CreatePneumaticTacticals.MODID, "switch_firemode")));
 
+    /** workbench: a module was installed onto the gun; 50% loudness from the
+     *  sounds.json entry */
+    public static final RegistryObject<SoundEvent> MODULE_ASSEMBLE = SOUNDS.register("module_assemble",
+            () -> SoundEvent.createVariableRangeEvent(
+                    new ResourceLocation(CreatePneumaticTacticals.MODID, "module_assemble")));
+
+    /** workbench: a module was pulled off the gun; 50% loudness from the
+     *  sounds.json entry */
+    public static final RegistryObject<SoundEvent> MODULE_DISASSEMBLE = SOUNDS.register("module_disassemble",
+            () -> SoundEvent.createVariableRangeEvent(
+                    new ResourceLocation(CreatePneumaticTacticals.MODID, "module_disassemble")));
+
     private ModSoundEvents() {}
 
     public static void register(IEventBus bus) {
