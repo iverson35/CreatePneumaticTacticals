@@ -312,7 +312,11 @@ public final class ClientGunInput {
         float punchYaw = player.getYRot() - (float) dev.ignis.createpneumatictacticals.client.RecoilModel.yawDegrees();
         net.minecraft.world.phys.Vec3 punchDir = net.minecraft.world.phys.Vec3.directionFromRotation(punchPitch, punchYaw);
         CptNetwork.CHANNEL.sendToServer(new FireRequestPacket(
-                player.getEyePosition(1.0f), punchDir));
+                player.getEyePosition(1.0f), punchDir,
+                // same frame's ADS progress: the server closes the spread cone
+                // on the client's own curve, so shots fired while the gun is
+                // still coming up are not yet pinpoint
+                AimHandler.aimProgress(Minecraft.getInstance().getFrameTime())));
         // instant local fire sound (default: potato-cannon FWOOMP); the
         // server broadcast excludes the shooter. Pitch follows the ammo's
         // sound_pitch (Create potato projectile type — same variable-pitch

@@ -14,21 +14,29 @@ import java.util.function.Supplier;
  * 20Hz), which put every turned shot on the wrong side of the crosshair.
  * The server still validates everything else (ammo/air/fire rate) and
  * clamps the trusted direction to the server's own look vector.
+ *
+ * <p>{@code aim} is the same frame's ADS transition progress (0 = hip,
+ * 1 = sights up): the spread cone closes on the client's own curve, so a
+ * shot fired mid-raise lands between hipfire and aimed instead of snapping
+ * to pinpoint the instant the aim key went down.
  */
 public class FireRequestPacket {
 
     public final double eyeX, eyeY, eyeZ;
     public final double dirX, dirY, dirZ;
+    public final float aim;
 
-    public FireRequestPacket(Vec3 eye, Vec3 dir) {
+    public FireRequestPacket(Vec3 eye, Vec3 dir, float aim) {
         this.eyeX = eye.x; this.eyeY = eye.y; this.eyeZ = eye.z;
         this.dirX = dir.x; this.dirY = dir.y; this.dirZ = dir.z;
+        this.aim = aim;
     }
 
     private FireRequestPacket(double eyeX, double eyeY, double eyeZ,
-                              double dirX, double dirY, double dirZ) {
+                              double dirX, double dirY, double dirZ, float aim) {
         this.eyeX = eyeX; this.eyeY = eyeY; this.eyeZ = eyeZ;
         this.dirX = dirX; this.dirY = dirY; this.dirZ = dirZ;
+        this.aim = aim;
     }
 
     public static void encode(FireRequestPacket msg, FriendlyByteBuf buf) {
@@ -38,11 +46,12 @@ public class FireRequestPacket {
         buf.writeDouble(msg.dirX);
         buf.writeDouble(msg.dirY);
         buf.writeDouble(msg.dirZ);
+        buf.writeFloat(msg.aim);
     }
 
     public static FireRequestPacket decode(FriendlyByteBuf buf) {
         return new FireRequestPacket(buf.readDouble(), buf.readDouble(), buf.readDouble(),
-                buf.readDouble(), buf.readDouble(), buf.readDouble());
+                buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readFloat());
     }
 
     public static void handle(FireRequestPacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -51,7 +60,8 @@ public class FireRequestPacket {
             if (player != null) {
                 GunFireHandler.onFireRequest(player,
                         new Vec3(msg.eyeX, msg.eyeY, msg.eyeZ),
-                        new Vec3(msg.dirX, msg.dirY, msg.dirZ));
+                        new Vec3(msg.dirX, msg.dirY, msg.dirZ),
+                        msg.aim);
             }
         });
         ctx.get().setPacketHandled(true);

@@ -39,8 +39,6 @@ public final class GunFireHandler {
 
     /** ms timestamp of last shot per shooter; server-side fire rate validation */
     private static final Map<String, Long> LAST_SHOT = new java.util.concurrent.ConcurrentHashMap<>();
-    /** aim state mirrored from the client (AimStatePacket) for spread suppression */
-    private static final Map<String, Boolean> AIMING = new java.util.concurrent.ConcurrentHashMap<>();
     /** accumulated hipfire bloom in degrees per shooter (mirrors client SpreadModel) */
     private static final Map<String, Double> BLOOM = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -54,16 +52,15 @@ public final class GunFireHandler {
 
     private GunFireHandler() {}
 
-    public static void setAiming(ServerPlayer player, boolean aiming) {
-        AIMING.put(player.getStringUUID(), aiming);
-    }
-
     /**
-     * Server-authoritative hipfire spread in degrees (mirrors the client
-     * SpreadModel; aiming = pinpoint, instantaneous instead of interpolated).
+     * Server-authoritative spread in degrees (mirrors the client
+     * SpreadModel). {@code aim} is the firing frame's ADS progress from the
+     * fire packet: the cone closes along the client's own smoothstep, so the
+     * gun only reaches pinpoint once it is actually at the sight line, and a
+     * shot fired mid-raise lands between hipfire and aimed. Mob shooters
+     * pass 0 (they have no aim transition).
      */
-    private static double spreadDegrees(LivingEntity shooter, AmmoExtension ext, GunStats stats) {
-        if (AIMING.getOrDefault(shooter.getStringUUID(), false)) return 0;
+    private static double spreadDegrees(LivingEntity shooter, AmmoExtension ext, GunStats stats, float aim) {
         String key = shooter.getStringUUID();
         long now = shooter.level().getGameTime();
         double bloom = BLOOM.getOrDefault(key, 0.0);
@@ -72,7 +69,10 @@ public final class GunFireHandler {
             bloom *= Math.max(0, 1 - (now - last) / (double) BLOOM_DECAY_TICKS);
         }
         double raw = ext.spread * PosePenalties.posePenalty(shooter) + bloom;
-        return Math.max(0, raw / Math.max(0.1, stats.hipfireAccuracyMultiplier));
+        double spread = Math.max(0, raw / Math.max(0.1, stats.hipfireAccuracyMultiplier));
+        float p = net.minecraft.util.Mth.clamp(aim, 0f, 1f);
+        p = p * p * (3f - 2f * p);
+        return spread * (1.0 - p);
     }
 
 
@@ -107,9 +107,11 @@ public final class GunFireHandler {
      *                  within {@link #MAX_DIR_DEVIATION} degrees of the
      *                  server's own look vector so a hacked client cannot
      *                  shoot around corners
+     * @param aim       the same frame's ADS progress (0 = hip, 1 = sights up);
+     *                  scales the spread cone like the client crosshair does
      */
-    public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir) {
-        fire(player, clientEye, clientDir);
+    public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir, float aim) {
+        fire(player, clientEye, clientDir, aim);
     }
 
     /**
@@ -120,13 +122,13 @@ public final class GunFireHandler {
      * backpack feed without an inventory) is simply silent.
      */
     public static void onMobFire(LivingEntity shooter) {
-        fire(shooter, null, null);
+        fire(shooter, null, null, 0f);
     }
 
     /**
      * The shared fire core; see the class javadoc for the caller contract.
      */
-    private static void fire(LivingEntity shooter, Vec3 clientEye, Vec3 clientDir) {
+    private static void fire(LivingEntity shooter, Vec3 clientEye, Vec3 clientDir, float aim) {
         ItemStack gun = shooter.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
@@ -210,7 +212,7 @@ public final class GunFireHandler {
         }
 
         // --- spawn projectile (mirrors PotatoCannonItem.use) ---
-        double spreadDeg = spreadDegrees(shooter, ext, stats);
+        double spreadDeg = spreadDegrees(shooter, ext, stats, aim);
 
         // spread cone apexes at the EYE: sample the angular offset first,
         // put each launch point on its own ray 0.5 blocks out (matches the

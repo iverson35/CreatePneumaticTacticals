@@ -51,7 +51,6 @@ public final class AimHandler {
     private static float stanceBlend = 0f;
     private static float prevStanceBlend = 0f;
     private static long lastStanceGunId = -1;
-    private static boolean lastAiming = false;
     private AimHandler() {}
 
     /** True while holding a gun and holding right mouse (muzzle must be clear). */
@@ -127,11 +126,6 @@ public final class AimHandler {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         boolean aiming = isAiming();
-        if (aiming != lastAiming) {
-            lastAiming = aiming;
-            dev.ignis.createpneumatictacticals.network.CptNetwork.CHANNEL.sendToServer(
-                    new dev.ignis.createpneumatictacticals.network.AimStatePacket(aiming));
-        }
         prevAimProgress = aimProgress;
         Player p = Minecraft.getInstance().player;
         ItemStack heldGun = p != null ? p.getMainHandItem() : ItemStack.EMPTY;

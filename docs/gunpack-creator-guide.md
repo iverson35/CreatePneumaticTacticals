@@ -801,7 +801,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `effective_range` | 数字 | 256 | 方块 | 满伤距离；超过后线性衰减。**与枪的初速无关**，是弹药自己的绝对射程 |
 | `damage_falloff_rate` | 数字 | 0（= 自动 `基础伤害 ÷ 射程`） | 生命值/方块 | 衰减斜率；用默认值时**两倍射程处伤害归零**，归零即弹丸自毁 |
 | `headshot_multiplier` | 数字 | 1.5 | × | 命中头部区域的倍率（头部带深度 = 2×(身高−眼高)，超过半身则不算爆头） |
-| `spread` | 数字 | 1.0 | 度 | 腰射锥角基准；实际散布 = `(spread × 姿态惩罚 + 连发膨胀) ÷ 腰射精度`；**瞄准时散布为 0**；每发膨胀 `+0.15×spread`，上限 `2.5×spread`，8 tick 内衰减 |
+| `spread` | 数字 | 1.0 | 度 | 腰射锥角基准；实际散布 = `(spread × 姿态惩罚 + 连发膨胀) ÷ 腰射精度 × (1 − 举枪进度)`；**只有枪真正举到瞄准位才归零**——举枪过程中按开火包里的进度插值（与准星缺口同一条曲线，中段为 smoothstep）；每发膨胀 `+0.15×spread`，上限 `2.5×spread`，8 tick 内衰减 |
 | `max_reflect` | 数字（取整） | 0（关闭）；**写了 `max_reflect` 或 `speed_decay` 中任意一个 → 默认 10** | 次 | 撞方块反弹次数，按面法线反射 |
 | `speed_decay` | 数字 | 0.5 | 每次反弹保留的速度比例 | 与 `max_reflect` 配对；只有写了这两个键之一才会解析 |
 | `affect_radius` | 数字 | 0（无爆炸） | 方块 | >0 时爆炸：命中实体、命中方块、射程自毁、200 tick 到期都会引爆。**永不破坏方块**；粒子/音效随半径放大 |
@@ -822,7 +822,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
    ▼
 开火：口径校验（严格相等）→ 间隔 = reload_ticks ÷ fire_rate_multiplier
       → 生成 split 颗弹丸，初速 = 2 × velocity_multiplier × bullet_speed
-      → 散布 = (spread × 姿态 + 膨胀) ÷ 腰射精度
+      → 散布 = (spread × 姿态 + 膨胀) ÷ 腰射精度 × (1 − 举枪进度)
    ▼
 命中：伤害 = 弹药伤害 × damage_multiplier × 爆头倍率 × 距离衰减
       → 爆炸（若有）/ 反弹（若有）/ 施加 effects
