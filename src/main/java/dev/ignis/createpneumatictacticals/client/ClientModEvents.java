@@ -31,6 +31,9 @@ public final class ClientModEvents {
         event.registerBlockEntityRenderer(
                 dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.MODULE_TUNER.get(),
                 dev.ignis.createpneumatictacticals.client.render.ModuleTunerRenderer::new);
+        event.registerBlockEntityRenderer(
+                dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.AMMO_BOX.get(),
+                dev.ignis.createpneumatictacticals.client.render.AmmoBoxRenderer::new);
     }
 
     @SubscribeEvent

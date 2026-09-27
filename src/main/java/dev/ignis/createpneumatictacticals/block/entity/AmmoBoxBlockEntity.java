@@ -35,8 +35,10 @@ import net.minecraft.world.level.block.state.BlockState;
  * <p>The full {@link WorldlyContainer} (all six faces) plus the Forge
  * {@code ITEM_HANDLER} capability (per-face {@code SidedInvWrapper}) are
  * exposed, so vanilla hoppers AND Create chutes/funnels/pipes can push and
- * pull. Right-click bypasses the GUI-less block:
- * insert the held stack / pull one group / Shift-pull a single loose round.
+ * pull. Right-click on the placed block inserts the held pod stack;
+ * extraction by hand goes through the box ITEM's own right-click instead
+ * (see AmmoBoxBlockItem), and the placed block itself is packed back into
+ * that item with a sneak-right-click on an empty hand.
  */
 public class AmmoBoxBlockEntity extends BlockEntity implements WorldlyContainer {
 
@@ -150,32 +152,25 @@ public class AmmoBoxBlockEntity extends BlockEntity implements WorldlyContainer 
                 .map(key -> key.location().toString()).orElse(null);
     }
 
-    /** right-click interaction: insert held stack / pull one group / Shift-pull one round */
+    /**
+     * Right-click on a placed box: insert the held pod stack. Nothing comes
+     * back out by hand — extraction from a placed box is automation's job
+     * (the Container interface), and the rounds are one right-click away
+     * once the box is packed back into its item (see AmmoBoxBlock.use).
+     */
     public static InteractionResult interact(Player player, InteractionHand hand, AmmoBoxBlockEntity box) {
         ItemStack held = player.getItemInHand(hand);
+        if (held.isEmpty() || !isPod(held)) return InteractionResult.PASS;
         ItemStack dummy = dummyOf(box);
-        if (!held.isEmpty()) {
-            if (!isPod(held)) return InteractionResult.PASS;
-            int before = held.getCount();
-            ListTag list = boxTag(dummy).getList(TAG_ITEMS, Tag.TAG_COMPOUND);
-            int moved = insertInto(list, held);
-            if (moved <= 0) return InteractionResult.PASS;
-            writeBack(box, dummy);
-            sound(player, box, SoundEvents.BUNDLE_INSERT);
-            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-                serverPlayer.awardStat(Stats.ITEM_USED.get(held.getItem()), before - held.getCount());
-            }
-            return InteractionResult.sidedSuccess(player.level().isClientSide);
-        }
-        int want = player.isShiftKeyDown() ? 1
-                : box.template().getMaxStackSize();
-        java.util.List<ItemStack> out = take(dummy, want);
-        if (out.isEmpty()) return InteractionResult.PASS;
+        int before = held.getCount();
+        ListTag list = boxTag(dummy).getList(TAG_ITEMS, Tag.TAG_COMPOUND);
+        int moved = insertInto(list, held);
+        if (moved <= 0) return InteractionResult.PASS;
         writeBack(box, dummy);
-        for (ItemStack stack : out) {
-            if (!player.getInventory().add(stack)) player.drop(stack, false);
+        sound(player, box, SoundEvents.BUNDLE_INSERT);
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            serverPlayer.awardStat(Stats.ITEM_USED.get(held.getItem()), before - held.getCount());
         }
-        sound(player, box, SoundEvents.BUNDLE_REMOVE_ONE);
         return InteractionResult.sidedSuccess(player.level().isClientSide);
     }
 

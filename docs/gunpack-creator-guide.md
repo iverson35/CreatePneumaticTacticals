@@ -835,6 +835,9 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - **口径**：`GunType.accepts` 是**严格相等**（不存在「大口径枪吃小口径弹」）。没写 `gun_type` 的弹药一律按 `light` 处理。
 - **可选弹药列表**：创造模式 = 注册表里所有口径匹配的类型；生存模式 = 背包里**对应种类的封装弹**（`supply_type: "cartridge"` 用加压封装弹，其余用普通封装弹）里的内容，加上**弹药盒**的库存，全部按口径过滤。
 - **装填**：弹匣式按 `clip_size` 装到满，整装弹（`round`）按 `load_amount` 逐批装；生存模式消耗封装弹（1 封装弹 = 1 发），不够时继续从**同型弹药盒**（512 发）取弹。
+- **弹药盒外观**：放成方块的弹药盒，两个**窄侧面**（随放置朝向的正面与背面）各显示一块内容板——封装弹**内容物**的图标（上）与盒内总发数（下），两者都收在面正中 4×4 px 的窗口内；空盒不显示。图标用的是内容物品自己的贴图（与物品栏一致），所以同口径下的不同内容物在盒面上一眼可辨。
+- **弹药盒只在你瞄它时显示内容板**：内容板是准星读数——只有准星正指着的那一个盒子显示图标与发数，旁边成排的盒子只显示模型，方便在箱堆里认箱子。
+- **弹药盒取放**：手持封装弹右键**放入**；**空手潜行右键**把整个盒子（含内部弹药）收回成物品，背包放不下就掉在脚下。方块本身不再徒手取弹——收回物品后，拿着盒子物品右键即可取出一组（潜行右键取一发）。自动化（漏斗 / Create 溜槽、漏斗、管道）不受影响，照常从方块抽取。
 - **背包供弹**：每发直接消耗一个散装封装弹。
 - **换弹种**：把已装填的弹药换掉时，膛内弹药会退成封装弹（背包放不下就掉落），新弹种进入 `PendingAmmo` 等待下一次装填。
 - **获取途径**：两条数据包配方自动覆盖所有已注册弹药，**新增弹药无需写配方**：
@@ -1002,6 +1005,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | 发光/染色掩码 | `client/render/GunGlowLayer.java`、`client/render/DyedTextures.java` |
 | 弹药扩展字段 | `ammo/AmmoExtension.java`、`ammo/AmmoExtensionLoader.java` |
 | 弹药内置预设 | `ammo/BuiltinAmmo.java` |
+| 弹药盒内容板（图标 + 发数） | `client/render/AmmoBoxRenderer.java` |
 | 弹道/伤害/爆炸/反弹 | `mixin/PotatoProjectileMixin.java` |
 | 开火与射速 | `network/GunFireHandler.java` |
 | 装填 | `network/GunReloadHandler.java` |

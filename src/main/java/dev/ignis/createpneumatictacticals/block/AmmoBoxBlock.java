@@ -20,12 +20,14 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Ammo box: a UI-less 512-round single-type pod magazine. Items move by hand
- * (right-click: insert held stack / pull one group / Shift-pull one round)
- * or by automation — the block entity answers the Container interface, so
- * hoppers above drain it and hoppers beside/below feed it. Breaking keeps
- * the content on the dropped item (shulker-style, via getDrops). Horizontal
- * facing (furnace convention, front faces the placer); the collision shape
- * follows the model, rotated per facing like GunWorkbenchBlock.
+ * (right-click: insert the held pod stack; sneak-right-click with an empty
+ * hand: pack the box, content included, back into its item — dropped if the
+ * inventory is full) or by automation — the block entity answers the
+ * Container interface, so hoppers above drain it and hoppers beside/below
+ * feed it. Breaking keeps the content on the dropped item (shulker-style,
+ * via getDrops). Horizontal facing (furnace convention, front faces the
+ * placer); the collision shape follows the model, rotated per facing like
+ * GunWorkbenchBlock.
  */
 public class AmmoBoxBlock extends HorizontalDirectionalBlock
         implements net.minecraft.world.level.block.EntityBlock {
@@ -103,6 +105,21 @@ public class AmmoBoxBlock extends HorizontalDirectionalBlock
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
+        // sneak + empty hand: pack the box (content included) back into its
+        // item, shulker-style. No hand extraction here — the box item's own
+        // right-click pulls rounds once it is back in the inventory.
+        if (player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
+            if (!(level.getBlockEntity(pos) instanceof AmmoBoxBlockEntity box)) return InteractionResult.PASS;
+            if (!level.isClientSide) {
+                ItemStack packed = new ItemStack(this);
+                box.saveToItem(packed);
+                level.removeBlock(pos, false);
+                if (!player.getInventory().add(packed)) player.drop(packed, false);
+                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.ITEM_PICKUP,
+                        net.minecraft.sounds.SoundSource.BLOCKS, 0.8f, 0.8f);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (level.getBlockEntity(pos) instanceof AmmoBoxBlockEntity box) {
             return AmmoBoxBlockEntity.interact(player, hand, box);
         }
