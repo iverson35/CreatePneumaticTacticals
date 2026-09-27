@@ -93,8 +93,14 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         // handguard attachments) before any of them draws: AW's load/active
         // expire every skin missing from the bound map, so binding parts one
         // at a time made each skinned part evict the others every frame and
-        // triggered animations died (see AwSkins.tickGun)
-        AwCompat.tickGunSkin(stack, gunId);
+        // triggered animations died (see AwSkins.tickGun). Handheld passes
+        // only: a GUI icon / dropped item / bench pass must not advance (or
+        // allocate) the gun's animation state — that is what made a stowed
+        // gun's hotbar icon play the in-hand animation.
+        boolean animated = GunModulesLayer.animationsEnabled;
+        if (animated) {
+            AwCompat.tickGunSkin(stack, gunId);
+        }
         receiverSkinDrawn = false;
         ModuleDefinition receiverDef = GunNbt.readModules(stack).get(ModuleType.RECEIVER);
         boolean hidden = receiverDef != null && GunNbt.isHidden(stack, receiverDef.id);
@@ -114,7 +120,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         boolean pushed = GunModulesLayer.pushMainBoneFrame(model, poseStack);
         try {
             receiverSkinDrawn = AwCompat.renderModuleSkin(skinTag, poseStack, bufferSource, gunId,
-                    partialTick, packedLight, packedOverlay);
+                    partialTick, packedLight, packedOverlay, animated);
         } finally {
             if (pushed) poseStack.popPose();
         }

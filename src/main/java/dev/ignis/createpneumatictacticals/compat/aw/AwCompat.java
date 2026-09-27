@@ -54,15 +54,23 @@ public final class AwCompat {
      *
      * @param descriptorTag the gun-side verbatim descriptor Compound
      *                      (GunNbt.getSkin; never parsed outside compat/aw)
+     * @param animated      true only for passes that own animation truth
+     *                      (first/third person). GUI icons, dropped items and
+     *                      the bench pass false: the skin is forced to its
+     *                      rest pose for that draw and the gun's animation
+     *                      manager is left unbound, so an icon can neither
+     *                      show nor advance the in-hand animation
      * @return true when the skin was actually drawn this frame
      */
     public static boolean renderModuleSkin(net.minecraft.nbt.CompoundTag descriptorTag,
                                            com.mojang.blaze3d.vertex.PoseStack poseStack,
                                            net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                                           long gunId, float partialTick, int packedLight, int packedOverlay) {
+                                           long gunId, float partialTick, int packedLight, int packedOverlay,
+                                           boolean animated) {
         if (!loaded() || descriptorTag == null) return false;
         try {
-            return AwSkins.render(descriptorTag, poseStack, bufferSource, gunId, partialTick, packedLight, packedOverlay);
+            return AwSkins.render(descriptorTag, poseStack, bufferSource, gunId, partialTick, packedLight,
+                    packedOverlay, animated);
         } catch (Throwable t) {
             return false; // a broken skin must never take the gun render down
         }

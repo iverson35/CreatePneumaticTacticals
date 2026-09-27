@@ -5,6 +5,8 @@ import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import moe.plushie.armourers_workshop.compatibility.client.AbstractBufferSource;
 import moe.plushie.armourers_workshop.compatibility.client.AbstractPoseStack;
+import moe.plushie.armourers_workshop.core.client.animation.AnimatedTransform;
+import moe.plushie.armourers_workshop.core.client.animation.AnimationController;
 import moe.plushie.armourers_workshop.core.client.animation.AnimationManager;
 import moe.plushie.armourers_workshop.core.client.bake.BakedSkin;
 import moe.plushie.armourers_workshop.core.client.other.SkinRenderTesselator;
@@ -86,9 +88,20 @@ final class AwSkins {
      * Draws the skin at the caller's pose. False when the descriptor is
      * unusable or the bake isn't ready yet (async window) — the caller falls
      * back to the GeckoLib module model for that frame.
+     *
+     * <p>{@code animated} false (GUI icon, dropped item, bench) draws the
+     * REST pose: AW keeps a skin's pose in {@code AnimatedTransform} objects
+     * owned by the shared {@link BakedSkin}, so a pass that binds no manager
+     * would otherwise inherit whatever pose the in-hand pass wrote earlier in
+     * the same frame — the animated icon. Resetting the transforms is enough
+     * to stop showing it; leaving the manager unbound also stops the pass
+     * from processing the animation ({@code AnimationEngine.apply} skips a
+     * skin whose manager has no context) and, together with the tick gate in
+     * the caller, keeps icons from advancing the clock or allocating a
+     * per-gun manager.
      */
     static boolean render(CompoundTag descriptorTag, PoseStack poseStack, MultiBufferSource bufferSource,
-                          long gunId, float partialTick, int packedLight, int packedOverlay) {
+                          long gunId, float partialTick, int packedLight, int packedOverlay, boolean animated) {
         SkinDescriptor descriptor = decode(descriptorTag);
         if (descriptor == null) return false;
         // INVENTORY ticket = same lifetime class as a held item skin; the
@@ -120,11 +133,17 @@ final class AwSkins {
             tesselator.setUseItemTransforms(false);
             tesselator.setOutlineColor(0);
 
-            // sampling only: the gun's whole skin table is bound once per
-            // frame by tickGun — binding here would expire every other part
-            AnimationManager manager = MANAGERS.get(gunId);
-            if (manager != null) {
-                tesselator.setAnimationManager(manager);
+            // animated passes sample the gun's manager (bound once per frame
+            // by tickGun — binding a part here would expire every other
+            // part); static passes force the shared transforms back to rest
+            // instead — see render()
+            if (animated) {
+                AnimationManager manager = MANAGERS.get(gunId);
+                if (manager != null) {
+                    tesselator.setAnimationManager(manager);
+                }
+            } else {
+                resetToRest(bakedSkin);
             }
             tesselator.draw();
         } finally {
@@ -134,6 +153,22 @@ final class AwSkins {
     }
 
     // --- animation bridge (per-gun, isolated) ---
+
+    /**
+     * Forces a skin back to its rest pose. AW's animation output lives in
+     * {@code AnimatedTransform} objects owned by the BakedSkin — shared by
+     * every render of that skin, whatever stack or pass — so a static pass
+     * has to clear the snapshot the animated pass left behind, or the icon
+     * keeps drawing the in-hand pose. {@code reset()} only nulls the
+     * snapshot: the transform then reads its baked parent values again.
+     */
+    private static void resetToRest(BakedSkin bakedSkin) {
+        for (AnimationController controller : bakedSkin.getAnimationControllers()) {
+            for (AnimatedTransform transform : controller.getAffectedTransforms()) {
+                transform.reset();
+            }
+        }
+    }
 
     /**
      * Per-frame tick for the gun's WHOLE skin set: binds every skinned part

@@ -339,7 +339,8 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
             // carries the swing
             applyBoneChain(pendant, ctx.poseStack);
             AwCompat.renderModuleSkin(GunNbt.getSkin(ctx.stack, def.id), ctx.poseStack,
-                    ctx.bufferSource, ctx.animId, ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
+                    ctx.bufferSource, ctx.animId, ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
+                    animationsEnabled);
         } finally {
             ctx.poseStack.popPose();
         }
@@ -388,7 +389,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         boolean pushed = pushMainBoneFrame(model, ctx.poseStack);
         try {
             return AwCompat.renderModuleSkin(skinTag, ctx.poseStack, ctx.bufferSource, ctx.animId,
-                    ctx.partialTick, ctx.packedLight, ctx.packedOverlay);
+                    ctx.partialTick, ctx.packedLight, ctx.packedOverlay, animationsEnabled);
         } finally {
             if (pushed) ctx.poseStack.popPose();
         }
