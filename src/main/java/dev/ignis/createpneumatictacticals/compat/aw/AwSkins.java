@@ -151,8 +151,21 @@ final class AwSkins {
      * manager already existing.
      */
     static void tickGun(ItemStack gun, long gunId) {
+        // one tick per gun per frame: the receiver pass runs again for the
+        // glow layer's emissive reRender (and once more per extra pass — GUI
+        // icon + hand in the same frame), and AW's Item.tick decrements a
+        // finite loop count per call, so a second call doubles those
+        // animations' speed. The clock is a per-frame double, so equal
+        // (gun, clock) = same frame = the pose is already sampled.
+        double clock = TickUtils.animationTicks();
+        if (clock != tickClock) {
+            tickClock = clock;
+            tickedGuns.clear();
+        }
+        if (tickedGuns.contains(gunId)) return;
         Map<SkinDescriptor, BakedSkin> skins = collectSkins(gun);
         if (skins.isEmpty()) return;
+        tickedGuns.add(gunId);
         AnimationManager manager = managerFor(gunId); // bounded LRU (MANAGERS)
         manager.load(skins);
         manager.active(skins);
@@ -161,9 +174,13 @@ final class AwSkins {
         SkinRenderTesselator tesselator = SkinRenderTesselator.create(
                 skins.keySet().iterator().next(), Tickets.INVENTORY);
         if (tesselator != null) {
-            manager.tick(tesselator.getMannequin(), TickUtils.animationTicks());
+            manager.tick(tesselator.getMannequin(), clock);
         }
     }
+
+    /** last clock seen + the guns already ticked at it — see {@link #tickGun} */
+    private static double tickClock = Double.NaN;
+    private static final java.util.Set<Long> tickedGuns = new java.util.HashSet<>();
 
     /** every skinned part of the gun in ONE map — see {@link #tickGun} */
     private static Map<SkinDescriptor, BakedSkin> collectSkins(ItemStack gun) {
