@@ -387,6 +387,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `bolt` | 空仓换弹的拉栓段，接在 `reload` 之后 | 单次 | = `reload_speed` |
 
 - **换弹时长 = 动画长度**：换弹锁定窗口由**机匣动画文件**里 `reload`（+ 空仓时的 `bolt`）的 `animation_length` 决定，再除以 `reload_speed`。动画文件缺失时回退：弹匣 50 tick / 逐发 16 tick / 拉栓 10 tick。**想要 1.75 秒换弹，就把动画做成 1.75 秒。**
+- **换弹被打断**：切快捷栏/收起枪会打断换弹。若打断发生在**拉栓段之前**，整段换弹作废（切回来重新换）；若发生在**拉栓段之中**（`reload` 已经播完、弹匣已换），切回来只补播 `bolt` 然后把弹药装上——不会从 `reload` 重来。
 - **同一触发会广播给机匣和每个已装模块**：模块可以自带一份**同名动画**（例如弹匣的 `reload` 驱动自己的 `mag` 骨）；没写动画的模块静默跳过，不会报错。
 - `idle` 可以省略（默认包两个机匣都没写）；`fire`/`reload`/`bolt` 建议机匣一定要有，否则手上什么都不会动。
 - 动画 JSON 里可以写 GeckoLib 的 `sound_effects` 关键帧来触发音效（默认包 `spiccato_711` 已使用）：

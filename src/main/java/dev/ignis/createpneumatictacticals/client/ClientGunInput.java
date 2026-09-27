@@ -75,6 +75,15 @@ public final class ClientGunInput {
     private static ItemStack reloadingGun = ItemStack.EMPTY;
     /** hotbar slot the reload was started from (see sameHeldGun) */
     private static int reloadingSlot = -1;
+    /** An empty reload interrupted during its bolt tail (hotbar switch): the
+     *  magazine is swapped but the batch is not applied yet, so the reload is
+     *  remembered instead of voided — the gun finishes with just the bolt
+     *  when it comes back, rather than replaying the whole reload. Indexed by
+     *  hotbar slot, so parking one gun's tail cannot overwrite another's. */
+    private static final int HOTBAR_SLOTS = 9;
+    private static final ItemStack[] tailGun = new ItemStack[HOTBAR_SLOTS];
+    private static final int[] tailBatch = new int[HOTBAR_SLOTS];
+    private static final boolean[] tailRoundMode = new boolean[HOTBAR_SLOTS];
 
     /** reload ticks of the ammo behind the latest fire attempt; 0 = unknown */
     public static int currentAmmoReloadTicks() {
@@ -112,7 +121,10 @@ public final class ClientGunInput {
         ReadyModel.tick(player, holdingGun);
         if (!holdingGun) {
             wasFiring = false;
-            cancelReload();
+            // the gun left the hand: void the reload, except in its bolt tail
+            // (see interruptReload — the magazine is swapped and the batch is
+            // owed, so that one resumes when the gun comes back)
+            interruptReload();
             updatePoseBroadcast(false, gun);
             return;
         }
@@ -543,7 +555,10 @@ public final class ClientGunInput {
      * fresh ItemStack into the slot.
      */
     private static void tickReload(Player player, ItemStack gun, GunStats stats) {
-        if (!reloading) return;
+        if (!reloading) {
+            resumeBoltTail(player, gun, stats);
+            return;
+        }
         if (!sameHeldGun(player, gun, reloadingSlot, reloadingGun)) {
             // switching slots / swapping the gun out interrupts the reload.
             // Stack IDENTITY is not the test: an NBT write from the server
@@ -551,7 +566,9 @@ public final class ClientGunInput {
             // ItemStack in the same slot, and testing identity voided the
             // reload mid-way — the side/main sight switch looked like an
             // interrupt for exactly that reason.
-            cancelReload();
+            // interrupted: void the reload, or keep its bolt tail (see
+            // interruptReload)
+            interruptReload();
             return;
         }
         if (reloading && reloadEmpty && !reloadBoltFired
@@ -591,6 +608,88 @@ public final class ClientGunInput {
      */
     private static boolean sameHeldGun(Player player, ItemStack gun, int slot, ItemStack ref) {
         return player.getInventory().selected == slot && gun.getItem() == ref.getItem();
+    }
+
+    /**
+     * A reload that lost its gun (hotbar switch to anything — another gun,
+     * a tool, an empty hand). An empty reload whose bolt tail has already
+     * started keeps its owed batch (see {@link #suspendBoltTail}): the
+     * magazine swap played and only the batch application is left, so the gun
+     * finishes with just the bolt when it comes back. Every earlier phase is
+     * voided outright — the magazine is not swapped yet, and resuming there
+     * would need the reload animation to restart anyway.
+     *
+     * <p>Both interrupt sites (the not-holding-a-gun early return and the
+     * held-gun-changed check) MUST go through here: routing only one of them
+     * left the tail voided whenever the switch landed on a non-gun slot.
+     */
+    private static void interruptReload() {
+        if (!reloading) return;
+        if (reloadEmpty && System.currentTimeMillis() >= reloadBoltStartMs) {
+            suspendBoltTail();
+        } else {
+            cancelReload();
+        }
+    }
+
+    /**
+     * Park an empty reload that was interrupted in its bolt tail. The magazine
+     * swap has played and the batch is still owed; the reload is NOT voided (no
+     * CANCEL_AMMO_SWAP — a deferred ammo swap stays pending), only the state is
+     * stashed until the gun is in hand again. The reload animation is stopped
+     * with the gun; the tail replays the bolt from the top on return.
+     */
+    private static void suspendBoltTail() {
+        if (!reloading) return;
+        int slot = reloadingSlot;
+        if (slot < 0 || slot >= HOTBAR_SLOTS) {
+            cancelReload(); // unknown slot: nothing to key the tail on
+            return;
+        }
+        tailGun[slot] = reloadingGun;
+        tailBatch[slot] = reloadBatch;
+        tailRoundMode[slot] = reloadRoundMode;
+        reloading = false;
+        reloadBoltFired = false;
+        reloadingSlot = -1;
+        GunAnimationDriver.interrupt(reloadingGun);
+    }
+
+    /**
+     * Resume a parked bolt tail: play only the bolt, then let the normal
+     * completion apply the owed batch. Runs before the reload-state return in
+     * tickReload, so the empty-magazine auto-reload cannot restart the whole
+     * reload+bolt chain first.
+     */
+    private static void resumeBoltTail(Player player, ItemStack gun, GunStats stats) {
+        int slot = player.getInventory().selected;
+        if (slot < 0 || slot >= HOTBAR_SLOTS) return;
+        ItemStack parked = tailGun[slot];
+        // same slot + same item is the identity test the rest of the reload
+        // state machine uses (NBT re-syncs hand out fresh instances)
+        if (parked == null || parked.isEmpty() || gun.getItem() != parked.getItem()) return;
+        int batch = tailBatch[slot];
+        boolean roundMode = tailRoundMode[slot];
+        tailGun[slot] = null;
+        // the tail window is exactly what the empty batch adds over the
+        // magazine phase (bolt animation + the two GeckoLib transitions)
+        long phaseMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .reloadBatchMs(gun, roundMode, false, stats.reloadSpeed);
+        long batchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .reloadBatchMs(gun, roundMode, true, stats.reloadSpeed);
+        reloadingGun = gun;
+        reloadingSlot = slot;
+        reloadRoundMode = roundMode;
+        reloadBatch = batch;
+        reloadEmpty = true;
+        // the tail IS the bolt: mark it fired so the normal tick never racks
+        // a second time, and 0 so the third-person pose skips the magazine
+        // segment (it is already swapped)
+        reloadBoltFired = true;
+        reloadBoltStartMs = 0;
+        reloadEndMs = System.currentTimeMillis() + Math.max(50, batchMs - phaseMs);
+        reloading = true;
+        GunAnimationDriver.onBolt(stats.reloadSpeed);
     }
 
     /** ends the reload state and stops the reload animation on the gun */
