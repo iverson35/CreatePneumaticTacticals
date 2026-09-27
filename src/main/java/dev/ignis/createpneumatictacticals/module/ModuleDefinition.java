@@ -50,11 +50,12 @@ public final class ModuleDefinition {
      */
     public final boolean unique;
     /**
-     * muzzle: gas guides (side ports). weight distributes guided particles
-     * among entries; velocity_multiplier/spread_multiplier scale the puff's
-     * forward speed and cone width; direction is the emission axis, an
-     * (x=yaw, y=pitch) offset in DEGREES relative to the shot direction.
-     * pass-through fraction of puffs skips the guides entirely.
+     * muzzle: gas guides (side ports), read from the module's ROOT-level
+     * {@code gas_guides} / {@code gas_pass_through} keys. weight distributes
+     * guided particles among entries; velocity_multiplier/spread_multiplier
+     * scale the puff's forward speed and cone width; direction is the emission
+     * axis, an (x=yaw, y=pitch) offset in DEGREES relative to the shot
+     * direction. pass-through fraction of puffs skips the guides entirely.
      */
     public final List<GasGuide> gasGuides;
     public final double gasPassThrough;
@@ -234,11 +235,15 @@ public final class ModuleDefinition {
         if (type == ModuleType.MUZZLE) {
             b.gasSuppression = net.minecraft.util.Mth.clamp(
                     GsonHelper.getAsDouble(props, "gas_suppression", 0), -5, 1);
+            // The emission spec sits at the module ROOT, not in gun_properties:
+            // it describes the model's own ports (a fixed visual), not a rolled
+            // gun stat. gas_suppression stays a property - it is rolled and
+            // aggregated across the whole gun.
             // fraction of puffs that skips the guides (fires straight ahead)
             b.gasPassThrough = net.minecraft.util.Mth.clamp(
-                    GsonHelper.getAsDouble(props, "gas_pass_through", 1), 0, 1);
-            if (props.has("gas_guides")) {
-                for (JsonElement el : props.getAsJsonArray("gas_guides")) {
+                    GsonHelper.getAsDouble(json, "gas_pass_through", 1), 0, 1);
+            if (json.has("gas_guides")) {
+                for (JsonElement el : json.getAsJsonArray("gas_guides")) {
                     JsonObject g = el.getAsJsonObject();
                     b.gasGuides.add(new GasGuide(
                             GsonHelper.getAsDouble(g, "weight", 1),

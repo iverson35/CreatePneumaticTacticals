@@ -484,7 +484,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `feed` 供弹 | ✅ | `loc_feed` | `load_type`\*、`load_amount`、`clip_size` |
 | `supply` 供气 | ✅ | `loc_supply` | `supply_type`\*、`air_capacity`、`air_per_shot` |
 | `barrel` 枪管 | ✅ | `loc_barrel` | `gun_type`\* |
-| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gas_suppression`、`gas_pass_through`、`gas_guides`（写在 `gun_properties` 里） |
+| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
 | `handguard` 护木 | ❌ | `loc_handguard` | `attachment_points` |
 | `handguard_attachment` 配件 | ❌ | 护木上的 `loc_handguard_<位置>` | `positions`\* |
 | `sight` 瞄具 | ❌ | `loc_sight` | `aim_zoom` |
@@ -517,13 +517,14 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `gas_suppression` | 气体抑制 | 0 | −5 – 1 | 枪口烟雾：`−1` 烟雾翻倍，`+1` 完全无烟（**仅 `muzzle`**） |
 | `unique` | — | `false` | — | 布尔值；同名模块装多个时，属性只算一次 |
 
-**`muzzle` 专属（同样写在 `gun_properties` 里）**：
+**`muzzle` 的导气孔（写在模块根级，**不在** `gun_properties` 里）**：
 
 | JSON 键 | 默认 | 范围 | 含义 |
 |---|---|---|---|
-| `gas_suppression` | 0 | −5 – 1 | 见上表 |
 | `gas_pass_through` | 1 | 0 – 1 | 有多大比例的烟雾**不走**导气孔、直冲前方 |
 | `gas_guides` | `[]` | — | 侧向导气孔数组，见下 |
+
+烟雾的**总量**由 `gun_properties` 里的 `gas_suppression` 决定（见上表）；导气孔只决定这些烟的**走向**。
 
 ```json
 "gas_guides": [
@@ -625,7 +626,12 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 #### muzzle（枪口）
 
-无根级专属字段；属性写在 `gun_properties` 里（`gas_suppression` / `gas_pass_through` / `gas_guides`，见 §3.3）。
+| 字段 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `gas_pass_through` | 数字 | 1 | 有多大比例的烟雾**不走**导气孔、直冲前方 |
+| `gas_guides` | 数组 | `[]` | 侧向导气孔：每项 `weight` / `velocity_multiplier` / `spread_multiplier` / `direction_x` / `direction_y`（见 §3.3） |
+
+烟雾总量属性 `gas_suppression` 写在 `gun_properties` 里。
 
 #### handguard（护木）
 
@@ -909,8 +915,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `mak_1_barrel_short.json` / `711_barrel.json` | barrel | 口径字段 + 用正则白名单限定可用枪口装置 |
 | `mak_1_ammo_20.json` / `711_ammo_15.json` | feed | 弹匣（`load_type: magazine` + `clip_size`）+ 换弹动画（驱动 `mag` 骨） |
 | `mak_1_cartridge_supply.json` / `711_cartridge_supply.json` | supply | 整装气瓶（`supply_type: cartridge`） |
-| `1vo_muzzle_brake_a.json` | muzzle | 两个侧向导气孔（±90° 偏航）+ 气体抑制 |
-| `8dvo_muzzle_brake_competition.json` | muzzle | 单孔向下导气（俯仰 −90°）+ `gas_pass_through` |
+| `1vo_muzzle_brake_a.json` | muzzle | 根级 `gas_guides`：两个侧向导气孔（±90° 偏航）+ 气体抑制 |
+| `8dvo_muzzle_brake_competition.json` | muzzle | 根级 `gas_guides`：单孔向下导气（俯仰 −90°）+ `gas_pass_through` |
 | `mak_1_tactical_handguard.json` | handguard | `attachment_points`（top/bottom/left）+ 配件白名单；带 `_dye` 掩码 |
 | `pica_grip_rvg.json` | handguard_attachment | `positions: ["bottom"]`；带 `_dye` 掩码 |
 | `pica_laser_dbg.json` | handguard_attachment | 四个位置全支持；带 `_glowmask` + `laser_beam` 骨 |
