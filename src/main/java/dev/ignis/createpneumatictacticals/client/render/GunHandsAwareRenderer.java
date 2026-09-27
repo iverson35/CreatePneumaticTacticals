@@ -1,15 +1,33 @@
 package dev.ignis.createpneumatictacticals.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import dev.ignis.createpneumatictacticals.Config;
+import dev.ignis.createpneumatictacticals.client.AimHandler;
+import dev.ignis.createpneumatictacticals.client.ReadyModel;
+import dev.ignis.createpneumatictacticals.client.RecoilModel;
+import dev.ignis.createpneumatictacticals.compat.aw.AwCompat;
+import dev.ignis.createpneumatictacticals.gun.GunNbt;
+import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
+import dev.ignis.createpneumatictacticals.module.ModuleType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.renderer.GeoItemRenderer;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
+import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
-import net.minecraft.client.renderer.RenderType;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.resources.ResourceLocation;
-import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
+
+import java.util.Map;
 
 /**
  * GeoItemRenderer that tracks the current ItemDisplayContext: first-person
@@ -66,60 +84,62 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         boolean receiverPass = stack != null
                 && model == gunModel.getBakedModel(gunModel.getModelResource(animatable));
         if (!receiverPass) {
-            super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
-                    isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            drawBody(poseStack, animatable, model, renderType, bufferSource, buffer, isReRender,
+                    partialTick, packedLight, packedOverlay, red, green, blue, alpha, false);
             return;
         }
-        long gunId = software.bernie.geckolib.animatable.GeoItem.getId(stack);
+        long gunId = GeoItem.getId(stack);
         // one per-gun tick for the WHOLE skin set (receiver + modules +
         // handguard attachments) before any of them draws: AW's load/active
         // expire every skin missing from the bound map, so binding parts one
         // at a time made each skinned part evict the others every frame and
         // triggered animations died (see AwSkins.tickGun)
-        dev.ignis.createpneumatictacticals.compat.aw.AwCompat.tickGunSkin(stack, gunId);
+        AwCompat.tickGunSkin(stack, gunId);
         receiverSkinDrawn = false;
-        var receiverDef = dev.ignis.createpneumatictacticals.gun.GunNbt.readModules(stack)
-                .get(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER);
-        boolean hidden = receiverDef != null
-                && dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(stack, receiverDef.id);
-        net.minecraft.nbt.CompoundTag skinTag = hidden || receiverDef == null ? null
-                : dev.ignis.createpneumatictacticals.gun.GunNbt.getSkin(stack, receiverDef.id);
-        if (skinTag != null) {
-            // masked body pass FIRST: GeckoLib writes this frame's bone
-            // transforms inside super (handleAnimations only runs on the
-            // !isReRender passes), so the skin drawn afterwards rides the
-            // animated main bone — receiver skins follow recoil/idle exactly
-            // like module skins
-            setAllBonesHidden(model, true);
-            try {
-                super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
-                        isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
-            } finally {
-                setAllBonesHidden(model, false);
-            }
-            boolean pushed = GunModulesLayer.pushMainBoneFrame(model, poseStack);
-            try {
-                receiverSkinDrawn = dev.ignis.createpneumatictacticals.compat.aw.AwCompat.renderModuleSkin(
-                        skinTag, poseStack, bufferSource, gunId, partialTick, packedLight, packedOverlay);
-            } finally {
-                if (pushed) poseStack.popPose();
-            }
-            if (!receiverSkinDrawn) {
-                // async bake window: fall back to the plain body this frame
-                // (the same one-frame contract the module skins use)
-                super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
-                        isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
-            }
+        ModuleDefinition receiverDef = GunNbt.readModules(stack).get(ModuleType.RECEIVER);
+        boolean hidden = receiverDef != null && GunNbt.isHidden(stack, receiverDef.id);
+        CompoundTag skinTag = receiverDef == null || hidden ? null : GunNbt.getSkin(stack, receiverDef.id);
+        if (skinTag == null) {
+            // plain body; a player-hidden receiver masks its own cubes only
+            drawBody(poseStack, animatable, model, renderType, bufferSource, buffer, isReRender,
+                    partialTick, packedLight, packedOverlay, red, green, blue, alpha, hidden);
             return;
         }
-        if (!hidden) {
+        // masked body pass FIRST: GeckoLib writes this frame's bone transforms
+        // inside super (handleAnimations only runs on the !isReRender passes),
+        // so the skin drawn afterwards rides the animated main bone — receiver
+        // skins follow recoil/idle exactly like module skins
+        drawBody(poseStack, animatable, model, renderType, bufferSource, buffer, isReRender,
+                partialTick, packedLight, packedOverlay, red, green, blue, alpha, true);
+        boolean pushed = GunModulesLayer.pushMainBoneFrame(model, poseStack);
+        try {
+            receiverSkinDrawn = AwCompat.renderModuleSkin(skinTag, poseStack, bufferSource, gunId,
+                    partialTick, packedLight, packedOverlay);
+        } finally {
+            if (pushed) poseStack.popPose();
+        }
+        if (!receiverSkinDrawn) {
+            // async bake window: fall back to the plain body this frame
+            // (the same one-frame contract the module skins use)
+            drawBody(poseStack, animatable, model, renderType, bufferSource, buffer, isReRender,
+                    partialTick, packedLight, packedOverlay, red, green, blue, alpha, false);
+        }
+    }
+
+    /**
+     * The shared draw entry. Masked = every bone's cubes hidden for this one
+     * draw and restored right after: the shared BakedGeoModel must not leak
+     * the mask into any other pass.
+     */
+    private void drawBody(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel model,
+                          RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
+                          boolean isReRender, float partialTick, int packedLight, int packedOverlay,
+                          float red, float green, float blue, float alpha, boolean masked) {
+        if (!masked) {
             super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
                     isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
             return;
         }
-        // player-hidden receiver: mask every bone's cubes for the draw,
-        // restore right after — the shared BakedGeoModel must not leak the
-        // mask into other guns' passes
         setAllBonesHidden(model, true);
         try {
             super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer,
@@ -130,14 +150,14 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
     }
 
     private static void setAllBonesHidden(BakedGeoModel model, boolean hidden) {
-        for (software.bernie.geckolib.cache.object.GeoBone bone : model.topLevelBones()) {
+        for (GeoBone bone : model.topLevelBones()) {
             setBoneHidden(bone, hidden);
         }
     }
 
-    private static void setBoneHidden(software.bernie.geckolib.cache.object.GeoBone bone, boolean hidden) {
+    private static void setBoneHidden(GeoBone bone, boolean hidden) {
         bone.setHidden(hidden);
-        for (software.bernie.geckolib.cache.object.GeoBone child : bone.getChildBones()) {
+        for (GeoBone child : bone.getChildBones()) {
             setBoneHidden(child, hidden);
         }
     }
@@ -150,7 +170,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
      */
     @Override
     public RenderType getRenderType(GeoGunItem animatable, ResourceLocation texture,
-                                    @org.jetbrains.annotations.Nullable MultiBufferSource bufferSource,
+                                    @Nullable MultiBufferSource bufferSource,
                                     float partialTick) {
         GunGeoModel model = (GunGeoModel) getGeoModel();
         BakedGeoModel baked = model.getBakedModel(model.getModelResource(animatable));
@@ -192,7 +212,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         // space (entity/hand transforms applied, display offsets < 1
         // block), so its length is the camera distance. GUI has no world
         // position and never LODs.
-        int lod = dev.ignis.createpneumatictacticals.Config.lodDistance;
+        int lod = Config.lodDistance;
         GunModulesLayer.lodActive = lod > 0 && context != ItemDisplayContext.GUI
                 && itemDistSq(poseStack) > lod * (float) lod;
         ((GunGeoModel) getGeoModel()).setStack(stack);
@@ -202,12 +222,12 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                     getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable)));
         }
         if (firstPerson) {
-            float partialTick = net.minecraft.client.Minecraft.getInstance().getFrameTime();
+            float partialTick = Minecraft.getInstance().getFrameTime();
             // low/high ready pose while sprinting / elytra flying;
             // high vs low follows the view pitch, cross-faded (ReadyModel)
             ReadyPoseTransform.apply(poseStack,
-                    dev.ignis.createpneumatictacticals.client.ReadyModel.highMix(partialTick),
-                    dev.ignis.createpneumatictacticals.client.ReadyModel.progress(partialTick));
+                    ReadyModel.highMix(partialTick),
+                    ReadyModel.progress(partialTick));
             // ADS: bring the receiver's camera locator bone to screen center
             AdsTransform.apply(stack, poseStack);
             // recoil kick, AFTER the ADS alignment: the alignment re-solves the
@@ -216,16 +236,16 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
             // last keeps it visible relative to the view: the muzzle flips up
             // around the grip anchor and the gun pushes back toward the
             // camera. Hipfire is much louder than the aimed shot.
-            double kick = dev.ignis.createpneumatictacticals.client.RecoilModel.modelKick();
+            double kick = RecoilModel.modelKick();
             if (Math.abs(kick) > 0.001) {
-                float aim = dev.ignis.createpneumatictacticals.client.AimHandler.aimProgress(partialTick);
+                float aim = AimHandler.aimProgress(partialTick);
                 aim = aim * aim * (3f - 2f * aim);
                 float hipShare = 1f - aim;
                 // ADS/tactical: pure backward push only (a muzzle flip would
                 // sway the sight picture); hipfire: ~13 deg flip + 8.4 cm push
                 float rotDeg = (float) (kick * 1.175 * hipShare);
                 float push = (float) (kick * (0.006 + 0.024 * hipShare));
-                poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(rotDeg));
+                poseStack.mulPose(Axis.XP.rotationDegrees(rotDeg));
                 poseStack.translate(0, 0, push);
             }
         }
@@ -237,7 +257,7 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
 
     /** camera-space distance squared of the item being rendered */
     private static float itemDistSq(PoseStack poseStack) {
-        org.joml.Matrix4f m = poseStack.last().pose();
+        Matrix4f m = poseStack.last().pose();
         float dx = m.m30(), dy = m.m31(), dz = m.m32();
         return dx * dx + dy * dy + dz * dz;
     }
@@ -276,11 +296,10 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
         GunHandsLayer.isFirstPersonPass = false;
         GunModulesLayer.animationsEnabled = false;
         GunModulesLayer.lodActive = false; // bench: always full detail
-        java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
-                GunAnimations.snapshotBones(model);
+        Map<CoreGeoBone, float[]> saved = GunAnimations.snapshotBones(model);
         GunAnimations.resetToRestPose(model);
         try {
-            float partialTick = net.minecraft.client.Minecraft.getInstance().getFrameTime();
+            float partialTick = Minecraft.getInstance().getFrameTime();
             ResourceLocation texture = model.getTextureResource(gunItem);
             GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);
             RenderType type;
