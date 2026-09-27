@@ -28,6 +28,9 @@ public final class ClientModEvents {
         event.registerBlockEntityRenderer(
                 dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity.GUN_WORKBENCH.get(),
                 dev.ignis.createpneumatictacticals.client.render.GunWorkbenchRenderer::new);
+        event.registerBlockEntityRenderer(
+                dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.MODULE_TUNER.get(),
+                dev.ignis.createpneumatictacticals.client.render.ModuleTunerRenderer::new);
     }
 
     @SubscribeEvent

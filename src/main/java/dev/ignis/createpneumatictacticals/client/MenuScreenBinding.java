@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.client;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.client.gui.ModuleTunerScreen;
 import dev.ignis.createpneumatictacticals.client.gui.ModuleWorkbenchScreen;
 import dev.ignis.createpneumatictacticals.menu.CptMenuTypes;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -22,6 +23,7 @@ public final class MenuScreenBinding {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             MenuScreens.register(CptMenuTypes.MODULE_WORKBENCH.get(), ModuleWorkbenchScreen::new);
+            MenuScreens.register(CptMenuTypes.MODULE_TUNER.get(), ModuleTunerScreen::new);
         });
     }
 

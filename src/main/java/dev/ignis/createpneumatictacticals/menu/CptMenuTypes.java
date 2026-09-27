@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.menu;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.block.entity.ModuleTunerBlockEntity;
 import dev.ignis.createpneumatictacticals.block.entity.ModuleWorkbenchBlockEntity;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.extensions.IForgeMenuType;
@@ -26,6 +27,19 @@ public final class CptMenuTypes {
                         if (inv.player.level().getBlockEntity(pos)
                                 instanceof ModuleWorkbenchBlockEntity be) {
                             return new ModuleWorkbenchMenu(id, inv, be);
+                        }
+                        return null;
+                    }));
+
+    public static final RegistryObject<MenuType<ModuleTunerMenu>> MODULE_TUNER =
+            MENUS.register("module_tuner", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> {
+                        // same client-side lookup as the workbench: the BE comes
+                        // from the pos written by NetworkHooks.openScreen
+                        var pos = buf.readBlockPos();
+                        if (inv.player.level().getBlockEntity(pos)
+                                instanceof ModuleTunerBlockEntity be) {
+                            return new ModuleTunerMenu(id, inv, be);
                         }
                         return null;
                     }));

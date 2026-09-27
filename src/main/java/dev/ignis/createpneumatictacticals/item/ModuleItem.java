@@ -330,7 +330,8 @@ public class ModuleItem extends Item implements GeoItem {
         }
     }
 
-    private static String formatStat(double v) {
+    /** shared with the tuning table GUI so both read the same way */
+    public static String formatStat(double v) {
         if (Math.abs(v) >= 100) return String.valueOf((int) v);
         if (Math.abs(v) == Math.floor(Math.abs(v))) return String.valueOf((int) v);
         // rolls land anywhere in 0..1 of the authored value, so sub-1 stats

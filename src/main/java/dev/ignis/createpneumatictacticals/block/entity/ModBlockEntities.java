@@ -20,6 +20,11 @@ public final class ModBlockEntities {
                     .of(ModuleWorkbenchBlockEntity::new, ModBlocks.MODULE_WORKBENCH.get())
                     .build(null));
 
+    public static final RegistryObject<BlockEntityType<ModuleTunerBlockEntity>> MODULE_TUNER =
+            BLOCK_ENTITIES.register("module_tuner", () -> BlockEntityType.Builder
+                    .of(ModuleTunerBlockEntity::new, ModBlocks.MODULE_TUNER.get())
+                    .build(null));
+
     public static final RegistryObject<BlockEntityType<AmmoBoxBlockEntity>> AMMO_BOX =
             BLOCK_ENTITIES.register("ammo_box", () -> BlockEntityType.Builder
                     .of(AmmoBoxBlockEntity::new, ModBlocks.AMMO_BOX.get())

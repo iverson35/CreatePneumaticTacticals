@@ -271,6 +271,13 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
         }
     }
 
+    /** model-space AABB (blocks) of every cube in a baked model, null when empty */
+    static float[] modelBounds(BakedGeoModel model) {
+        Bounds b = new Bounds();
+        accumulateCubes(model, 0, 0, 0, b);
+        return b.valid ? new float[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ} : null;
+    }
+
     /** union all cubes of the model (bones summed in px -> blocks) */
     private static void accumulateCubes(BakedGeoModel model, float ox, float oy, float oz, Bounds b) {
         for (software.bernie.geckolib.cache.object.GeoBone bone : model.topLevelBones()) {

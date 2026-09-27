@@ -91,7 +91,7 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
      * 180°-rolled bottom loc bone (so they mount upright); the item render
      * flips them back so the standalone item looks right-side up.
      */
-    private static boolean isBottomOnly(ItemStack stack) {
+    static boolean isBottomOnly(ItemStack stack) {
         ResourceLocation id = ModuleItem.getModuleId(stack);
         if (id == null) return false;
         ModuleDefinition def = ModuleManager.get(id);

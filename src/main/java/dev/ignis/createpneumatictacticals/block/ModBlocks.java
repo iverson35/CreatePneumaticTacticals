@@ -27,6 +27,15 @@ public final class ModBlocks {
     public static final RegistryObject<Item> MODULE_WORKBENCH_ITEM = BLOCK_ITEMS.register("module_workbench",
             () -> new BlockItem(MODULE_WORKBENCH.get(), new Item.Properties()));
 
+    public static final RegistryObject<Block> MODULE_TUNER = BLOCKS.register("module_tuner",
+            // no tool requirement: the block always drops itself plus whatever
+            // module sits on it (getDrops), so a wrong tool must not eat either
+            () -> new ModuleTunerBlock(BlockBehaviour.Properties.of()
+                    .strength(2.0F, 6.0F)));
+
+    public static final RegistryObject<Item> MODULE_TUNER_ITEM = BLOCK_ITEMS.register("module_tuner",
+            () -> new BlockItem(MODULE_TUNER.get(), new Item.Properties()));
+
     public static final RegistryObject<Block> GUN_WORKBENCH = BLOCKS.register("gun_workbench",
             () -> new GunWorkbenchBlock(BlockBehaviour.Properties.of()
                     .strength(2.0F, 6.0F).requiresCorrectToolForDrops()));

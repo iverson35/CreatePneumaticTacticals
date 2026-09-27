@@ -137,6 +137,138 @@ public final class ModuleRoll {
         return tag.isEmpty() ? null : tag;
     }
 
+    // --- 配件调整台 (tuning table) ------------------------------------------
+    //
+    // The table walks a finished module's fractions one step at a time. Each
+    // step hands ONE STEP to the good side and one STEP to the bad side, each
+    // spread over that side's movable attributes in random proportions and
+    // capped by what each attribute can still absorb. Both sides always spend
+    // the same total — the STEP, or less when a side cannot absorb that much —
+    // so sum(good) - sum(bad) never changes: a crafted module keeps sitting
+    // inside the set of rolls {@link #roll} can produce, however often the
+    // table is used.
+
+    /** one step of the tuning table: a tenth of an attribute's authored value */
+    public static final double STEP = 0.1;
+
+    /** a bar this close to a bound counts as full (or empty): it cannot move */
+    private static final double STEP_EPS = 1e-9;
+
+    /** the attributes a definition actually rolls; authored 0 sits out the budget */
+    public static List<Attr> rollable(ModuleDefinition def) {
+        List<Attr> out = new ArrayList<>();
+        for (Attr a : Attr.values()) {
+            if (a.authored(def) != 0) out.add(a);
+        }
+        return out;
+    }
+
+    /** current fraction of every rollable attribute (missing NBT entry = 1.0) */
+    public static Map<Attr, Double> state(ModuleDefinition def, @Nullable CompoundTag rolls) {
+        Map<Attr, Double> out = new EnumMap<>(Attr.class);
+        for (Attr a : rollable(def)) out.put(a, fraction(rolls, a));
+        return out;
+    }
+
+    /** true when EACH side still has an attribute that can be raised */
+    public static boolean canKnock(ModuleDefinition def, Map<Attr, Double> state) {
+        return !eligible(def, state, true, true).isEmpty()
+                && !eligible(def, state, false, true).isEmpty();
+    }
+
+    /** true when EACH side still has an attribute that can be lowered */
+    public static boolean canCalibrate(ModuleDefinition def, Map<Attr, Double> state) {
+        return !eligible(def, state, true, false).isEmpty()
+                && !eligible(def, state, false, false).isEmpty();
+    }
+
+    /**
+     * 敲击: the whole STEP is spread over the good side's attributes and over
+     * the bad side's attributes — each side spends the same total, so
+     * sum(good) - sum(bad) never moves. Null when either side has no room,
+     * the caller's "cannot knock".
+     */
+    @Nullable
+    public static Map<Attr, Double> knock(ModuleDefinition def, Map<Attr, Double> state, RandomSource rng) {
+        return step(def, state, rng, true);
+    }
+
+    /**
+     * 校准: the whole STEP is spread over each side's attributes, both sides
+     * spending the same total in the lowering direction. Null when either side
+     * has nothing left to give.
+     */
+    @Nullable
+    public static Map<Attr, Double> calibrate(ModuleDefinition def, Map<Attr, Double> state, RandomSource rng) {
+        return step(def, state, rng, false);
+    }
+
+    /**
+     * One step of the table: each side spreads one STEP over the attributes it
+     * can still move, in random proportions, each attribute capped by what it
+     * can still absorb (the excess goes to the others). Both sides spend the
+     * same total — the STEP, or less when a side cannot absorb that much — so
+     * {@code sum(good) - sum(bad)} never changes and a crafted module stays
+     * inside the set of rolls {@link #roll} can produce.
+     */
+    @Nullable
+    private static Map<Attr, Double> step(ModuleDefinition def, Map<Attr, Double> state,
+                                          RandomSource rng, boolean up) {
+        List<Attr> good = eligible(def, state, true, up);
+        List<Attr> bad = eligible(def, state, false, up);
+        if (good.isEmpty() || bad.isEmpty()) return null;
+        // a side that cannot absorb a whole step caps BOTH sides, keeping the
+        // two totals equal — a sliver on one side never lets the other run on
+        double spend = Math.min(STEP, Math.min(capacity(state, good, up), capacity(state, bad, up)));
+        Map<Attr, Double> out = new EnumMap<>(state);
+        spread(out, state, good, spend, up, rng);
+        spread(out, state, bad, spend, up, rng);
+        return out;
+    }
+
+    /** the total room left on one side, in the given direction */
+    private static double capacity(Map<Attr, Double> state, List<Attr> side, boolean up) {
+        double sum = 0;
+        for (Attr a : side) sum += room(state, a, up);
+        return sum;
+    }
+
+    /**
+     * Hands one side its share of the step: random iid weights, proportional
+     * shares, each capped by what that attribute can still absorb, the excess
+     * redistributed — the same split the crafting roll uses, so the table
+     * keeps a module inside the set of rolls the budget can produce.
+     */
+    private static void spread(Map<Attr, Double> out, Map<Attr, Double> state, List<Attr> side,
+                               double total, boolean up, RandomSource rng) {
+        int n = side.size();
+        double[] cap = new double[n];
+        for (int i = 0; i < n; i++) cap[i] = room(state, side.get(i), up);
+        double[] share = splitCapped(total, weights(rng, n), cap);
+        for (int i = 0; i < n; i++) {
+            Attr a = side.get(i);
+            double f = state.getOrDefault(a, 1.0) + (up ? share[i] : -share[i]);
+            out.put(a, Mth.clamp(f, 0, 1));
+        }
+    }
+
+    /** how far this attribute can still move in the given direction */
+    private static double room(Map<Attr, Double> state, Attr attr, boolean up) {
+        double f = state.getOrDefault(attr, 1.0);
+        return up ? 1 - f : f;
+    }
+
+    /** one side's attributes that can still move in the given direction */
+    private static List<Attr> eligible(ModuleDefinition def, Map<Attr, Double> state,
+                                       boolean good, boolean up) {
+        List<Attr> out = new ArrayList<>();
+        for (Attr a : rollable(def)) {
+            if (a.isGood(def) != good) continue;
+            if (room(state, a, up) > STEP_EPS) out.add(a);
+        }
+        return out;
+    }
+
     /** iid uniform weights; only their ratios matter, so every attribute is
      *  equally likely to end up large no matter where it sits in the list */
     private static double[] weights(RandomSource rng, int n) {
@@ -147,11 +279,23 @@ public final class ModuleRoll {
 
     /**
      * Splits {@code total} over the weights, proportional to them, capping
-     * each share at 1.0 and redistributing the excess. The cap set depends
-     * only on the weights, never on iteration order, so permuting the
-     * attributes permutes the outputs and nothing else. Needs total <= n.
+     * each share at 1.0 — a fraction cannot exceed its authored value — and
+     * redistributing the excess. Needs total <= n.
      */
     private static double[] splitBounded(double total, double[] w) {
+        double[] cap = new double[w.length];
+        for (int i = 0; i < cap.length; i++) cap[i] = 1;
+        return splitCapped(total, w, cap);
+    }
+
+    /**
+     * Splits {@code total} over the weights, proportional to them, capping
+     * each share at its own cap and redistributing the excess. The cap set
+     * depends only on the weights, never on iteration order, so permuting the
+     * attributes permutes the outputs and nothing else. Needs
+     * total <= sum(caps).
+     */
+    private static double[] splitCapped(double total, double[] w, double[] cap) {
         int n = w.length;
         double[] out = new double[n];
         boolean[] capped = new boolean[n];
@@ -165,17 +309,17 @@ public final class ModuleRoll {
             for (int i = 0; i < n; i++) {
                 if (capped[i]) continue;
                 share[i] = sum > 0 ? remaining * w[i] / sum : remaining / free;
-                if (share[i] >= 1) anyCapped = true;
+                if (share[i] >= cap[i]) anyCapped = true;
             }
             if (!anyCapped) {
                 for (int i = 0; i < n; i++) if (!capped[i]) out[i] = share[i];
                 return out;
             }
             for (int i = 0; i < n; i++) {
-                if (capped[i] || share[i] < 1) continue;
+                if (capped[i] || share[i] < cap[i]) continue;
                 capped[i] = true;
-                out[i] = 1;
-                remaining -= 1;
+                out[i] = cap[i];
+                remaining = Math.max(0, remaining - cap[i]);
                 free--;
             }
         }

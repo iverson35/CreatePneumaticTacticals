@@ -74,6 +74,7 @@ public final class ModCreativeTabs {
         output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.AMMO_BOX_ITEM.get()));
         output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.GUN_WORKBENCH_ITEM.get()));
         output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.MODULE_WORKBENCH_ITEM.get()));
+        output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.MODULE_TUNER_ITEM.get()));
     }
 
     /** gunpack content: every module definition + one sample gun per receiver */
