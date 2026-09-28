@@ -2,10 +2,15 @@ package dev.ignis.createpneumatictacticals.client.render;
 
 import com.mojang.logging.LogUtils;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.item.GeoGunItem;
+import dev.ignis.createpneumatictacticals.network.CptNetwork;
+import dev.ignis.createpneumatictacticals.network.GunSoundBroadcastPacket;
+import dev.ignis.createpneumatictacticals.network.GunSoundPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -28,6 +33,13 @@ import java.util.Set;
  * sound event's entry in the gunpack {@code sounds.json} (vanilla multiplies
  * the entry's volume/pitch into the play call), so authors tune them there —
  * and an edit there applies on F3+T, no restart.
+ *
+ * <p>Keyframes are also the sync signal for other players: the handler relays
+ * every sound it plays to the server ({@link GunSoundPacket}), which forwards
+ * it to nearby players so they hear the reload click / bolt cycle too. Nothing
+ * but the discrete sound crosses the wire, so an interrupted animation simply
+ * stops producing sounds on both sides — there is no running animation state
+ * to correct.
  *
  * <p>A keyframe "effect" resolves as a sound event either by full id
  * ({@code mypack:gun.reload}) or by a bare key ({@code gun.reload}) which is
@@ -57,6 +69,30 @@ public final class GunSoundKeyframes {
         // volume/pitch 1.0: the sounds.json entry's own values still apply
         mc.level.playLocalSound(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ(),
                 sound, SoundSource.PLAYERS, 1.0f, 1.0f, false);
+        // relay to nearby players. Rendering the same gun item elsewhere (GUI,
+        // another hand) can dispatch here too; harmless, the timing is the
+        // local animation's either way.
+        if (holdsGun(mc.player)) {
+            CptNetwork.CHANNEL.sendToServer(new GunSoundPacket(sound.getLocation().toString()));
+        }
+    }
+
+    /** S2C target: another player's gun animation just hit this keyframe */
+    public static void playRemote(GunSoundBroadcastPacket msg) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) return;
+        if (msg.shooterId == mc.player.getId()) return;
+        if (!(mc.level.getEntity(msg.shooterId) instanceof Player shooter)) return;
+        SoundEvent sound = resolve(msg.soundId);
+        if (sound == null) return;
+        mc.level.playLocalSound(shooter.getX(), shooter.getEyeY(), shooter.getZ(),
+                sound, SoundSource.PLAYERS, 1.0f, 1.0f, false);
+    }
+
+    /** the trigger animations only run for the local player's own held gun */
+    private static boolean holdsGun(Player player) {
+        return player.getMainHandItem().getItem() instanceof GeoGunItem
+                || player.getOffhandItem().getItem() instanceof GeoGunItem;
     }
 
     /** full id first, then a bare key in the mod's namespace */

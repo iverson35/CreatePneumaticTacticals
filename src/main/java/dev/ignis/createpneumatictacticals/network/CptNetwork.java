@@ -28,6 +28,7 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, GunActionPacket.class, GunActionPacket::encode, GunActionPacket::decode, GunActionPacket::handle);
         CHANNEL.registerMessage(id++, SelectAmmoPacket.class, SelectAmmoPacket::encode, SelectAmmoPacket::decode, SelectAmmoPacket::handle);
         CHANNEL.registerMessage(id++, WorkbenchActionPacket.class, WorkbenchActionPacket::encode, WorkbenchActionPacket::decode, WorkbenchActionPacket::handle);
+        CHANNEL.registerMessage(id++, GunSoundPacket.class, GunSoundPacket::encode, GunSoundPacket::decode, GunSoundPacket::handle);
         // S2C
         CHANNEL.registerMessage(id++, PoseBroadcastPacket.class, PoseBroadcastPacket::encode, PoseBroadcastPacket::decode, PoseBroadcastPacket::handle);
         CHANNEL.registerMessage(id++, PoseUpdatePacket.class, PoseUpdatePacket::encode, PoseUpdatePacket::decode, PoseUpdatePacket::handle);
@@ -35,5 +36,6 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, Workbench3dPacket.class, Workbench3dPacket::encode, Workbench3dPacket::decode, Workbench3dPacket::handle);
         CHANNEL.registerMessage(id++, HitBloodPacket.class, HitBloodPacket::encode, HitBloodPacket::decode, HitBloodPacket::handle);
         CHANNEL.registerMessage(id++, MuzzleSmokePacket.class, MuzzleSmokePacket::encode, MuzzleSmokePacket::decode, MuzzleSmokePacket::handle);
+        CHANNEL.registerMessage(id++, GunSoundBroadcastPacket.class, GunSoundBroadcastPacket::encode, GunSoundBroadcastPacket::decode, GunSoundBroadcastPacket::handle);
     }
 }

@@ -66,6 +66,11 @@ public final class GunpackSounds {
         }
     }
 
+    /** true when the id is one of the sounds declared by an installed gunpack */
+    public static boolean isGunpackSound(ResourceLocation id) {
+        return DISCOVERED.contains(id);
+    }
+
     @SubscribeEvent
     public static void onRegister(RegisterEvent event) {
         if (!event.getRegistryKey().equals(Registries.SOUND_EVENT)) return;
