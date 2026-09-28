@@ -344,12 +344,22 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         } finally {
             ctx.poseStack.popPose();
         }
-        RenderType type = bodyDraw(model, ctx.stack, def, false).type();
+        BodyDraw draw = bodyDraw(model, ctx.stack, def, false);
         pendant.setHidden(true);
         try {
-            getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, type,
-                    ctx.bufferSource.getBuffer(type), ctx.partialTick, ctx.packedLight, ctx.packedOverlay,
-                    1, 1, 1, 1);
+            // chain + support only: same pass set the visible charm gets, so a
+            // glowmasked chain keeps its emissive while the pendant is swapped
+            getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, draw.type(),
+                    ctx.bufferSource.getBuffer(draw.type()), ctx.partialTick, ctx.packedLight,
+                    ctx.packedOverlay, 1, 1, 1, 1);
+            if (draw.atlasGlow()) {
+                getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable,
+                        GunTextureAtlas.GLOW, ctx.bufferSource.getBuffer(GunTextureAtlas.GLOW),
+                        ctx.partialTick, GunGlowLayer.FULLBRIGHT, GunGlowLayer.NO_OVERLAY, 1, 1, 1, 1);
+            } else if (draw.legacyTexture() != null) {
+                GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
+                        ctx.partialTick, draw.legacyTexture(), getRenderer());
+            }
         } finally {
             pendant.setHidden(false);
         }
