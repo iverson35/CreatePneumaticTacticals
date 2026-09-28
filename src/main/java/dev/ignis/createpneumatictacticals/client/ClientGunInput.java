@@ -453,10 +453,9 @@ public final class ClientGunInput {
                 stats.recoilVerticalMultiplier, stats.recoilHorizontalMultiplier, aiming,
                 stats.recoilRecovery, stats.receiver.id, player.getInventory().selected, player);
         SpreadModel.addBloom(ext);
-        // muzzle smoke: purely client-side (never synced per-particle);
-        // representative ammo item for the item puffs
-        MuzzleSmoke.onFire(player, new ItemStack(
-                AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId)));
+        // muzzle smoke: puffed here, and relayed to nearby clients by the
+        // server (MuzzleSmokePacket) so they puff it from their own gunpack
+        MuzzleSmoke.onFire(player);
         GunAnimationDriver.onFire(gun);
     }
 

@@ -358,6 +358,22 @@ public final class GunFireHandler {
             shooter.level().playSound(shooter instanceof ServerPlayer player ? player : null,
                     shooter.getX(), shooter.getY(), shooter.getZ(), sound, source, 1.0f, pitch);
         }
+
+        // --- muzzle smoke: the shooter's own client already puffed (it owns
+        // the render-pass muzzle anchor); nearby clients reproduce the same
+        // plume from their own copy of the gunpack. Semantics only: who fired,
+        // which ammo, which muzzle device ---
+        if (shooter.level() instanceof net.minecraft.server.level.ServerLevel smokeLevel) {
+            MuzzleSmokePacket smoke = new MuzzleSmokePacket(shooter.getId(), ammoId,
+                    stats.muzzle != null ? stats.muzzle.id.toString() : null,
+                    (float) stats.gasSuppression);
+            for (ServerPlayer nearby : smokeLevel.players()) {
+                if (nearby == shooter) continue; // already puffed client-side
+                if (nearby.distanceToSqr(shooter) <= MuzzleSmokePacket.RADIUS * MuzzleSmokePacket.RADIUS) {
+                    CptNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> nearby), smoke);
+                }
+            }
+        }
     }
 
     /** Finds a plain pod whose content item maps to the selected ammo TYPE id. */

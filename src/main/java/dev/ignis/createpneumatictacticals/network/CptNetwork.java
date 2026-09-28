@@ -34,5 +34,6 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, HitConfirmPacket.class, HitConfirmPacket::encode, HitConfirmPacket::decode, HitConfirmPacket::handle);
         CHANNEL.registerMessage(id++, Workbench3dPacket.class, Workbench3dPacket::encode, Workbench3dPacket::decode, Workbench3dPacket::handle);
         CHANNEL.registerMessage(id++, HitBloodPacket.class, HitBloodPacket::encode, HitBloodPacket::decode, HitBloodPacket::handle);
+        CHANNEL.registerMessage(id++, MuzzleSmokePacket.class, MuzzleSmokePacket::encode, MuzzleSmokePacket::decode, MuzzleSmokePacket::handle);
     }
 }

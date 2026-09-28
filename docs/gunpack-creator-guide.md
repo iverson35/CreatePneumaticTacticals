@@ -529,6 +529,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 烟雾的**总量**由 `gun_properties` 里的 `gas_suppression` 决定（见上表）；导气孔只决定这些烟的**走向**。
 
+**烟雾怎么同步**：烟不在网络上传输，每个客户端各自本地生成。开火者自己的客户端用渲染 pass 采到的**枪口锚点**（最准）；**48 格内**的其他玩家收到服务端的一个语义包（谁开的枪 / 什么弹药 / 装了哪个枪口装置）后，用自己那份枪包数据（弹药 `reload_ticks`、装置的 `gas_guides` / `gas_pass_through`）喷同样的烟——他们那边拿不到别人的枪口锚点，烟落在开火者**眼睛前方一格**，导气孔相位用世界朝上近似（不跟枪的 roll）。
+
 ```json
 "gas_guides": [
   { "weight": 1, "velocity_multiplier": 0.8, "spread_multiplier": 0.8,

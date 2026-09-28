@@ -1,32 +1,37 @@
 package dev.ignis.createpneumatictacticals.client;
 
-import com.simibubi.create.foundation.particle.AirParticleData;
+import com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType;
+import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.client.render.MuzzleAnchor;
 import dev.ignis.createpneumatictacticals.client.particle.ModParticles;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
+import dev.ignis.createpneumatictacticals.module.ModuleManager;
+import dev.ignis.createpneumatictacticals.network.MuzzleSmokePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.Camera;
-import net.minecraft.core.particles.ItemParticleOption;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
+import javax.annotation.Nullable;
 import java.util.Random;
 
 /**
  * Client-side muzzle smoke, spawned locally on fire — never synced per-particle
  * over the network (Create's cannon does the same client-side).
  *
- * <p>Particle count baselines on the potato cannon: 2 item puffs + 2 air puffs
- * per shot at reloadTicks 20 (1x), scaling linearly with the ammo's own fire
- * rate — a 10-tick ammo fires twice as often, so it emits half the puffs per
- * shot to keep steady-state smoke roughly constant. The gun's
- * fire_rate_multiplier is intentionally NOT part of the puff count: it changes
- * the cadence, not the shot's energy.
+ * <p>Particle count baselines on the potato cannon: 4 puffs per shot at
+ * reloadTicks 20 (1x), scaling linearly with the ammo's own fire rate — a
+ * 10-tick ammo fires twice as often, so it emits half the puffs per shot to
+ * keep steady-state smoke roughly constant. The gun's fire_rate_multiplier is
+ * intentionally NOT part of the puff count: it changes the cadence, not the
+ * shot's energy.
+ *
+ * <p>Other players' shots arrive as {@link MuzzleSmokePacket} and are spawned
+ * by {@link #onRemoteFire}: same local data (ammo cadence + muzzle device gas
+ * guides), but without the shooter's render-pass muzzle anchor.
  */
 public final class MuzzleSmoke {
     /** reloadTicks that map to the 1x potato-cannon baseline */
@@ -36,23 +41,14 @@ public final class MuzzleSmoke {
 
     private MuzzleSmoke() {}
 
-    public static void onFire(Player player, ItemStack ammoContent) {
+    public static void onFire(Player player) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         if (level == null) return;
 
         int reloadTicks = ClientGunInput.currentAmmoReloadTicks();
         if (reloadTicks <= 0) return;
-        // puff count: linear in the ammo's own cadence, anchored at the
-        // potato-cannon baseline (reload_ticks 20 = 1x); clamp so fast ammo
-        // never fully starves the smoke
-        // muzzle module gas suppression: -10 = double smoke, +10 = none
-        // (smoke = (1 - v/20) * base puffs)
         GunStats stats = GunStats.ofGun(player.getMainHandItem());
-        double suppression = Mth.clamp(stats.gasSuppression, -5, 1);
-        double smokeScale = 1.0 - suppression;
-        double scale = Mth.clamp(reloadTicks / BASE_RELOAD_TICKS, 0.25, 2.5) * smokeScale;
-        int puffs = (int) Math.round(4 * scale);
 
         // smoke anchors at the actual muzzle tip when a render-pass sample
         // exists (first AND third person); otherwise falls back to the eye
@@ -92,12 +88,48 @@ public final class MuzzleSmoke {
         // smoke velocity follows the view direction (approximation: the
         // server's exact per-pellet dir is not known client-side)
         Vec3 dir = player.getLookAngle();
+        spawn(level, location, dir, barrelUp, reloadTicks, stats.muzzle, stats.gasSuppression);
+    }
+
+    /**
+     * Another player's shot, relayed by the server. No render-pass sample of
+     * their gun exists on this client, so the plume starts at their eye (one
+     * block along the look, the same fallback the local path uses when its own
+     * anchor is missing) and the gas-guide ports fall back to the world-up
+     * frame instead of the gun's roll.
+     */
+    public static void onRemoteFire(MuzzleSmokePacket msg) {
+        Minecraft mc = Minecraft.getInstance();
+        ClientLevel level = mc.level;
+        if (level == null || mc.player == null) return;
+        if (msg.shooterId == mc.player.getId()) return; // the shooter already puffed
+        if (!(level.getEntity(msg.shooterId) instanceof Player shooter)) return;
+        PotatoCannonProjectileType type = PotatoCannonProjectileType
+                .getTypeForItem(level.registryAccess(),
+                        AmmoExtension.contentItemFor(level.registryAccess(), msg.ammoId))
+                .map(ref -> ref.value()).orElse(null);
+        if (type == null) return;
+        int reloadTicks = type.reloadTicks();
+        if (reloadTicks <= 0) return;
+        net.minecraft.resources.ResourceLocation muzzleId = msg.muzzleId == null ? null
+                : net.minecraft.resources.ResourceLocation.tryParse(msg.muzzleId);
+        ModuleDefinition muzzle = muzzleId == null ? null : ModuleManager.get(muzzleId);
+        Vec3 dir = shooter.getLookAngle();
+        spawn(level, shooter.getEyePosition().add(dir.scale(1.0)), dir, null,
+                reloadTicks, muzzle, msg.gasSuppression);
+    }
+
+    /**
+     * The plume itself, shared by both entry points. Puff count: linear in the
+     * ammo's own cadence, anchored at the potato-cannon baseline (reload_ticks
+     * 20 = 1x), clamped so fast ammo never fully starves the smoke; the muzzle
+     * device's gas suppression scales it (1 - v, v clamped -5..1).
+     */
+    private static void spawn(ClientLevel level, Vec3 location, Vec3 dir, @Nullable Vec3 barrelUp,
+                              int reloadTicks, @Nullable ModuleDefinition muzzle, double gasSuppression) {
+        double scale = Mth.clamp(reloadTicks / BASE_RELOAD_TICKS, 0.25, 2.5) * (1.0 - Mth.clamp(gasSuppression, -5, 1));
+        int puffs = (int) Math.round(4 * scale);
         for (int i = 0; i < puffs; i++) {
-            if (!ammoContent.isEmpty()) {
-                Vec3 m = offsetRandomly(dir.scale(0.1), 0.025);
-                level.addParticle(new ItemParticleOption(ParticleTypes.ITEM, ammoContent),
-                        location.x, location.y, location.z, m.x, m.y, m.z);
-            }
             // custom puff: uniform size, fixed lifetime. Spawn points fill a
             // forward CONE (radius grows with distance along the shot axis,
             // sqrt-sampled disc + uniform phi like the server spread) and
@@ -108,9 +140,9 @@ public final class MuzzleSmoke {
             double spreadMult = 1;
             // gas guides: the installed muzzle device's ports redirect most
             // puffs — pick a guide by weight (pass-through fraction skips)
-            ModuleDefinition.GasGuide guide = stats.muzzle != null && !stats.muzzle.gasGuides.isEmpty()
-                    && RANDOM.nextDouble() >= stats.muzzle.gasPassThrough
-                    ? pickGuide(stats.muzzle.gasGuides) : null;
+            ModuleDefinition.GasGuide guide = muzzle != null && !muzzle.gasGuides.isEmpty()
+                    && RANDOM.nextDouble() >= muzzle.gasPassThrough
+                    ? pickGuide(muzzle.gasGuides) : null;
             if (guide != null) {
                 // Gas-guide ports are authored in the GUN frame, but the
                 // plume itself follows the BALLISTIC axis (the bullet leaves
@@ -183,11 +215,4 @@ public final class MuzzleSmoke {
         return d1.scale(Math.cos(pitch)).add(w.scale(Math.sin(pitch))).normalize();
     }
 
-    /** VecHelper.offsetRandomly equivalent (catnip is not on the classpath here) */
-    private static Vec3 offsetRandomly(Vec3 vec, double radius) {
-        return vec.add(
-                (RANDOM.nextDouble() - 0.5) * 2 * radius,
-                (RANDOM.nextDouble() - 0.5) * 2 * radius,
-                (RANDOM.nextDouble() - 0.5) * 2 * radius);
-    }
 }
