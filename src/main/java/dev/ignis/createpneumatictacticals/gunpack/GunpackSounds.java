@@ -1,5 +1,6 @@
 package dev.ignis.createpneumatictacticals.gunpack;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
@@ -16,13 +17,19 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 /**
  * Gunpack sound registration. A pack declares sounds in vanilla format at
  * {@code assets/<ns>/sounds.json}; every top-level key becomes a SoundEvent
- * {@code <ns>:<key>} registered here. The same sounds.json is served to the
+ * {@code <ns>:<key>} registered here. The entry's vanilla
+ * {@code attenuation_distance} (default 16) sizes the event: the server
+ * broadcasts a sound only to players inside its range, and the client
+ * attenuates over the same number, so this field is the single lever for how
+ * far a gunshot carries. The same sounds.json is served to the
  * client by the resource-pack injection, so the file is the single source of
  * truth for both the registry entry and the audio mapping — no code change
  * needed to add sounds. Scan runs at mod construction (gunpacks are already
@@ -35,6 +42,7 @@ public final class GunpackSounds {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final List<ResourceLocation> DISCOVERED = new ArrayList<>();
+    private static final Map<ResourceLocation, Float> RANGES = new HashMap<>();
 
     private GunpackSounds() {}
 
@@ -50,8 +58,10 @@ public final class GunpackSounds {
                     try {
                         JsonObject json = JsonParser.parseString(
                                 Files.readString(soundsJson, StandardCharsets.UTF_8)).getAsJsonObject();
-                        for (String key : json.keySet()) {
-                            DISCOVERED.add(new ResourceLocation(ns.getFileName().toString(), key));
+                        for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+                            ResourceLocation id = new ResourceLocation(ns.getFileName().toString(), entry.getKey());
+                            DISCOVERED.add(id);
+                            RANGES.put(id, readRange(entry.getValue()));
                         }
                     } catch (Exception ex) {
                         LOGGER.error("Failed to read sounds file {}: {}", soundsJson, ex.getMessage());
@@ -66,6 +76,26 @@ public final class GunpackSounds {
         }
     }
 
+    /**
+     * The widest {@code attenuation_distance} across the event's entries,
+     * defaulting to vanilla's 16. The registered event is what decides who
+     * receives the sound packet, so a pack raising the field on any variant
+     * raises the broadcast range for the whole event.
+     */
+    private static float readRange(JsonElement event) {
+        float range = 16.0f;
+        try {
+            for (JsonElement entry : event.getAsJsonObject().getAsJsonArray("sounds")) {
+                if (!entry.isJsonObject()) continue;
+                JsonElement distance = entry.getAsJsonObject().get("attenuation_distance");
+                if (distance != null) range = Math.max(range, distance.getAsFloat());
+            }
+        } catch (Exception ignored) {
+            // malformed entry: keep the default, the audio loader reports it
+        }
+        return range;
+    }
+
     /** true when the id is one of the sounds declared by an installed gunpack */
     public static boolean isGunpackSound(ResourceLocation id) {
         return DISCOVERED.contains(id);
@@ -76,7 +106,7 @@ public final class GunpackSounds {
         if (!event.getRegistryKey().equals(Registries.SOUND_EVENT)) return;
         event.register(Registries.SOUND_EVENT, helper -> {
             for (ResourceLocation id : DISCOVERED) {
-                helper.register(id, SoundEvent.createVariableRangeEvent(id));
+                helper.register(id, SoundEvent.createFixedRangeEvent(id, RANGES.getOrDefault(id, 16.0f)));
             }
         });
     }

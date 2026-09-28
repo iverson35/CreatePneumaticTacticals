@@ -3,19 +3,19 @@
     "sounds": [{ "name": "createpneumatictacticals:gbb_open", "volume": 1 } ]
   },
   "gun.gbb.shoot": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot", "volume": 1 } ]
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot", "volume": 1, "attenuation_distance": 64 } ]
   },
   "gun.gbb.shoot_2": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_2", "volume": 1 } ]
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_2", "volume": 1, "attenuation_distance": 64 } ]
   },
   "gun.gbb.shoot_3": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_3", "volume": 1 } ]
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_3", "volume": 1, "attenuation_distance": 64 } ]
   },
   "gun.gbb.shoot_4": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_4", "volume": 1 } ]
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_4", "volume": 1, "attenuation_distance": 64 } ]
   },
   "gun.gbb.shoot_5": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_5", "volume": 1 } ]
+    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_5", "volume": 1, "attenuation_distance": 64 } ]
   },
   "gun.pistol.silenced.shoot": {
     "sounds": [{ "name": "createpneumatictacticals:pistol_shot_silenced", "volume": 1 } ]

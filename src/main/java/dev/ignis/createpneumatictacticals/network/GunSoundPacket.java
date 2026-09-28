@@ -5,6 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
@@ -26,11 +27,9 @@ import java.util.function.Supplier;
  * <p>The client ships the sound id it resolved; the server checks it against
  * the gunpack's own sound list — a hacked client cannot make the server play
  * arbitrary sounds — and relays {@link GunSoundBroadcastPacket} to players
- * inside the sound's audible range.
+ * inside the sound's own range (the pack's {@code attenuation_distance}).
  */
 public class GunSoundPacket {
-    /** gunpack sounds are vanilla variable-range sounds: audible within 16 blocks */
-    public static final double RADIUS = 16.0;
     /** at most one relay per player per this many ticks */
     private static final int MIN_TICK_GAP = 2;
     private static final Map<Player, Integer> LAST_RELAY = new WeakHashMap<>();
@@ -60,10 +59,13 @@ public class GunSoundPacket {
             Integer last = LAST_RELAY.put(sender, sender.tickCount);
             if (last != null && sender.tickCount - last < MIN_TICK_GAP) return;
             if (!(sender.level() instanceof ServerLevel level)) return;
+            SoundEvent sound = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS.getValue(id);
+            if (sound == null) return;
+            double radius = sound.getRange(1.0f);
             GunSoundBroadcastPacket out = new GunSoundBroadcastPacket(sender.getId(), msg.soundId);
             for (ServerPlayer other : level.players()) {
                 if (other == sender) continue;
-                if (other.distanceToSqr(sender) > RADIUS * RADIUS) continue;
+                if (other.distanceToSqr(sender) > radius * radius) continue;
                 CptNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> other), out);
             }
         });
