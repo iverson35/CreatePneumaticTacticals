@@ -124,3 +124,4 @@ gradle/
 run-data/
 build_err.txt
 client_log*.txt
+/run2/

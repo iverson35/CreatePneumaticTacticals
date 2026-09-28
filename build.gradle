@@ -101,18 +101,27 @@ minecraft {
         }
 
         // Second dev client for LAN testing: run `runClient` (host, auto-loads
-        // the "dev" world) and `runClient2` (guest, stays in the menu to join
-        // over LAN). Deliberately no --quickPlaySingleplayer here, and its own
-        // working directory so logs/options/saves don't collide. Both sides
-        // extract the same gunpack defaults; the mod's channel handshake
-        // rejects the join if the module content hashes differ, so any hand
-        // edit made under run/gunpacks must be mirrored or removed on both.
+        // the "dev" world) and `runClient2` (guest, joins over LAN from the
+        // main menu). Its own working directory so logs/options/saves don't
+        // collide. Both sides extract the same gunpack defaults; the mod's
+        // channel handshake rejects the join if the module content hashes
+        // differ, so any hand edit made under run/gunpacks must be mirrored or
+        // removed on both.
         client2 {
             // FG6 parent: inherit main class / args / jvm args from `client`
             // (a custom run name has no userdev config of its own, so without
             // this the task dies with "No main class specified")
             // parent(<projectPath>, <runName>) - args are (project, run)
             parent project.path, 'client'
+            // NOTE: true is required - the inherited args carry the userdev
+            // launch internals (--launchTarget, --assetIndex, ...). Only the
+            // mixin config is added to every run by MixinGradle directly, so
+            // `false` is not an option. Consequence: the guest also inherits
+            // `--quickPlaySingleplayer dev` from the client run. run2/saves/dev
+            // does not exist on purpose, so the guest logs the missing world,
+            // toasts it and stays in the main menu - exactly where a LAN guest
+            // belongs. Never create that world to "fix" the toast: the guest
+            // must not hold a second in-process copy of the shared world.
             inheritArgs true
             inheritJvmArgs true
             workingDirectory project.file('run2')
@@ -138,6 +147,54 @@ minecraft {
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
             args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// LAN 联机测试：一条命令同时拉起主机 + 访客两个客户端。
+//
+// Gradle 在同一个 build 里没法并行执行两个阻塞任务（先启动的那个永远不返回，
+// 第二个就排不上），所以这里做的是「开两个终端各敲一次」的自动化：fork 两个
+// 独立的 gradlew 构建，各自把控制台输出写进 build/run-both/<任务名>.log。
+// 关掉游戏窗口 = 对应构建结束；两个客户端互不干扰（run/ 与 run2/ 各自一个
+// 工作目录，互不覆盖 options/saves/logs）。
+// ---------------------------------------------------------------------------
+tasks.register('runBothClients') {
+    description = '同时启动 runClient（主机，自动进 dev 世界）与 runClient2（访客，停在主菜单等 LAN 加入）'
+    // 每次点都要真的拉起客户端：本任务不声明输入/输出，不写这行第二次就会被判定
+    // 成 UP-TO-DATE 而静默跳过
+    outputs.upToDateWhen { false }
+    def logDir = layout.buildDirectory.dir('run-both')
+    doLast {
+        File dir = logDir.get().asFile
+        dir.mkdirs()
+        boolean windows = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
+        def started = []
+        ['runClient', 'runClient2'].each { String runName ->
+            File log = new File(dir, "${runName}.log")
+            List<String> cmd = windows
+                    ? ['cmd', '/c', 'gradlew.bat', '--console=plain', runName]
+                    : ['./gradlew', '--console=plain', runName]
+            ProcessBuilder pb = new ProcessBuilder(cmd)
+            pb.directory(projectDir)
+            // 两个流合并写同一个文件：分开重定向会让两个句柄各写各的偏移，日志串行错乱
+            pb.redirectErrorStream(true)
+            pb.redirectOutput(ProcessBuilder.Redirect.to(log))
+            pb.redirectInput(ProcessBuilder.Redirect.from(new File(windows ? 'NUL' : '/dev/null')))
+            Process p = pb.start()
+            started << [name: runName, process: p, log: log]
+            println "  ${runName.padRight(10)} pid ${p.pid()}  日志: ${project.relativePath(log)}"
+        }
+        // 嵌套构建要先跑一遍 Gradle 配置（约 10 秒）才轮到游戏进程。等几秒确认
+        // 它们没有当场挂掉——工程锁冲突、Gradle 参数写错这类问题会立刻退出，
+        // 与其让你对着两个空窗口发呆，不如这里直接失败并指出日志。
+        sleep(3000)
+        def dead = started.findAll { !it.process.isAlive() }
+        if (!dead.isEmpty()) {
+            throw new GradleException("${dead.collect { it.name }.join(', ')} 启动后立刻退出了，" +
+                    "请看日志: ${dead.collect { project.relativePath(it.log) }.join(', ')}")
+        }
+        println '两个客户端正在启动（各自一个独立 Gradle 构建，关游戏窗口即结束对应构建）'
     }
 }
 
