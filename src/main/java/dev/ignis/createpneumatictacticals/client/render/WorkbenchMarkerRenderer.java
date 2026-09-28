@@ -80,7 +80,7 @@ final class WorkbenchMarkerRenderer {
             // the same rule, so what is on screen is what can be hovered)
             if (!BenchTargetPicker.isVisible(bench, m)) continue;
             drawBillboard(poseStack, buffer, m, cam, origin,
-                    BenchTargetPicker.isHovered(m), packedLight);
+                    BenchTargetPicker.isHovered(bench, m), packedLight);
         }
     }
 

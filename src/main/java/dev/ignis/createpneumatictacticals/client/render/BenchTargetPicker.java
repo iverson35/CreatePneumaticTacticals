@@ -86,9 +86,15 @@ public final class BenchTargetPicker {
     // hover
     // ---------------------------------------------------------------
 
-    /** true when this marker is the hovered one (marker highlight tint) */
-    public static boolean isHovered(WorkbenchOverlay.Marker m) {
-        return hover != null && hover.marker().mountId().equals(m.mountId());
+    /**
+     * true when this marker is the hovered one (marker highlight tint + slot
+     * label). The bench has to match too: mount ids repeat across benches
+     * (every bench has its own "take" and "loc_receiver"), so matching on the
+     * id alone lit up the same marker on every bench in view.
+     */
+    public static boolean isHovered(GunWorkbenchBlockEntity bench, WorkbenchOverlay.Marker m) {
+        return hover != null && hover.benchPos().equals(bench.getBlockPos())
+                && hover.marker().mountId().equals(m.mountId());
     }
 
     public static @Nullable Hover currentHover() {
