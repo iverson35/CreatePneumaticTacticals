@@ -15,7 +15,6 @@
   "block.createpneumatictacticals.ammo_box": "弹药盒",
   "tooltip.createpneumatictacticals.ammo_box_content": "内含：%s x%s",
   "tooltip.createpneumatictacticals.stats_hint": "按住 Shift 查看属性",
-  "gui.createpneumatictacticals.stats_full_hint": "按住 Shift 查看完整属性",
   "key.categories.createpneumatictacticals": "机械动力：气动战术",
   "key.createpneumatictacticals.reload": "换弹",
   "key.createpneumatictacticals.fire_mode": "切换开火模式",

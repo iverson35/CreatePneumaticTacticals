@@ -173,11 +173,12 @@ public final class WorkbenchOverlay {
      * Button offsets from the block centre in model space (blocks): both ride
      * the table's front edge, model-space +z {@link #BUTTON_OFFSET_Z} — the
      * side the player stands on. [▼] is centred on the table; [i] sits half a
-     * block along it, still over the tabletop (which spans ±12 px = ±0.75
-     * blocks, so +0.5 keeps 4 px of table under the icon).
+     * block along it on the model -x side (the stock end for a north-facing
+     * bench), still over the tabletop (which spans ±12 px = ±0.75 blocks, so
+     * ±0.5 keeps 4 px of table under the icon).
      */
     private static final double BUTTON_OFFSET_Z = -6.0 / 16.0;
-    private static final double INFO_OFFSET_X = 8.0 / 16.0;
+    private static final double INFO_OFFSET_X = -8.0 / 16.0;
     /** button height above the block's bottom face (blocks) */
     private static final double BUTTON_HEIGHT = 18.0 / 16.0;
 

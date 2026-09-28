@@ -11,7 +11,6 @@ import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.item.GunItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -29,13 +28,12 @@ import java.util.List;
 
 /**
  * Stats plaque floating just off the workbench side that faces the player.
- * Two triggers: the crosshair on the bench's [▼] take marker with a gun
- * staged (while the plaque state is OPEN), or the bench's [i] state, which
- * keeps it up regardless of where the player looks.
+ * Shown only while the bench's [i] button holds it open (NEXT / CLOSE) — the
+ * crosshair has nothing to do with it.
  *
- * <p>Two shapes. Default: the recoil chart next to a single column (the core
- * multipliers + the Shift hint). With Shift held (hover trigger) or while the
- * state is CLOSE: no chart, and the full spec split into two columns.
+ * <p>Two shapes, both pinned by the state. NEXT: the recoil chart next to a
+ * single column (the core multipliers). CLOSE: no chart, the full spec split
+ * into two columns.
  *
  * <p>Drawn inside the bench's own BER frame, so the plaque is part of the
  * world: it picks the horizontal side the camera is on and reads straight-on
@@ -44,7 +42,7 @@ import java.util.List;
  * right for every side, and the blockstate yaw convention mirrors on
  * east/west.
  *
- * <p>Layout is measured in font pixels and cached per (gun NBT, Shift): only
+ * <p>Layout is measured in font pixels and cached per (gun NBT, state): only
  * the draw runs per frame.
  */
 final class WorkbenchStatsPanel {
@@ -71,7 +69,6 @@ final class WorkbenchStatsPanel {
     private static final int PANEL_BG = 0xB0101010;
     private static final int HEADER_COLOR = 0xFF90C890;
     private static final int STAT_COLOR = 0xFFD0D0D0;
-    private static final int HINT_COLOR = 0xFF909090;
     private static final int AXIS_COLOR = 0x60808080;
     private static final int CAP_COLOR = 0x40C08080;
     private static final int DOT_COLOR = 0xFFE0E0E0;
@@ -100,26 +97,18 @@ final class WorkbenchStatsPanel {
                        int packedLight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        // Trigger: the [i] state pins the plaque up (nothing to hover — that is
-        // the point of the switch), OPEN leaves it to the crosshair, the old
-        // trigger: this bench's [▼] take marker with a gun staged.
+        // The [i] state is the ONLY trigger: the plaque is pinned up by the
+        // bench, never by the crosshair — looking at [▼] must not pop it.
         GunWorkbenchBlockEntity.InfoState state = bench.getInfoState();
-        if (state == GunWorkbenchBlockEntity.InfoState.OPEN) {
-            BenchTargetPicker.Hover hover = BenchTargetPicker.currentHover();
-            if (hover == null || !hover.marker().isTake()
-                    || !hover.benchPos().equals(bench.getBlockPos())) {
-                return;
-            }
-        }
+        if (state == GunWorkbenchBlockEntity.InfoState.OPEN) return;
         if (!WorkbenchOverlay.uiInRange(bench.getBlockPos())) return;
         ItemStack gun = bench.getGunSlot().getItem(0);
         if (!(gun.getItem() instanceof GunItem)) return;
 
-        // the [i] state pins the shape too; only the hover trigger reads Shift
-        boolean full = state == GunWorkbenchBlockEntity.InfoState.CLOSE
-                || (state == GunWorkbenchBlockEntity.InfoState.OPEN && Screen.hasShiftDown());
-
-        Panel panel = layout(gun, GunStats.ofGun(gun), full);
+        // the shape is pinned by the state too: NEXT = chart + brief column,
+        // CLOSE = the full two-column spec
+        Panel panel = layout(gun, GunStats.ofGun(gun),
+                state == GunWorkbenchBlockEntity.InfoState.CLOSE);
 
         // the side of the bench the camera is on: yaw from the side vector so
         // local +Z is that side's outward normal and local +X the viewer's
@@ -203,8 +192,6 @@ final class WorkbenchStatsPanel {
             }
         } else {
             for (Component line : body) left.add(new Line(line.getString(), STAT_COLOR));
-            left.add(new Line(Component.translatable(
-                    "gui." + CreatePneumaticTacticals.MODID + ".stats_full_hint").getString(), HINT_COLOR));
         }
 
         int chartW = 0;
