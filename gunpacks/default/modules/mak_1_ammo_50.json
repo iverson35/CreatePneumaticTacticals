@@ -3,7 +3,7 @@
   "module_type": "feed",
   "gun_type": "medium",
   "gun_properties": {
-    "reload_speed": -0.5,
+    "reload_speed": -0.3,
     "ergonomics": -0.1
   },
   "load_type": "magazine",
