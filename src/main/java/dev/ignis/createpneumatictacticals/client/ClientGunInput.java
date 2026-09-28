@@ -6,6 +6,7 @@ import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
 import dev.ignis.createpneumatictacticals.gun.AmmoTypes;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
+import dev.ignis.createpneumatictacticals.item.GeoGunItem;
 import dev.ignis.createpneumatictacticals.network.CptNetwork;
 import dev.ignis.createpneumatictacticals.network.FireRequestPacket;
 import dev.ignis.createpneumatictacticals.network.ReloadResultPacket;
@@ -60,8 +61,24 @@ public final class ClientGunInput {
     /** tick the last shot was sent on — the local rate gate counts ticks,
      *  not wall-clock ms (see tryFire) */
     private static int lastFireTick = -1;
+    /** set by tryFire when its own fire interval is the only thing blocking
+     *  the pull — the queued-pull logic refunds a credit on exactly that */
+    private static boolean fireBlockedByInterval;
     /** monotonic client tick counter (the local rate gate's unit) */
     private static int clientTicks;
+
+    /** left-button pulls the tick loop could not see (see onAttackPress).
+     *  Two at most: the one being spent now plus one stored, so a fast double
+     *  click fires both while a triple still fires two. */
+    private static int attackPressCredits;
+    private static int attackPressTick = -1;
+    private static long lastAttackPressMs;
+    /** presses closer together than this are a chattering button, not a
+     *  double click — a worn mouse must not fire two rounds per pull */
+    private static final long PRESS_DEBOUNCE_MS = 20;
+    /** a pull older than this many ticks is forgotten (a click during a long
+     *  reload must not fire when the reload ends) */
+    private static final int PRESS_CREDIT_TICKS = 10;
     /** shots sent but not yet reflected in the synced AmmoCount */
     private static int pendingShots;
     private static int lastSeenAmmo = Integer.MIN_VALUE;
@@ -151,7 +168,17 @@ public final class ClientGunInput {
         if (mc.screen != null) return;
 
         // --- fire ---
-        if (mc.options.keyAttack.isDown()) {
+        if (GunNbt.getFireMode(gun) == FireMode.AUTO) attackPressCredits = 0;
+        boolean queued = attackPressCredits > 0;
+        if (queued && clientTicks - attackPressTick > PRESS_CREDIT_TICKS) {
+            attackPressCredits = 0; // stale pull: forget it rather than fire late
+            queued = false;
+        }
+        if (queued) attackPressCredits--; // spent, unless the attempt refunds it
+        fireBlockedByInterval = false;
+        if (mc.options.keyAttack.isDown() || queued) {
+            // a queued pull is a fresh pull, whatever the held key says
+            if (queued) wasFiring = false;
             if (reloading) {
                 // dry click: the pull cannot fire while the reload runs,
                 // but only when the magazine is actually empty (a
@@ -160,6 +187,12 @@ public final class ClientGunInput {
                 wasFiring = true;
             } else {
                 tryFire(player, gun, stats);
+                // A pull the fire interval alone is holding back stays queued:
+                // two clicks faster than the gun's own cadence should still put
+                // two rounds downrange, one interval apart. Anything else (an
+                // empty magazine, no ammo selected, the ready pose) spends it —
+                // those must not repeat their feedback every tick.
+                if (queued && fireBlockedByInterval) attackPressCredits++;
             }
         } else {
             wasFiring = false;
@@ -282,7 +315,35 @@ public final class ClientGunInput {
         return lastLocalShotMs;
     }
 
+    /**
+     * A left-button press, straight from the mouse callback
+     * ({@code MouseHandler.onPress}) rather than from the tick loop.
+     *
+     * <p>Non-auto guns fire one round per PULL, and a tick can only sample the
+     * key's held state: press-release-press inside one tick — or a press and
+     * release between two ticks — arrived as "not down" and the round the
+     * player asked for never fired. Recording the press itself lets the next
+     * tick spend it. Auto guns need none of this (the held key is the trigger)
+     * and presses while a screen is up belong to the screen.
+     *
+     * <p>Presses closer than {@link #PRESS_DEBOUNCE_MS} are dropped: a
+     * chattering button would otherwise read as a very fast double click.
+     */
+    public static void onAttackPress() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen != null || mc.player == null) return;
+        ItemStack gun = mc.player.getMainHandItem();
+        if (!(gun.getItem() instanceof GeoGunItem)) return;
+        if (GunNbt.getFireMode(gun) == FireMode.AUTO) return;
+        long now = System.currentTimeMillis();
+        if (now - lastAttackPressMs < PRESS_DEBOUNCE_MS) return;
+        lastAttackPressMs = now;
+        attackPressCredits = Math.min(2, attackPressCredits + 1);
+        attackPressTick = clientTicks;
+    }
+
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
+        fireBlockedByInterval = false;
         if (!stats.isComplete()) {
             feedback(player, "incomplete");
             return;
@@ -321,7 +382,11 @@ public final class ClientGunInput {
         long intervalTicks = currentType != null
                 ? AmmoExtension.fireIntervalTicks(currentType, stats.fireRateMultiplier)
                 : 1; // unknown type: 10/s fallthrough, server will gate
-        if (clientTicks - lastFireTick < intervalTicks) return;
+        fireBlockedByInterval = false;
+        if (clientTicks - lastFireTick < intervalTicks) {
+            fireBlockedByInterval = true;
+            return;
+        }
         if (reloading) return;
 
         // burst: single request per click for now (server sequences the burst)

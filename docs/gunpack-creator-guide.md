@@ -610,7 +610,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `gun_type` | 字符串 | **必需** | `heavy` / `medium` / `light` / `shotgun`（大口径/中口径/小口径/霰弹）。机匣只吃自己口径的弹药，枪管必须同口径 |
-| `fire_modes` | 数组 | **必需，非空** | `semi` / `auto` / `burst`；**第一个是装好后的默认模式** |
+| `fire_modes` | 数组 | **必需，非空** | `semi` / `auto` / `burst`；**第一个是装好后的默认模式**。非自动模式按**按下事件**计数（不是「按住」）：一 tick 内连按两下也会打出两发，第二发在下个 tick 补上，最多缓存一发；两次按下间隔 < 20ms 视为鼠标抖动丢弃。比枪自身射速还快的连点，第二发会等到射速允许时补出 |
 | `fire_sound` | 字符串 | `null` → 回退 `create:fwoomp` | 音效事件 id（来自枪包 `sounds.json`，音量/音调写法见 §1.5.1）；音调跟随弹药的 `sound_pitch` |
 | `ignore_ammo_pitch` | 布尔 | `false` | `true` = 射击音效固定 1.0 音调，不跟弹药变调 |
 | `gun_name` | 字符串 | `null` | 成品枪名的**语言键**，装配时写入 |
@@ -863,6 +863,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - **获取途径**：数据包配方自动覆盖所有已注册弹药，**新增弹药无需写配方**：
   - `createpneumatictacticals:pod_filling`：气瓶 + 任意「有投射物类型」的物品 → 封装弹；**加压气瓶 + 任意「有投射物类型」的物品 → 加压封装弹**（同一个配方，按气瓶分档，两档各自独立，普通封装弹不能升级成加压版）。
 - **名称**：弹药的显示名直接用**内容物品**的名字，不需要额外的语言键。
+- **选择轮盘**：按住弹药循环键（默认 `O`，可在按键设置里改）约 0.2 秒打开轮盘，每个扇区一个可选弹种（已装的那种在中心 = 保持不变），松开即换。高亮项的名字下方显示**这一发装在这把枪上的实际数值**——`伤害: 4.80 | 射速: 171 RPM`，与物品提示用的是同一条换算（弹药基准 × 枪的 `damage_multiplier` / `fire_rate_multiplier`），换枪、换配件都会跟着变。
 - **生物持枪**：每种口径有指定的廉价弹药（小口径 `create:beetroot`、中口径 `create:potato`、大口径 `create:melon_block`、霰弹 `create:sweet_berry`）。
 
 ### 4.6 内置预设与优先级
