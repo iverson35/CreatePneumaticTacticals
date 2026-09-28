@@ -1,0 +1,45 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.mak_1_barrel_long",
+				"texture_width": 16,
+				"texture_height": 16,
+				"visible_bounds_width": 2,
+				"visible_bounds_height": 1.5,
+				"visible_bounds_offset": [0, 0.25, 0]
+			},
+			"bones": [
+				{
+					"name": "main",
+					"pivot": [0, 0, 0],
+					"cubes": [
+						{
+							"origin": [-0.5, -0.5, -9],
+							"size": [1, 1, 9],
+							"uv": {
+								"north": {"uv": [15, 0], "uv_size": [1, 1]},
+								"east": {"uv": [0, 14], "uv_size": [9, 1]},
+								"south": {"uv": [15, 1], "uv_size": [1, 1]},
+								"west": {"uv": [0, 15], "uv_size": [9, 1]},
+								"up": {"uv": [0, 0], "uv_size": [1, 9]},
+								"down": {"uv": [1, 9], "uv_size": [1, -9]}
+							}
+						}
+					]
+				},
+				{
+					"name": "loc_muzzle_attachment",
+					"parent": "main",
+					"pivot": [0, 0, -8]
+				},
+				{
+					"name": "loc_muzzle",
+					"parent": "main",
+					"pivot": [0, 0, -9]
+				}
+			]
+		}
+	]
+}

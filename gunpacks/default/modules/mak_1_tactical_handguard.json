@@ -7,7 +7,8 @@
   "attachment_points": [
     "top",
     "bottom",
-    "left"
+    "left",
+    "right"
   ],
   "module_affected": [
     { "module_type": "handguard_attachment", "mode": "include", "value": ["REGEX=pica.+"] }
