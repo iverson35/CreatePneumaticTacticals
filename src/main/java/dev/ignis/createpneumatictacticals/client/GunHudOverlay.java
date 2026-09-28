@@ -13,10 +13,8 @@ import dev.ignis.createpneumatictacticals.module.FireMode;
 import dev.ignis.createpneumatictacticals.module.SupplyType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -27,8 +25,6 @@ import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Gun HUD (plan_v2): dynamic hipfire crosshair whose arm gap tracks the
@@ -76,14 +72,6 @@ public final class GunHudOverlay implements IGuiOverlay {
         LocalPlayer player = mc.player;
         if (player == null || mc.options.hideGui) return;
 
-        // 3D workbench: stats panel + recoil chart while looking at the [▼]
-        // take marker (the panel needs nothing held — the chart neither)
-        ItemStack benchGun = hoveredBenchGun(mc);
-        if (benchGun != null) {
-            renderBenchStats(g, mc, benchGun, width, height);
-            renderRecoilPreview(g, benchGun, width, height);
-        }
-
         ItemStack gun = heldGun();
         if (gun == null) return;
         GunStats stats = GunStats.ofGun(gun);
@@ -97,189 +85,6 @@ public final class GunHudOverlay implements IGuiOverlay {
         if (Config.gunHudEnabled) {
             renderAmmoWidget(g, mc, player, gun, stats, width, height);
         }
-    }
-
-    // --- 3D workbench stats panel (hovering the [▼] take marker) ---
-
-    private static final int HEADER_COLOR = 0xFF90C890;
-    private static final int STAT_COLOR = 0xFFD0D0D0;
-    private static final int HINT_COLOR = 0xFF909090;
-    /** panel line height (the font's 9px line plus a little air) */
-    private static final int LINE_H = 11;
-
-    /**
-     * The staged gun the crosshair's [▼] take marker points at, or null when
-     * the crosshair is not on a bench take marker / nothing is staged.
-     */
-    private static ItemStack hoveredBenchGun(Minecraft mc) {
-        dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.Hover hover =
-                dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.currentHover();
-        if (hover == null || !hover.marker().isTake()) return null;
-        // the staged gun lives on the bench BE (marker carries no stack)
-        if (!(mc.level.getBlockEntity(hover.benchPos())
-                instanceof dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity bench)) {
-            return null;
-        }
-        ItemStack gun = bench.getGunSlot().getItem(0);
-        return gun.getItem() instanceof GunItem ? gun : null; // nothing staged
-    }
-
-    /**
-     * While the crosshair hovers the bench's take marker, draw the staged
-     * gun's stats: caliber + the core multipliers, and with Shift the full
-     * spec (every aggregate stat plus the feed/supply module data). The gun
-     * item's tooltip uses the same default/full split.
-     */
-    private static void renderBenchStats(GuiGraphics g, Minecraft mc, ItemStack gun, int width, int height) {
-        GunStats stats = GunStats.ofGun(gun);
-        boolean full = Screen.hasShiftDown();
-
-        Component header = null;
-        if (stats.isComplete() && stats.receiver != null && stats.receiver.gunType != null) {
-            header = Component.translatable(statKey("gun_type")).append(": ")
-                    .append(Component.translatable("gun_type." + CreatePneumaticTacticals.MODID
-                            + "." + stats.receiver.gunType.getSerializedName()));
-        }
-        List<Component> lines = new ArrayList<>();
-        if (full) {
-            addFeedLine(lines, stats);
-            addSupplyLine(lines, stats);
-            lines.add(fmt("reload_speed", stats.reloadSpeed));
-            lines.add(fmt("damage_multiplier", stats.damageMultiplier));
-            lines.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
-            lines.add(fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier));
-            lines.add(fmt("ergonomics", stats.ergonomics));
-            lines.add(fmt("aim_zoom", stats.aimZoom));
-            lines.add(fmt("tactical_aim_zoom", stats.tacticalAimZoom));
-            lines.add(fmt("bullet_speed", stats.bulletSpeed));
-            lines.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
-            lines.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));
-            lines.add(fmt("recoil_recovery", stats.recoilRecovery));
-            lines.add(fmt("gravity_multiplier", stats.gravityMultiplier));
-            lines.add(fmt("drag_multiplier", stats.dragMultiplier));
-            lines.add(fmt("gas_suppression", stats.gasSuppression));
-        } else {
-            lines.add(fmt("damage_multiplier", stats.damageMultiplier));
-            lines.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
-            lines.add(fmt("ergonomics", stats.ergonomics));
-            lines.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
-            lines.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));
-            lines.add(fmt("gravity_multiplier", stats.gravityMultiplier));
-            lines.add(fmt("drag_multiplier", stats.dragMultiplier));
-        }
-
-        // block centred on the crosshair row, just right of it; the hint row
-        // only exists while the full spec is still one Shift away
-        int rows = lines.size() + (header != null ? 1 : 0) + (full ? 0 : 1);
-        int x = width / 2 + 12;
-        int y = height / 2 - rows * LINE_H / 2;
-        if (header != null) {
-            g.drawString(mc.font, header, x, y, HEADER_COLOR);
-            y += LINE_H;
-        }
-        for (Component line : lines) {
-            g.drawString(mc.font, line, x, y, STAT_COLOR);
-            y += LINE_H;
-        }
-        if (!full) {
-            g.drawString(mc.font, Component.translatable(
-                    "gui." + CreatePneumaticTacticals.MODID + ".stats_full_hint"), x, y, HINT_COLOR);
-        }
-    }
-
-    // --- 3D workbench recoil chart (left of the crosshair) ---
-
-    /** chart box height in px — the vertical axis spans MAX_VERTICAL_DEGREES */
-    private static final int PREVIEW_H = 120;
-    /** widest the chart may get; a wider pattern shrinks instead of reaching
-     *  the crosshair */
-    private static final int PREVIEW_MAX_W = 110;
-    /** mirror of the stats panel's offset from the crosshair */
-    private static final int PREVIEW_GAP = 12;
-    private static final int PREVIEW_MIN_W = 20;
-    private static final int AXIS_COLOR = 0x60808080;
-    private static final int CAP_COLOR = 0x40C08080;
-    private static final int DOT_COLOR = 0xFFE0E0E0;
-    private static final int START_COLOR = 0xFF7CD87C;
-
-    /**
-     * Recoil prediction, left of the crosshair: the staged gun's spray path as
-     * one dot per shot (the first green), vertical axis 0..{@link
-     * RecoilPreview#MAX_VERTICAL_DEGREES} degrees up, horizontal axis the yaw
-     * offset at the same px-per-degree — the chart is the true angular path,
-     * not a stretched thumbnail.
-     */
-    private static void renderRecoilPreview(GuiGraphics g, ItemStack gun, int width, int height) {
-        GunStats stats = GunStats.ofGun(gun);
-        if (stats.receiver == null || stats.receiver.id == null) return;
-        // ADS stance: same shape as hipfire, and the one a player learns
-        RecoilPreview.compute(stats.receiver.id, stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw,
-                stats.recoilVerticalMultiplier, stats.recoilHorizontalMultiplier, true);
-        int n = RecoilPreview.count();
-        if (n == 0) return;
-
-        double maxX = 0;
-        for (int i = 0; i < n; i++) maxX = Math.max(maxX, Math.abs(RecoilPreview.x(i)));
-        // equal scale on both axes; the width cap only bites on patterns wider
-        // than the box, and a gun with no drift at all still gets a readable
-        // strip (its dots then sit on the centre line, which is the truth)
-        double pxPerDeg = Math.min((double) PREVIEW_H / RecoilPreview.MAX_VERTICAL_DEGREES,
-                PREVIEW_MAX_W / Math.max(2 * maxX, 0.5));
-        int chartH = (int) Math.round(RecoilPreview.MAX_VERTICAL_DEGREES * pxPerDeg);
-        int chartW = Math.max(PREVIEW_MIN_W, (int) Math.round(2 * maxX * pxPerDeg));
-        int right = width / 2 - PREVIEW_GAP;
-        int bottom = height / 2 + chartH / 2;
-        int top = bottom - chartH;
-        int left = right - chartW;
-        int axisX = left + chartW / 2; // x = 0
-
-        // axes: the centre line, the baseline (0 deg pitch) and the cap line
-        // the simulation stops at
-        g.fill(axisX, top, axisX + 1, bottom, AXIS_COLOR);
-        g.fill(left, bottom - 1, right, bottom, AXIS_COLOR);
-        g.fill(left, top, right, top + 1, CAP_COLOR);
-
-        for (int i = 0; i < n; i++) {
-            int px = axisX + (int) Math.round(RecoilPreview.x(i) * pxPerDeg);
-            // the shot that crossed the cap overshoots it by its own kick:
-            // pin it to the top line instead of drawing past the chart
-            int py = bottom - (int) Math.round(
-                    Math.min(RecoilPreview.y(i), RecoilPreview.MAX_VERTICAL_DEGREES) * pxPerDeg);
-            if (i == 0) {
-                g.fill(px - 1, py - 1, px + 2, py + 2, START_COLOR); // start marker
-            } else {
-                g.fill(px - 1, py - 1, px + 1, py + 1, DOT_COLOR);
-            }
-        }
-    }
-
-    /** "Feed Type: Magazine  (Capacity: 30)" — same shape as the module tooltip */
-    private static void addFeedLine(List<Component> lines, GunStats stats) {
-        if (stats.feed == null || stats.feed.feedType == null) return;
-        MutableComponent line = Component.translatable(statKey("feed_type")).append(": ")
-                .append(Component.translatable("feed_type." + CreatePneumaticTacticals.MODID
-                        + "." + stats.feed.feedType.getSerializedName()));
-        if (stats.feed.clipSize > 0) {
-            line.append(Component.literal("  (").append(Component.translatable(statKey("clip_capacity")))
-                    .append(": " + stats.feed.clipSize + ")"));
-        }
-        lines.add(line);
-    }
-
-    private static void addSupplyLine(List<Component> lines, GunStats stats) {
-        if (stats.supply == null || stats.supply.supplyType == null) return;
-        lines.add(Component.translatable(statKey("supply_type")).append(": ")
-                .append(Component.translatable("supply_type." + CreatePneumaticTacticals.MODID
-                        + "." + stats.supply.supplyType.getSerializedName())));
-    }
-
-    private static Component fmt(String statKey, double value) {
-        return Component.translatable(statKey(statKey))
-                .append(": ").append(String.format("%.2f", value));
-    }
-
-    private static String statKey(String statKey) {
-        return "stat." + CreatePneumaticTacticals.MODID + "." + statKey;
     }
 
     // --- crosshair ---

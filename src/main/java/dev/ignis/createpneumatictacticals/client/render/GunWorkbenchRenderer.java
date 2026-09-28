@@ -110,6 +110,8 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
         poseStack.pushPose();
         try {
             WorkbenchMarkerRenderer.render(bench, poseStack, buffer, packedLight);
+            // the stats plaque rides the same trigger and frame as the markers
+            WorkbenchStatsPanel.render(bench, poseStack, buffer, packedLight);
         } finally {
             poseStack.popPose();
         }
