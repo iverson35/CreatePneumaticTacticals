@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock;
 import dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity;
 import dev.ignis.createpneumatictacticals.client.RecoilPreview;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
@@ -37,7 +38,8 @@ import java.util.List;
  *
  * <p>Drawn inside the bench's own BER frame, so the plaque is part of the
  * world: it picks the horizontal side the camera is on and reads straight-on
- * from there. The yaw comes from the side vector, not from {@code
+ * from there, floating a little further out on the two faces the 1.5-block
+ * tabletop overhangs (see {@link #TABLE_OVERHANG}). The yaw comes from the side vector, not from {@code
  * Direction.toYRot()}: +Z has to be the outward normal and +X the viewer's
  * right for every side, and the blockstate yaw convention mirrors on
  * east/west.
@@ -63,6 +65,12 @@ final class WorkbenchStatsPanel {
     private static final float PANEL_Y = 0.5f;
     /** how far the plaque floats off the bench face (blocks) */
     private static final float FACE_GAP = 0.04f;
+    /**
+     * Tabletop overhang past the block on the ends of its long axis (blocks):
+     * the model is 24 px wide (x -4..20), i.e. 4 px = 0.25 blocks past the
+     * block on each side, with the legs tucked under that lip.
+     */
+    private static final float TABLE_OVERHANG = 4f / 16f;
     /** lift of the marks over the background, in px (z-fight guard) */
     private static final float MARK_Z = 1f;
 
@@ -115,12 +123,20 @@ final class WorkbenchStatsPanel {
         // right (the blockstate yaw mirrors on east/west — do not use toYRot)
         Direction side = sideToward(mc.gameRenderer.getMainCamera().getPosition(), bench.getBlockPos());
         float yaw = (float) Math.toDegrees(Math.atan2(side.getStepX(), side.getStepZ()));
+        // The plaque floats off the face the camera is on — but the tabletop is
+        // 1.5 blocks wide along its long axis, so on the two faces at that
+        // axis' ends the table (top and legs alike) reaches 0.25 blocks past
+        // the block. Clear that lip there, or the bench cuts through the
+        // plaque: the top of a tall plaque sits at tabletop height, and the
+        // legs stand 0.02 blocks proud of the default face gap.
+        float faceGap = FACE_GAP
+                + (side.getAxis() == longAxis(bench) ? TABLE_OVERHANG : 0f);
 
         poseStack.pushPose();
         try {
             poseStack.translate(0.5, PANEL_Y, 0.5);
             poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
-            poseStack.translate(0f, 0f, 0.5f + FACE_GAP);
+            poseStack.translate(0f, 0f, 0.5f + faceGap);
             // font-px frame: origin = plaque centre, +x right, +y up
             poseStack.scale(PX, PX, PX);
             draw(poseStack, buffer, panel, packedLight);
@@ -135,6 +151,17 @@ final class WorkbenchStatsPanel {
         double dz = cam.z - (pos.getZ() + 0.5);
         if (Math.abs(dx) >= Math.abs(dz)) return dx >= 0 ? Direction.EAST : Direction.WEST;
         return dz >= 0 ? Direction.SOUTH : Direction.NORTH;
+    }
+
+    /**
+     * World axis the tabletop overflows along. The model is long in x and the
+     * blockstate turns the model's north side onto {@code FACING}, so model x
+     * lands on world x for a north/south bench and on world z for an
+     * east/west one.
+     */
+    private static Direction.Axis longAxis(GunWorkbenchBlockEntity bench) {
+        return bench.getBlockState().getValue(GunWorkbenchBlock.FACING).getAxis() == Direction.Axis.X
+                ? Direction.Axis.Z : Direction.Axis.X;
     }
 
     private static Panel layout(ItemStack gun, GunStats stats, boolean full) {
