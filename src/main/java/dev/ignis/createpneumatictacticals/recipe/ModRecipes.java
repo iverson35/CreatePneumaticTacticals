@@ -29,10 +29,6 @@ public final class ModRecipes {
             RECIPE_SERIALIZERS.register("pod_filling",
                     () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(PodFillingRecipe::new));
 
-    public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<PodAssemblyRecipe>> POD_ASSEMBLY_SERIALIZER =
-            RECIPE_SERIALIZERS.register("pod_assembly",
-                    () -> new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(PodAssemblyRecipe::new));
-
     public static final RegistryObject<RecipeType<ReceiverDisassemblyRecipe>> RECEIVER_DISASSEMBLY =
             RECIPE_TYPES.register("receiver_disassembly",
                     () -> RecipeType.simple(new net.minecraft.resources.ResourceLocation(
