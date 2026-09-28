@@ -553,7 +553,7 @@ public abstract class PotatoProjectileMixin {
     /** base hit damage: extension override, else the Create type's damage */
     @Unique
     private static double cpt$baseDamage(PotatoProjectileEntity self, AmmoExtension ext) {
-        return ext.damage > 0 ? ext.damage : self.getProjectileType().damage();
+        return AmmoExtension.baseDamage(self.getProjectileType(), ext);
     }
 
     /**

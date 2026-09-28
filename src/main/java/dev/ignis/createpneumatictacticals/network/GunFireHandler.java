@@ -165,8 +165,7 @@ public final class GunFireHandler {
         Optional<PotatoCannonProjectileType> typeOpt = resolveType(shooter.level(), ammoId);
         if (typeOpt.isEmpty()) return;
         PotatoCannonProjectileType type = typeOpt.get();
-        long intervalTicks = Math.max(1,
-                (long) (type.reloadTicks() / stats.fireRateMultiplier));
+        long intervalTicks = AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier);
         Long last = LAST_SHOT.get(key);
         if (last != null && now - last < intervalTicks) return;
         LAST_SHOT.put(key, now);

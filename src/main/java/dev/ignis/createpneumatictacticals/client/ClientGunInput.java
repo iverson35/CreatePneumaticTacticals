@@ -307,7 +307,7 @@ public final class ClientGunInput {
                         AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId))
                 .map(ref -> ref.value()).orElse(null);
         if (currentType != null) {
-            interval = (long) (50 * Math.max(1, currentType.reloadTicks() / stats.fireRateMultiplier));
+            interval = 50 * AmmoExtension.fireIntervalTicks(currentType, stats.fireRateMultiplier);
         } else {
             interval = 50; // unknown type: 10/s fallthrough, server will gate
         }

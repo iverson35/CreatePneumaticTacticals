@@ -1,5 +1,6 @@
 package dev.ignis.createpneumatictacticals.ammo;
 
+import com.simibubi.create.api.equipment.potatoCannon.PotatoCannonProjectileType;
 import dev.ignis.createpneumatictacticals.module.GunType;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +68,25 @@ public final class AmmoExtension {
 
     public static void put(String ammoId, AmmoExtension ext) {
         TABLE.put(ammoId, ext);
+    }
+
+    /**
+     * Ticks between two shots of this ammo out of this gun: the Create type's
+     * own cadence scaled by the gun's fire_rate_multiplier, floored at 1 tick
+     * (a multiplier can make the interval fractional). The single source for
+     * the server's rate limit, the client's local gate and the tooltip's RPM.
+     */
+    public static long fireIntervalTicks(PotatoCannonProjectileType type, double fireRateMultiplier) {
+        return Math.max(1, (long) (type.reloadTicks() / fireRateMultiplier));
+    }
+
+    /**
+     * Point-blank shot damage before the gun's damage_multiplier: this ammo's
+     * own damage when it defines one, else Create's type value. Range falloff
+     * and headshots apply on top of it at hit time.
+     */
+    public static double baseDamage(PotatoCannonProjectileType type, AmmoExtension ext) {
+        return ext.damage > 0 ? ext.damage : type.damage();
     }
 
     public static void clear() {

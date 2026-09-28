@@ -518,6 +518,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `gas_suppression` | 气体抑制 | 0 | −5 – 1 | 枪口烟雾：`−1` 烟雾翻倍，`+1` 完全无烟（**仅 `muzzle`**） |
 | `unique` | — | `false` | — | 布尔值；同名模块装多个时，属性只算一次 |
 
+**物品提示里的实际值**：枪**已装填**（弹匣有弹；背包供弹只要选了弹种）时，物品提示（Shift）里这两行不再显示倍率，而是显示**当前弹种结合本枪算出来的实际值**——`伤害 = 弹药伤害 × damage_multiplier`（近距离、不含爆头与距离衰减），`射速 = 1200 ÷ max(1, reload_ticks ÷ fire_rate_multiplier)` RPM。空仓或无弹种时回到倍率显示。两个数走的就是开火/命中同一条计算路径（`AmmoExtension.fireIntervalTicks` / `baseDamage`），不会和实际手感对不上。
+
 **`muzzle` 的导气孔（写在模块根级，**不在** `gun_properties` 里）**：
 
 | JSON 键 | 默认 | 范围 | 含义 |

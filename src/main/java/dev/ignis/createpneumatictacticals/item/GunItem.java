@@ -57,8 +57,17 @@ public class GunItem extends Item {
                                 + "." + stats.receiver.gunType.getSerializedName()))
                         .withStyle(ChatFormatting.GREEN));
             }
-            tooltip.add(stat(stats.damageMultiplier, "damage_multiplier"));
-            tooltip.add(stat(stats.fireRateMultiplier, "fire_rate_multiplier"));
+            // Loaded rounds replace the two multiplier lines with the numbers
+            // they actually produce — "Damage Multiplier: 1.20" says nothing
+            // about the round it multiplies, and RPM is what a player reads.
+            LoadedAmmo loaded = loadedAmmo(stack, level, stats);
+            if (loaded != null) {
+                tooltip.add(stat(String.format("%.2f", loaded.damage()), "damage"));
+                tooltip.add(stat(Math.round(loaded.rpm()) + " RPM", "fire_rate"));
+            } else {
+                tooltip.add(stat(stats.damageMultiplier, "damage_multiplier"));
+                tooltip.add(stat(stats.fireRateMultiplier, "fire_rate_multiplier"));
+            }
             tooltip.add(stat(stats.ergonomics, "ergonomics"));
             tooltip.add(stat(stats.recoilVerticalMultiplier, "recoil_vertical_multiplier"));
             tooltip.add(stat(stats.recoilHorizontalMultiplier, "recoil_horizontal_multiplier"));
@@ -73,9 +82,43 @@ public class GunItem extends Item {
 
     /** workbench-style stat line: "Damage: 1.20" */
     private static Component stat(double value, String statKey) {
+        return stat(String.format("%.2f", value), statKey);
+    }
+
+    /** stat line with a preformatted value: "Fire Rate: 171 RPM" */
+    private static Component stat(String value, String statKey) {
         return Component.translatable("stat." + CreatePneumaticTacticals.MODID + "." + statKey)
-                .append(": ").append(String.format("%.2f", value))
+                .append(": ").append(value)
                 .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** a loaded round's real fire rate (RPM) and point-blank damage */
+    private record LoadedAmmo(double rpm, double damage) {}
+
+    /**
+     * What the loaded round really does in this gun, or null when nothing
+     * usable is loaded (no ammo selected, an empty magazine, an unknown type,
+     * or no registry to look the type up in — the item tooltip can be drawn
+     * without a level). Mirrors the firing path through the same two helpers:
+     * the interval is {@link AmmoExtension#fireIntervalTicks} (1200 / it is the
+     * RPM) and the damage is the ammo's base damage times the gun's
+     * damage_multiplier — point-blank, before falloff and headshots.
+     */
+    private static @Nullable LoadedAmmo loadedAmmo(ItemStack gun, @Nullable Level level, GunStats stats) {
+        String ammoId = GunNbt.getAmmo(gun);
+        if (level == null || ammoId == null || ammoId.isEmpty()) return null;
+        // a magazine gun counts as loaded only with rounds in the mag; a
+        // backpack feed has no count — its rounds sit in the player's backpack
+        boolean backpack = stats.feed != null
+                && stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
+        if (!backpack && GunNbt.getAmmoCount(gun) <= 0) return null;
+        var type = level.registryAccess()
+                .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
+                .get(ResourceLocation.tryParse(ammoId));
+        if (type == null) return null;
+        return new LoadedAmmo(
+                1200.0 / AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier),
+                AmmoExtension.baseDamage(type, AmmoExtension.get(ammoId)) * stats.damageMultiplier);
     }
 
     /**
