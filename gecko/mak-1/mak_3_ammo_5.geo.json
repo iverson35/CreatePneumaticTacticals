@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.mak_1hp_ammo_5",
+				"identifier": "geometry.mak_3_ammo_5",
 				"texture_width": 8,
 				"texture_height": 8,
 				"visible_bounds_width": 2,

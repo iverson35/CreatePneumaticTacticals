@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.mak_1hp_receiver",
+				"identifier": "geometry.mak_3u_receiver",
 				"texture_width": 32,
 				"texture_height": 32,
 				"visible_bounds_width": 3,

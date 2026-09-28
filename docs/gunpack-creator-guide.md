@@ -130,7 +130,7 @@ gunpacks/<枪包目录名>/
 | 重启 | `sounds.json` 新增/删除**事件键**（注册表内容）必须重启 |
 
 - 日志关键字：`Gunpack root: ...`（启动时的枪包根目录与内容哈希）、`Loaded N modules ...`、`Failed to read module file ...`（某个 JSON 坏了，该文件被跳过，其余照常加载）。
-- 创造模式物品栏里有一个 **`gunpacks`** 标签页：列出**所有已加载的模块定义**，以及每种机匣的**示例整枪**——这是最快的测试入口（不需要配方）。示例整枪按机匣的 `module_affected` 挑件，**并且逐个过装配台那套校验**（口径、供弹↔供气配对…）：同族命名带前缀时尤其重要，比如 `mak_1.+` 会同时命中重型 `mak_1hp_*`，被校验挡掉后才会往下挑真正同口径的件；某个槽位挑不出合法模块时，这把机匣就没有示例枪。
+- 创造模式物品栏里有一个 **`gunpacks`** 标签页：列出**所有已加载的模块定义**，以及每种机匣的**示例整枪**——这是最快的测试入口（不需要配方）。示例整枪按机匣的 `module_affected` 挑件，**并且逐个过装配台那套校验**（口径、供弹↔供气配对…）：同族命名带前缀时尤其重要，比如 `mak_1.+` 这类前缀正则会连同前缀的异口径家族一起命中（`mak_1hp_*` 拆分成 `mak_3_*` 之前就是如此），被校验挡掉后才会往下挑真正同口径的件；某个槽位挑不出合法模块时，这把机匣就没有示例枪。
 
 ### 1.7 五分钟：一个能开枪的最小枪包
 
@@ -969,10 +969,10 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `spiccato_711.json` | receiver | 高射速手枪机匣：`ergonomics`/`hipfire_accuracy_multiplier`、`fire_modes: ["semi"]` |
 | `mak_1_barrel_short.json` / `711_barrel.json` | barrel | 口径字段 + 用正则白名单限定可用枪口装置 |
 | `mak_1_ammo_20.json` / `711_ammo_15.json` | feed | 弹匣（`load_type: magazine` + `clip_size`）+ 换弹动画（驱动 `mag` 骨） |
-| `mak_1_cartridge_supply.json` / `711_cartridge_supply.json` | supply | 整装气瓶（`supply_type: cartridge`） |
+| `mak_standard_supply.json` / `711_cartridge_supply.json` | supply | 整装气瓶（`supply_type: cartridge`） |
 | `1vo_muzzle_brake_a.json` | muzzle | 根级 `gas_guides`：两个侧向导气孔（±90° 偏航）+ 气体抑制 |
 | `8dvo_muzzle_brake_competition.json` | muzzle | 根级 `gas_guides`：单孔向下导气（俯仰 −90°）+ `gas_pass_through` |
-| `mak_1_tactical_handguard.json` | handguard | `attachment_points`（top/bottom/left）+ 配件白名单；带 `_dye` 掩码 |
+| `mak_tactical_handguard.json` | handguard | `attachment_points`（top/bottom/left）+ 配件白名单；带 `_dye` 掩码 |
 | `pica_grip_rvg.json` | handguard_attachment | `positions: ["bottom"]`；带 `_dye` 掩码 |
 | `pica_laser_dbg.json` | handguard_attachment | 四个位置全支持；带 `_glowmask` + `laser_beam` 骨 |
 | `pica_sight_small_mounted_md1.json` / `psts_sight_small_doc1.json` | sight | `aim_zoom`；带 `_glowmask` |

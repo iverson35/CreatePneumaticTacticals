@@ -169,9 +169,10 @@ public final class ModCreativeTabs {
      * already in {@code installed} (so the caliber lock and the feed&harr;supply
      * pairing apply to the sample exactly as they do in the workbench).
      *
-     * <p>Matching the id regex alone is not enough: `mak_1.+` happily matches the
-     * heavy `mak_1hp_*` family too, which is how a medium mak_1 sample gun came
-     * out with a heavy magazine - whichever family happened to come first in
+     * <p>Matching the id regex alone is not enough: a prefix regex can also
+     * match a differently-chambered sibling family that shares it, which is how
+     * a medium mak_1 sample gun came out with a heavy magazine - whichever
+     * family happened to come first in
      * {@link ModuleManager#all()}'s iteration order won. An affected rule that
      * cannot be satisfied by any acceptable module leaves the sample out.
      */

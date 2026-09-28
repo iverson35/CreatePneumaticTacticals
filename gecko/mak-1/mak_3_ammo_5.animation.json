@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.mak_1hp_ammo_5.reload": {
+		"animation.mak_3_ammo_5.reload": {
 			"animation_length": 3,
 			"bones": {
 				"mag": {

@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.mak_1hp_receiver.reload": {
+		"animation.mak_3u_receiver.reload": {
 			"animation_length": 3,
 			"bones": {
 				"main": {
@@ -27,7 +27,7 @@
 				}
 			}
 		},
-		"animation.mak_1hp_receiver.fire": {
+		"animation.mak_3u_receiver.fire": {
 			"animation_length": 0.125,
 			"bones": {
 				"bolt": {
@@ -43,7 +43,7 @@
 				}
 			}
 		},
-		"animation.mak_1hp_receiver.bolt": {
+		"animation.mak_3u_receiver.bolt": {
 			"animation_length": 0.5417,
 			"bones": {
 				"main": {

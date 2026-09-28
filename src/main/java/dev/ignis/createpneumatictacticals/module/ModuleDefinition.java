@@ -34,6 +34,38 @@ public final class ModuleDefinition {
         }
     }
 
+    /**
+     * Receiver-only ammo allowlist/denylist (JSON {@code "ammo_filter_mode"}
+     * + {@code "ammo_filter"}). Same entry grammar as {@code module_affected}
+     * values: exact ammo type ids ({@code namespace:path}) or
+     * {@code REGEX=<pattern>} entries matched with {@code find()}. It only
+     * ever NARROWS the gun_type gate — an entry naming a type the caliber
+     * rejects is dead config, silently ignored. Both fields omitted = no
+     * filter at all (everything the caliber accepts passes); a non-empty
+     * {@code ammo_filter} without a mode defaults to {@code exclude}.
+     */
+    public record AmmoFilter(boolean include, List<String> value,
+                             @Nullable List<java.util.regex.Pattern> regex) {
+        /** id membership: exact list OR any regex matches (REGEX= entries). */
+        public boolean matches(String ammoId) {
+            if (value.contains(ammoId)) return true;
+            if (regex == null) return false;
+            for (java.util.regex.Pattern p : regex) {
+                if (p.matcher(ammoId).find()) return true;
+            }
+            return false;
+        }
+
+        /**
+         * Whether the ammo passes this filter. INCLUDE: only listed ids
+         * pass; EXCLUDE: only non-listed ids pass. Never widen: callers gate
+         * on gun_type separately (accepts first, then this).
+         */
+        public boolean allows(String ammoId) {
+            return include == matches(ammoId);
+        }
+    }
+
     public final ResourceLocation id;
     public final ModuleType type;
     public final List<Affected> affected;
@@ -61,6 +93,13 @@ public final class ModuleDefinition {
     public final double gasPassThrough;
     /** receiver/barrel: gun type; barrel must match the installed receiver's */
     @Nullable public final GunType gunType;
+
+    /**
+     * receiver-only: extra ammo include/exclude filter UNDER the gun_type
+     * gate (see {@link AmmoFilter}); null = no filter, the caliber alone
+     * decides what loads
+     */
+    @Nullable public final AmmoFilter ammoFilter;
     @Nullable public final List<FireMode> fireModes;
     /** shot sound as a SoundEvent id; receiver-defined, overridden by a muzzle
      * device that declares one (suppressors). Volume/attenuation live in the
@@ -160,6 +199,7 @@ public final class ModuleDefinition {
         this.gasGuides = b.gasGuides;
         this.gasPassThrough = b.gasPassThrough;
         this.gunType = b.gunType;
+        this.ammoFilter = b.ammoFilter;
         this.fireModes = b.fireModes == null ? null : List.copyOf(b.fireModes);
         this.fireSound = b.fireSound;
         this.gunName = b.gunName;
@@ -282,6 +322,29 @@ public final class ModuleDefinition {
             b.baseRecoilPitch = GsonHelper.getAsDouble(json, "base_recoil_pitch", 0);
             b.baseRecoilYaw = GsonHelper.getAsDouble(json, "base_recoil_yaw", 0);
             b.ignoreAmmoPitch = GsonHelper.getAsBoolean(json, "ignore_ammo_pitch", false);
+            // optional per-receiver ammo allowlist/denylist under the
+            // gun_type gate; same entry grammar as module_affected values
+            // (exact ids or REGEX= patterns, find() matching)
+            if (json.has("ammo_filter")) {
+                boolean include = GsonHelper.getAsString(json, "ammo_filter_mode", "exclude")
+                        .equals("include");
+                List<String> exact = new ArrayList<>();
+                List<java.util.regex.Pattern> regex = null;
+                for (JsonElement el : json.getAsJsonArray("ammo_filter")) {
+                    String entry = el.getAsString();
+                    if (entry.startsWith("REGEX=")) {
+                        if (regex == null) regex = new ArrayList<>();
+                        regex.add(java.util.regex.Pattern.compile(entry.substring("REGEX=".length())));
+                    } else {
+                        exact.add(entry);
+                    }
+                }
+                if (!exact.isEmpty() || regex != null) {
+                    b.ammoFilter = new AmmoFilter(include,
+                            List.copyOf(exact), regex == null ? null : List.copyOf(regex));
+                }
+                // both lists empty: no filter, the caliber alone decides
+            }
         }
         // feed
         if (type == ModuleType.FEED) {

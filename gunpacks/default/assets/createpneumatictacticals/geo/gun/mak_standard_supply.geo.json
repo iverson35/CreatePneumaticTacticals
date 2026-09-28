@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.mak_1_cartridge_supply",
+				"identifier": "geometry.mak_standard_supply",
 				"texture_width": 16,
 				"texture_height": 16,
 				"visible_bounds_width": 2,
