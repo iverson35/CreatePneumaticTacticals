@@ -1,0 +1,40 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.mak_1hp_ammo_5",
+				"texture_width": 8,
+				"texture_height": 8,
+				"visible_bounds_width": 2,
+				"visible_bounds_height": 1.5,
+				"visible_bounds_offset": [0, 0.25, 0]
+			},
+			"bones": [
+				{
+					"name": "main",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "mag",
+					"parent": "main",
+					"pivot": [0, 0, 0],
+					"cubes": [
+						{
+							"origin": [-0.5, -2, -1],
+							"size": [1, 3, 4],
+							"uv": {
+								"north": {"uv": [5, 0], "uv_size": [1, 3]},
+								"east": {"uv": [0, 0], "uv_size": [4, 3]},
+								"south": {"uv": [5, 3], "uv_size": [1, 3]},
+								"west": {"uv": [0, 3], "uv_size": [4, 3]},
+								"up": {"uv": [4, 0], "uv_size": [1, 4]},
+								"down": {"uv": [4, 8], "uv_size": [1, -4]}
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
