@@ -4,8 +4,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.item.PodItem;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -63,7 +64,12 @@ public final class PodItemModel extends BakedModelWrapper<BakedModel> {
         }
     }
 
-    /** Drops the cached layers: their sprites belong to the unloaded atlas. */
+    /**
+     * Drops the cached layers. They bake the content sprite's UVs into their
+     * quads when built, and a reload re-stitches the atlas: the sprites survive
+     * but their coordinates move, so the copies would sample the wrong region
+     * until the next build.
+     */
     public static void invalidateLayers() {
         LAYERS.clear();
     }
@@ -106,12 +112,14 @@ public final class PodItemModel extends BakedModelWrapper<BakedModel> {
 
     @Nullable
     private static BakedModel bakeLayer(Item content) {
-        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
-        if (itemRenderer == null) return null; // no renderer yet (early JEI/model pass)
         // The content item's own inventory model: its particle icon IS the item
         // icon (layer0 for a flat item, the block's particle sprite for a block
-        // item) — same source the ammo box's content plate draws from.
-        BakedModel model = itemRenderer.getModel(new ItemStack(content), null, null, 0);
+        // item) — the sprite the ammo box's content plate reads too. The null
+        // level is deliberate: the ammo box resolves against its world, but a
+        // layer is cached per item here, and a level-dependent model predicate
+        // would make that cache depend on whichever world rendered first.
+        BakedModel model = Minecraft.getInstance().getItemRenderer()
+                .getModel(new ItemStack(content), null, null, 0);
         return model == null ? null : new ContentLayer(model, model.getParticleIcon());
     }
 
@@ -195,6 +203,18 @@ public final class PodItemModel extends BakedModelWrapper<BakedModel> {
             data[i + 5] = Float.floatToRawIntBits(v);
             data[i + 6] = 0;
             data[i + 7] = normal;
+        }
+
+        /**
+         * {@code BakedModelWrapper} would hand back the <em>content</em> model's
+         * render types, so a content item carrying its own type (a custom or
+         * emissive model, a block sheet) would draw the icon with a different
+         * shader and vertex format than the pod body. Every pass is handed the
+         * pod's stack, so ask for the pod's own type.
+         */
+        @Override
+        public List<RenderType> getRenderTypes(ItemStack stack, boolean fabulous) {
+            return List.of(ItemBlockRenderTypes.getRenderType(stack, fabulous));
         }
 
         @Override

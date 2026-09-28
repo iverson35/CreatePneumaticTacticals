@@ -49,7 +49,8 @@ public final class ClientModEvents {
         });
     }
 
-    /** Layer the content item's icon into the pod icons (see {@link PodItemModel}). */
+    /** Layer the content item's icon into the pod icons
+     * (see {@link dev.ignis.createpneumatictacticals.client.render.PodItemModel}). */
     @SubscribeEvent
     public static void onModifyBakingResult(net.minecraftforge.client.event.ModelEvent.ModifyBakingResult event) {
         dev.ignis.createpneumatictacticals.client.render.PodItemModel.wrap(event.getModels());
