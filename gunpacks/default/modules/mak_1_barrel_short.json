@@ -3,10 +3,8 @@
   "module_type": "barrel",
   "gun_type": "medium",
   "gun_properties": {
-    "bullet_speed": 2,
-    "gravity_multiplier": -0.8,
-    "drag_multiplier": -0.5,
-    "ergonomics": 0.2
+    "ergonomics": 0.1,
+    "bullet_speed": -0.2
   },
   "module_affected": [
     { "module_type": "muzzle", "mode": "include", "value": ["REGEX=1vo.+"] }

@@ -1,13 +1,15 @@
 {
-  "name": "createpneumatictacticals:mak_1_tactical_handguard",
+  "name": "createpneumatictacticals:mak_1_shooter_handguard",
   "module_type": "handguard",
   "gun_properties": {
-    "ergonomics": -0.1
+    "ergonomics": -0.15,
+    "recoil_vertical_multiplier": -0.1
   },
   "attachment_points": [
     "top",
     "bottom",
-    "left"
+    "left",
+    "right"
   ],
   "module_affected": [
     { "module_type": "handguard_attachment", "mode": "include", "value": ["REGEX=pica.+"] }
