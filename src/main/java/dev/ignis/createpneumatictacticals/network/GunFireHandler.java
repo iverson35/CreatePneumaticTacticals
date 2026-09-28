@@ -230,8 +230,8 @@ public final class GunFireHandler {
                 return; // no inventory to feed from: silent
             }
         }
-        // --- gun type compatibility ---
-        if (!receiver.gunType.accepts(ext.gunType)) {
+        // --- gun type compatibility + receiver ammo filter ---
+        if (!dev.ignis.createpneumatictacticals.gun.AmmoTypes.acceptsAmmo(receiver, ammoId)) {
             if (shooter instanceof ServerPlayer player) feedback(player, "ammo_type_mismatch");
             return;
         }

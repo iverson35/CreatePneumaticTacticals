@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.gun;
 
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
+import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -37,16 +38,32 @@ public final class AmmoTypes {
                 .FALLBACK.location().toString().equals(ammoId);
     }
 
+    /**
+     * Full ammo gate: the receiver's gun_type first, then the receiver's
+     * optional include/exclude {@code ammo_filter} (which can only NARROW —
+     * an entry naming a type the caliber rejects is dead config, never a way
+     * to smuggle it in). No filter configured = the caliber alone decides.
+     * Shared by every load path: wheel/cycle selection (server), the wheel
+     * contents (client), and creative tabs.
+     */
+    public static boolean acceptsAmmo(ModuleDefinition receiver, String ammoId) {
+        if (receiver == null || receiver.gunType == null) return false;
+        AmmoExtension ext = AmmoExtension.get(ammoId);
+        if (ext == null || !receiver.gunType.accepts(ext.gunType)) return false;
+        return receiver.ammoFilter == null || receiver.ammoFilter.allows(ammoId);
+    }
+
     public static List<String> compatibleFor(Player player, GunStats stats) {
         Set<String> out = new TreeSet<>();
-        if (stats.receiver == null || stats.receiver.gunType == null) return new ArrayList<>(out);
+        ModuleDefinition receiver = stats.receiver;
+        if (receiver == null || receiver.gunType == null) return new ArrayList<>(out);
         if (player.isCreative()) {
             var registry = player.level().registryAccess()
                     .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE);
             for (var entry : registry.entrySet()) {
                 String key = entry.getKey().location().toString();
                 if (!isSelectable(key)) continue;
-                if (stats.receiver.gunType.accepts(AmmoExtension.get(key).gunType)) out.add(key);
+                if (acceptsAmmo(receiver, key)) out.add(key);
             }
             return new ArrayList<>(out);
         }
@@ -65,14 +82,14 @@ public final class AmmoTypes {
                     .getTypeForItem(player.level().registryAccess(), item);
             if (typeRef.isEmpty()) continue;
             String typeId = typeRef.get().unwrapKey().orElseThrow().location().toString();
-            if (stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) out.add(typeId);
+            if (acceptsAmmo(receiver, typeId)) out.add(typeId);
         }
         // deep reserve: a box feeds its own type even with no loose pods
         for (ItemStack stack : player.getInventory().items) {
             if (!(stack.getItem() instanceof dev.ignis.createpneumatictacticals.block
                     .AmmoBoxBlockItem)) continue;
             String typeId = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.ammoTypeId(player.level().registryAccess(), stack);
-            if (typeId != null && stats.receiver.gunType.accepts(AmmoExtension.get(typeId).gunType)) {
+            if (typeId != null && acceptsAmmo(receiver, typeId)) {
                 ItemStack template = dev.ignis.createpneumatictacticals.block.entity.AmmoBoxBlockEntity.boxTemplate(stack);
                 boolean boxedCartridge = template.getItem()
                         == dev.ignis.createpneumatictacticals.item.ModItems.PRESSURIZED_POD.get();

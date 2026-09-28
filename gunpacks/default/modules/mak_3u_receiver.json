@@ -3,19 +3,19 @@
   "module_type": "receiver",
   "gun_properties": {
     "reload_speed": 0.0,
-    "fire_rate_multiplier": 2.0,
-    "damage_multiplier": -0.25,
+    "fire_rate_multiplier": 1.5,
+    "damage_multiplier": 0.25,
     "bullet_speed": 1,
-    "gravity_multiplier": -0.8,
-    "drag_multiplier": 0.5,
+    "gravity_multiplier": -0.9,
+    "drag_multiplier": -0.2,
     "ergonomics": 0.1,
-    "recoil_recovery": -0.9
+    "recoil_recovery": -0.8,
+    "hipfire_accuracy_multiplier": -0.5
   },
   "gun_type": "heavy",
   "burst_count": 3,
   "fire_modes": [
-    "semi",
-    "auto"
+    "semi"
   ],
   "fire_sound": "createpneumatictacticals:gun.pistol.silenced.shoot",
   "base_recoil_pitch": 7.2,

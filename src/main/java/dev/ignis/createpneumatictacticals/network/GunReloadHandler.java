@@ -28,10 +28,15 @@ public final class GunReloadHandler {
         if (stats.feed.feedType == FeedType.ROUND || stats.feed.feedType == FeedType.MAGAZINE) {
             // ammo swap: the magazine was emptied when the pick was made, so
             // this reload is what loads the new type — promote it now
+            // (still gated: a filter-excluded type can only get here via
+            // edited NBT, and then it loads nothing)
             String pending = GunNbt.getPendingAmmo(gun);
             if (pending != null) {
                 GunNbt.setPendingAmmo(gun, null);
-                GunNbt.setAmmo(gun, pending);
+                if (dev.ignis.createpneumatictacticals.gun.AmmoTypes
+                        .acceptsAmmo(stats.receiver, pending)) {
+                    GunNbt.setAmmo(gun, pending);
+                }
             }
             int current = GunNbt.getAmmoCount(gun);
             int max = stats.feed.clipSize;

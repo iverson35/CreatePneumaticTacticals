@@ -134,7 +134,7 @@ public final class ModCreativeTabs {
         for (var holder : lookup.listElements().toList()) {
             String ammoId = holder.unwrapKey().orElseThrow().location().toString();
             if (!dev.ignis.createpneumatictacticals.gun.AmmoTypes.isSelectable(ammoId)) continue;
-            if (receiver.gunType.accepts(AmmoExtension.get(ammoId).gunType)) {
+            if (dev.ignis.createpneumatictacticals.gun.AmmoTypes.acceptsAmmo(receiver, ammoId)) {
                 out.add(holder);
             }
         }

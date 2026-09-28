@@ -3,7 +3,8 @@
   "module_type": "handguard",
   "gun_properties": {
     "ergonomics": -0.15,
-    "recoil_vertical_multiplier": -0.1
+    "recoil_vertical_multiplier": -0.2,
+    "recoil_horizontal_multiplier": -0.1
   },
   "attachment_points": [
     "top",

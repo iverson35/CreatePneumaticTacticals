@@ -436,6 +436,7 @@ public final class ModuleDefinition {
         private final List<GasGuide> gasGuides = new ArrayList<>();
         private double gasPassThrough = 1;
         @Nullable private GunType gunType;
+        @Nullable private AmmoFilter ammoFilter;
         @Nullable private List<FireMode> fireModes;
         @Nullable private String fireSound;
         private double baseRecoilPitch, baseRecoilYaw;

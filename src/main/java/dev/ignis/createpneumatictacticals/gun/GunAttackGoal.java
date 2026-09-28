@@ -165,7 +165,11 @@ public class GunAttackGoal extends Goal {
                 GunStats stats = GunStats.ofGun(gun);
                 if (stats.isComplete() && stats.feed != null) {
                     String ammo = designatedAmmoFor(stats.receiver.gunType);
-                    if (ammo != null) {
+                    // caliber gate + the receiver's optional ammo_filter:
+                    // a filtered-out designated ammo = the mob never refills,
+                    // it just keeps holding the dry gun
+                    if (ammo != null && dev.ignis.createpneumatictacticals.gun.AmmoTypes
+                            .acceptsAmmo(stats.receiver, ammo)) {
                         GunNbt.setAmmo(gun, ammo);
                         GunNbt.setAmmoCount(gun, stats.feed.clipSize);
                         if (stats.supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.INTERNAL_TANK) {
