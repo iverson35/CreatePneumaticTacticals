@@ -167,7 +167,16 @@ public final class GunFireHandler {
         PotatoCannonProjectileType type = typeOpt.get();
         long intervalTicks = AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier);
         Long last = LAST_SHOT.get(key);
-        if (last != null && now - last < intervalTicks) return;
+        if (last != null && now - last < intervalTicks) {
+            // Diagnostic: the client gates locally before sending, so a
+            // rejection here means the two gates disagree (the client's is
+            // wall-clock ms, this one counts ticks) — the shot is then lost
+            // with no feedback to the shooter.
+            CreatePneumaticTacticals.LOGGER.info(
+                    "[CPT fire] server rate gate rejected a shot: {}t since the last, {}t needed",
+                    now - last, intervalTicks);
+            return;
+        }
         LAST_SHOT.put(key, now);
 
         // --- backpack feed bypasses count; others need rounds in magazine ---
