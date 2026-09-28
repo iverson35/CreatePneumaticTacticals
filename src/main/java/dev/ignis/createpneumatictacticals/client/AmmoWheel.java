@@ -55,6 +55,7 @@ public final class AmmoWheel implements IGuiOverlay {
     private static final int SLOT_COLOR = 0x80101010;
     private static final int SELECT_COLOR = 0xFFFFFFFF;
     private static final int LABEL_COLOR = 0xFFFFFF;
+    private static final int STAT_COLOR = 0xFFA0A0A0;
 
     private static boolean wasDown = false;
     private static int heldTicks = 0;
@@ -185,6 +186,16 @@ public final class AmmoWheel implements IGuiOverlay {
         if (selected == -1) frame(g, cx, cy, 12, SELECT_COLOR);
 
         g.drawCenteredString(mc.font, label(mc, gun, currentId), cx, cy + (int) RADIUS + 16, LABEL_COLOR);
+
+        // what the highlighted pick would do in THIS gun — the same numbers the
+        // item tooltip prints for the loaded round, but for the type under the
+        // cursor (the centre keeps the loaded type, so it shows that one's)
+        String pickedId = selected >= 0 && selected < entries.size() ? entries.get(selected) : currentId;
+        GunItem.AmmoPerformance perf = GunItem.ammoPerformance(mc.level, GunStats.ofGun(gun), pickedId);
+        if (perf != null) {
+            g.drawCenteredString(mc.font, GunItem.ammoPerformanceLine(perf),
+                    cx, cy + (int) RADIUS + 27, STAT_COLOR);
+        }
     }
 
     private static Component label(Minecraft mc, ItemStack gun, String currentId) {

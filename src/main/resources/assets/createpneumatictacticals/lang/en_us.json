@@ -22,6 +22,7 @@
   "key.createpneumatictacticals.cycle_ammo": "Open Ammo Wheel",
   "key.createpneumatictacticals.interact": "Gun Interact",
   "gui.createpneumatictacticals.ammo_wheel.keep": "%s",
+  "gui.createpneumatictacticals.ammo_wheel.stats": "%1$s | %2$s",
   "gui.createpneumatictacticals.ammo_wheel.empty": "No ammo available",
   "gui.createpneumatictacticals.ammo_dropped": "Inventory full: %d round(s) dropped",
   "tooltip.createpneumatictacticals.incomplete": "Missing required parts",

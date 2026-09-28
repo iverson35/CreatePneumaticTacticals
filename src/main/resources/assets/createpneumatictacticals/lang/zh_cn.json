@@ -22,6 +22,7 @@
   "key.createpneumatictacticals.cycle_ammo": "打开弹种选择轮盘",
   "key.createpneumatictacticals.interact": "持枪交互",
   "gui.createpneumatictacticals.ammo_wheel.keep": "%s",
+  "gui.createpneumatictacticals.ammo_wheel.stats": "%1$s | %2$s",
   "gui.createpneumatictacticals.ammo_wheel.empty": "无可用弹药",
   "gui.createpneumatictacticals.ammo_dropped": "背包已满，已丢弃%d 发弹药",
   "tooltip.createpneumatictacticals.incomplete": "缺失必需组件",

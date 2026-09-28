@@ -60,7 +60,7 @@ public class GunItem extends Item {
             // Loaded rounds replace the two multiplier lines with the numbers
             // they actually produce — "Damage Multiplier: 1.20" says nothing
             // about the round it multiplies, and RPM is what a player reads.
-            LoadedAmmo loaded = loadedAmmo(stack, level, stats);
+            AmmoPerformance loaded = loadedAmmo(stack, level, stats);
             if (loaded != null) {
                 tooltip.add(stat(String.format("%.2f", loaded.damage()), "damage"));
                 tooltip.add(stat(Math.round(loaded.rpm()) + " RPM", "fire_rate"));
@@ -92,8 +92,35 @@ public class GunItem extends Item {
                 .withStyle(ChatFormatting.GRAY);
     }
 
-    /** a loaded round's real fire rate (RPM) and point-blank damage */
-    private record LoadedAmmo(double rpm, double damage) {}
+    /** a round's real fire rate (RPM) and point-blank damage in this gun */
+    public record AmmoPerformance(double rpm, double damage) {}
+
+    /**
+     * What a given ammo TYPE would do in this gun, or null when the type is
+     * unknown or there is no registry to look it up in. Mirrors the firing path
+     * through the same two helpers as {@link #loadedAmmo}: the interval is
+     * {@link AmmoExtension#fireIntervalTicks} (1200 / it is the RPM) and the
+     * damage is the ammo's base damage times the gun's damage_multiplier —
+     * point-blank, before falloff and headshots.
+     */
+    public static @Nullable AmmoPerformance ammoPerformance(@Nullable Level level, GunStats stats, String ammoId) {
+        if (level == null || ammoId == null || ammoId.isEmpty()) return null;
+        var type = level.registryAccess()
+                .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
+                .get(ResourceLocation.tryParse(ammoId));
+        if (type == null) return null;
+        return new AmmoPerformance(
+                1200.0 / AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier),
+                AmmoExtension.baseDamage(type, AmmoExtension.get(ammoId)) * stats.damageMultiplier);
+    }
+
+    /** the same numbers as one line: "Damage: 4.80 | Fire Rate: 171 RPM" */
+    public static Component ammoPerformanceLine(AmmoPerformance perf) {
+        return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".ammo_wheel.stats",
+                stat(String.format("%.2f", perf.damage()), "damage"),
+                stat(Math.round(perf.rpm()) + " RPM", "fire_rate"))
+                .withStyle(ChatFormatting.GRAY);
+    }
 
     /**
      * What the loaded round really does in this gun, or null when nothing
@@ -104,21 +131,13 @@ public class GunItem extends Item {
      * RPM) and the damage is the ammo's base damage times the gun's
      * damage_multiplier — point-blank, before falloff and headshots.
      */
-    private static @Nullable LoadedAmmo loadedAmmo(ItemStack gun, @Nullable Level level, GunStats stats) {
-        String ammoId = GunNbt.getAmmo(gun);
-        if (level == null || ammoId == null || ammoId.isEmpty()) return null;
+    private static @Nullable AmmoPerformance loadedAmmo(ItemStack gun, @Nullable Level level, GunStats stats) {
         // a magazine gun counts as loaded only with rounds in the mag; a
         // backpack feed has no count — its rounds sit in the player's backpack
         boolean backpack = stats.feed != null
                 && stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK;
         if (!backpack && GunNbt.getAmmoCount(gun) <= 0) return null;
-        var type = level.registryAccess()
-                .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
-                .get(ResourceLocation.tryParse(ammoId));
-        if (type == null) return null;
-        return new LoadedAmmo(
-                1200.0 / AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier),
-                AmmoExtension.baseDamage(type, AmmoExtension.get(ammoId)) * stats.damageMultiplier);
+        return ammoPerformance(level, stats, GunNbt.getAmmo(gun));
     }
 
     /**
