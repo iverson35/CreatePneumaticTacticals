@@ -1,6 +1,7 @@
 {
   "name": "createpneumatictacticals:1vo_muzzle_brake_a",
   "module_type": "muzzle",
+  "gun_type": "medium",
   "gun_properties": {
     "recoil_vertical_multiplier": -0.2,
     "recoil_horizontal_multiplier": -0.1,

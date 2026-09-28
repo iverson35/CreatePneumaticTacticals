@@ -254,8 +254,10 @@ public final class ModuleDefinition {
                 }
             }
         }
-        // receiver
-        if (type == ModuleType.RECEIVER || type == ModuleType.BARREL) {
+        // caliber-locked slots (receiver declares the gun's caliber; barrel /
+        // muzzle / feed must match it - enforced at install time by
+        // GunNbt.validate)
+        if (type == ModuleType.RECEIVER || type.isGunTyped()) {
             if (!json.has("gun_type")) throw new IllegalArgumentException(type.getSerializedName() + " requires gun_type: " + id);
             b.gunType = GunType.byName(json.get("gun_type").getAsString(), null);
             if (b.gunType == null) throw new IllegalArgumentException("bad gun_type in " + id);

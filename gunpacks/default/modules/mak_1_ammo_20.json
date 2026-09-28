@@ -1,6 +1,7 @@
 {
   "name": "createpneumatictacticals:mak_1_ammo_20",
   "module_type": "feed",
+  "gun_type": "medium",
   "gun_properties": {
     "reload_speed": -0.2
   },

@@ -1,6 +1,7 @@
 {
   "name": "createpneumatictacticals:8dvo_muzzle_brake_competition",
   "module_type": "muzzle",
+  "gun_type": "light",
   "gun_properties": {
     "recoil_vertical_multiplier": -0.2,
     "recoil_horizontal_multiplier": -0.1,

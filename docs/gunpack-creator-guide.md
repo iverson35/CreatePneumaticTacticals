@@ -150,12 +150,13 @@ gunpacks/<枪包目录名>/
 }
 ```
 
-**② 弹匣** `modules/example_magazine.json`
+**② 弹匣** `modules/example_magazine.json`（`gun_type` 必须和机匣一致）
 
 ```json
 {
   "name": "example:example_magazine",
   "module_type": "feed",
+  "gun_type": "medium",
   "gun_properties": { "reload_speed": -0.1 },
   "load_type": "magazine",
   "clip_size": 20
@@ -425,7 +426,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - 名字里的数字 = 对应直径**去掉小数点**（0.8→`8`、1.0→`1`、1.4→`14`、1.2→`12`），后缀 `dvo`（1.0 习惯写作 `1vo`）。
 - 制退器模型的**内径必须等于同口径枪管的直径**；外轮廓随意（默认包两个制退器的外轮廓分别是 1.4×1.4 与 1.4×1.3）。
 - 实例：`711_barrel` 横截面 0.8×0.8（light）↔ `8dvo_muzzle_brake_competition`；`mak_1_barrel_short` 横截面 1.0×1.0（medium）↔ `1vo_muzzle_brake_a`。
-- `muzzle` 模块本身**没有 `gun_type` 字段**，所以「哪个制退器能装哪根枪管」由枪管的 `module_affected` 白名单表达（§3.5），尺寸规范靠你自觉遵守。
+- `muzzle`（枪口装置）也带 `gun_type`：口径对不上机匣就装不上，所以默认包里 `1vo_*` 只上中口径、`8dvo_*` 只上小口径。在此之上，「这根枪管具体认哪几个制退器」还能用枪管的 `module_affected` 白名单进一步收窄（§3.5）；尺寸规范靠你自觉遵守。
 
 **② `pica` 前缀 = 皮卡丁尼导轨件**
 
@@ -454,6 +455,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - [ ] 瞄具有 `ads_camera`（建议），侧瞄有 `tactical_camera` 且带倾角旋转。
 - [ ] 贴图 ≤64×64、UV 不越界、掩码同尺寸同命名。
 - [ ] 动画名与时长符合 §2.6；模块动画与机匣同名。
+- [ ] `barrel` / `muzzle` / `feed` 都写了 `gun_type`，且与机匣口径一致。
 - [ ] 文件名 = 模块 id 的 path（模型、贴图、动画、定义四处一致）。
 - [ ] 枪管横截面直径符合口径规范（0.8 / 1.0 / 1.4 / 1.2 px），制退器内径与名字（`8dvo` / `1vo` / `14dvo` / `12dvo`）对得上。
 - [ ] 导轨件（`pica*`）按 1×0.4 的导轨尺寸建模，原点落在导轨安装面上。
@@ -485,10 +487,10 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `module_type` | 槽位必需 | 挂载定位骨 | 专属字段 |
 |---|---|---|---|
 | `receiver` 机匣 | ✅ | （宿主本体） | `gun_type`\*、`fire_modes`\*、`fire_sound`、`gun_name`、`base_recoil_pitch`、`base_recoil_yaw`、`ignore_ammo_pitch` |
-| `feed` 供弹 | ✅ | `loc_feed` | `load_type`\*、`load_amount`、`clip_size` |
+| `feed` 供弹 | ✅ | `loc_feed` | `gun_type`\*、`load_type`\*、`load_amount`、`clip_size` |
 | `supply` 供气 | ✅ | `loc_supply` | `supply_type`\*、`air_capacity`、`air_per_shot` |
 | `barrel` 枪管 | ✅ | `loc_barrel` | `gun_type`\* |
-| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
+| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gun_type`\*、`gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
 | `handguard` 护木 | ❌ | `loc_handguard` | `attachment_points` |
 | `handguard_attachment` 配件 | ❌ | 护木上的 `loc_handguard_<位置>` | `positions`\* |
 | `sight` 瞄具 | ❌ | `loc_sight` | `aim_zoom` |
@@ -601,7 +603,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 **独立于以上规则的硬校验**：
 
-- **口径**：`barrel` 的 `gun_type` 必须与 `receiver` 的 `gun_type` 完全相等（双向检查，换机匣也会被拦）。
+- **口径**：`barrel` / `muzzle` / `feed` 的 `gun_type` 必须与 `receiver` 的 `gun_type` 完全相等（双向检查：换机匣会把不匹配的已装枪管/枪口/弹匣拦下来，反向也一样）。枪口虽然挂在枪管上，但枪管本身必须同口径，所以只看机匣就够。
 - **供弹↔供气**：`supply_type: "backpack_tank"` 要求 `feed` 是 `load_type: "backpack"`，反之亦然。
 - **护木配件**：必须已装护木（否则 `no_mount_point`）、护木的 `attachment_points` 必须包含目标位置、配件自己的 `positions` 必须包含该位置（否则 `wrong_position`）。
 - 同一模块 id 不会用自己的规则拦自己（方便同一配件装到多个位置）。
@@ -647,6 +649,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
+| `gun_type` | 字符串 | **必需** | 必须与机匣一致 |
 | `load_type` | 字符串 | **必需** | `magazine` 弹匣 / `round` 整装弹（逐发装填，用 `reload_round` 动画）/ `backpack` 背包供弹 |
 | `load_amount` | 整数 | 0 | `round` 模式每次装填的发数（至少按 1 算） |
 | `clip_size` | 整数 | 1 | 弹匣容量 |
@@ -663,6 +666,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
+| `gun_type` | 字符串 | **必需** | 必须与机匣一致 |
 | `gas_pass_through` | 数字 | 1 | 有多大比例的烟雾**不走**导气孔、直冲前方 |
 | `gas_guides` | 数组 | `[]` | 侧向导气孔：每项 `weight` / `velocity_multiplier` / `spread_multiplier` / `direction_x` / `direction_y`（见 §3.3） |
 
@@ -746,7 +750,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 - **类型专属字段跨类型无效**：把 `aim_zoom` 写进枪管 JSON 不会报错，但也不会生效。
 - **模块被跳过会导致物品消失**：模块 JSON 解析失败后，引用了它的物品在背包里会自动删除，别拿成品枪的模块做实验。
 - **`unique` 的用途**：防止玩家堆多个同名模块叠加属性。
-- **口径是硬门槛**：`barrel` 与 `receiver` 的 `gun_type` 不相等就装不上，报「枪管类型与机匣不匹配」。
+- **口径是硬门槛**：`barrel` / `muzzle`（枪口）/ `feed`（弹匣）与 `receiver` 的 `gun_type` 不相等就装不上，报「口径与机匣不匹配」。这三个槽位**缺 `gun_type` 会让整个模块 JSON 解析失败**（和机匣一样），别忘了写。
 - **护木配件必须两边都声明**：护木的 `attachment_points` 与配件的 `positions` 都要包含目标位置。
 - **客户端的模块与服务端必须逐字节一致**，否则连不上服务器。
 
@@ -973,7 +977,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | 游戏内提示 | 原因 |
 |---|---|
 | 该槽位不接受此模块 | 模块类型与该定位骨不匹配 |
-| 枪管类型与机匣不匹配 | `barrel` 与 `receiver` 的 `gun_type` 不同 |
+| 口径与机匣不匹配 | `barrel` / `muzzle` / `feed` 的 `gun_type` 与 `receiver` 不同 |
 | 与已装模块冲突 | 被已装模块的 `exclude` 规则命中 |
 | 与已装模块不兼容 | 未命中已装模块的 `include` 白名单 |
 | 已装模块要求此槽位留空 / 非空 | 已装模块声明了 `keep_empty` / `not_empty` |

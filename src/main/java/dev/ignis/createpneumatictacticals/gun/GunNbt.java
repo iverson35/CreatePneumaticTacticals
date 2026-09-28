@@ -315,16 +315,25 @@ public final class GunNbt {
     public static String validate(Map<ModuleType, ModuleDefinition> installed,
                                   java.util.Collection<ModuleDefinition> hgAttachments,
                                   ModuleDefinition candidate) {
-        // barrel gun_type must match the receiver's gun_type (checked both directions
-        // so swapping the receiver under an installed barrel is also rejected)
+        // every caliber-locked module (barrel / muzzle / feed) must match the
+        // receiver's gun_type. Checked in both directions - against the already
+        // installed parts AND against the candidate - so swapping the receiver
+        // under an installed barrel/muzzle/magazine is rejected too. A missing
+        // receiver cannot happen through the bench (it is the host), but the
+        // candidate may be one, in which case `installed` supplies the others.
         ModuleDefinition receiver = candidate.type == ModuleType.RECEIVER ? candidate
                 : installed.get(ModuleType.RECEIVER);
-        ModuleDefinition barrel = candidate.type == ModuleType.BARREL ? candidate
-                : installed.get(ModuleType.BARREL);
-        if (receiver != null && barrel != null
-                && receiver.gunType != null && barrel.gunType != null
-                && receiver.gunType != barrel.gunType) {
-            return "gun_type_mismatch";
+        if (receiver != null && receiver.gunType != null) {
+            for (ModuleDefinition installedModule : installed.values()) {
+                if (installedModule.type.isGunTyped() && installedModule.gunType != null
+                        && installedModule.gunType != receiver.gunType) {
+                    return "gun_type_mismatch";
+                }
+            }
+            if (candidate.type.isGunTyped() && candidate.gunType != null
+                    && candidate.gunType != receiver.gunType) {
+                return "gun_type_mismatch";
+            }
         }
         String forward = checkAffectedRules(mergedView(installed, hgAttachments), candidate);
         return forward != null ? forward : checkCandidateRules(installed, hgAttachments, candidate);

@@ -65,7 +65,7 @@
   "gun_type.createpneumatictacticals.medium": "中口径弹药",
   "gui.createpneumatictacticals.reject.missing_dependency": "缺少前置模块",
   "gui.createpneumatictacticals.reject.wrong_type": "该槽位不接受此模块",
-  "gui.createpneumatictacticals.reject.gun_type_mismatch": "枪管类型与机匣不匹配",
+  "gui.createpneumatictacticals.reject.gun_type_mismatch": "口径与机匣不匹配",
   "gui.createpneumatictacticals.reject.excluded_by": "与已装模块冲突",
   "gui.createpneumatictacticals.reject.not_included_by": "与已装模块不兼容",
   "gui.createpneumatictacticals.reject.must_be_empty": "已装模块要求此槽位留空",

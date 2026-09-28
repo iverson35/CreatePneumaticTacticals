@@ -1,6 +1,7 @@
 {
   "name": "createpneumatictacticals:711_ammo_15",
   "module_type": "feed",
+  "gun_type": "light",
   "gun_properties": {
     "reload_speed": -0.2
   },

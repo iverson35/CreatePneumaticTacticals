@@ -64,7 +64,7 @@
   "gun_type.createpneumatictacticals.light": "Small Caliber",
   "gui.createpneumatictacticals.reject.missing_dependency": "Missing prerequisite module",
   "gui.createpneumatictacticals.reject.wrong_type": "This slot rejects the module",
-  "gui.createpneumatictacticals.reject.gun_type_mismatch": "Barrel type doesn't match receiver",
+  "gui.createpneumatictacticals.reject.gun_type_mismatch": "Caliber doesn't match the receiver",
   "gui.createpneumatictacticals.reject.excluded_by": "Conflicts with installed module",
   "gui.createpneumatictacticals.reject.not_included_by": "Incompatible with installed module",
   "gui.createpneumatictacticals.reject.must_be_empty": "Installed module requires this slot empty",
