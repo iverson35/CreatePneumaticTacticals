@@ -100,6 +100,25 @@ minecraft {
             args '--quickPlaySingleplayer', 'dev'
         }
 
+        // Second dev client for LAN testing: run `runClient` (host, auto-loads
+        // the "dev" world) and `runClient2` (guest, stays in the menu to join
+        // over LAN). Deliberately no --quickPlaySingleplayer here, and its own
+        // working directory so logs/options/saves don't collide. Both sides
+        // extract the same gunpack defaults; the mod's channel handshake
+        // rejects the join if the module content hashes differ, so any hand
+        // edit made under run/gunpacks must be mirrored or removed on both.
+        client2 {
+            // FG6 parent: inherit main class / args / jvm args from `client`
+            // (a custom run name has no userdev config of its own, so without
+            // this the task dies with "No main class specified")
+            // parent(<projectPath>, <runName>) - args are (project, run)
+            parent project.path, 'client'
+            inheritArgs true
+            inheritJvmArgs true
+            workingDirectory project.file('run2')
+            args '--username', 'Dev2'
+        }
+
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
