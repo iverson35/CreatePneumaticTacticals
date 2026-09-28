@@ -53,6 +53,14 @@ public final class ModuleAnimatable implements GeoAnimatable {
         // handler; same handler as the receiver's — see GunSoundKeyframes.
         registrar.add(new AnimationController<>(this, "anim", 2, state -> PlayState.CONTINUE)
                 .setSoundKeyframeHandler(GunSoundKeyframes::play));
+        // aim controller, registered after "anim" for the same
+        // last-writer-wins reason as the gun item's (see GeoGunItem).
+        // No sound-keyframe handler: the trigger-sound contract covers
+        // fire/reload/reload_round/bolt only, and a hold loop would
+        // replay its keyframes every loop pass.
+        registrar.add(new AnimationController<>(this,
+                dev.ignis.createpneumatictacticals.client.GunAnimationDriver.AIM_CONTROLLER, 2,
+                state -> PlayState.CONTINUE));
     }
 
     @Override

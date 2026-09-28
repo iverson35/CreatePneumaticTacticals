@@ -101,6 +101,15 @@ public final class ClientGunInput {
     private static long reloadBoltStartMs = 0;
     /** empty reload: onBolt already fired for the batch in flight */
     private static boolean reloadBoltFired = false;
+    /** empty reload with a pre_bolt stage: wall-clock ms when pre_bolt starts
+     *  (= the reload start when the chain is pre_bolt -> reload -> bolt); 0 =
+     *  no pre_bolt stage, the chain starts at reload directly */
+    private static long reloadPreBoltStartMs = 0;
+
+    /** the reload trigger (onReloadStart) already fired for the reload in
+     *  flight — with a pre_bolt stage it fires LATER than the reload state
+     *  itself (at the magazine-swap start), not at startReload time */
+    private static boolean reloadSwapStarted = false;
     private static int reloadBatch = 0;
     private static ItemStack reloadingGun = ItemStack.EMPTY;
     /** hotbar slot the reload was started from (see sameHeldGun) */
@@ -579,13 +588,27 @@ public final class ClientGunInput {
             return;
         }
         reloadRoundMode = stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.ROUND;
-        // duration = receiver animation length (+ bolt when empty) / reload speed
+        // duration = receiver animation length (+ pre_bolt + bolt when
+        // empty) / reload speed
         boolean empty = swapAmmo != null || GunNbt.getAmmoCount(gun) <= 0;
         reloadEmpty = empty; // third-person choreography variant
+        long now = System.currentTimeMillis();
+        double preBoltTicks = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .preBoltTicks(gun);
+        // the empty chain is pre_bolt -> reload -> bolt, each stage only
+        // when the receiver's animation file defines it. The magazine-swap
+        // segment (reload) is what startReload starts; with a pre_bolt the
+        // swap state itself starts at the PRE-BOLT boundary instead.
+        reloadPreBoltStartMs = empty && preBoltTicks > 0 ? now : 0;
+
+        reloadSwapStarted = false;
+        long preBoltMs = (long) (preBoltTicks * 50.0 / Math.max(0.1, stats.reloadSpeed));
         reloadBatchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, reloadRoundMode, empty, stats.reloadSpeed);
-        reloadEndMs = System.currentTimeMillis() + reloadBatchMs;
-        reloadBoltStartMs = empty ? System.currentTimeMillis()
+        reloadEndMs = now + reloadBatchMs;
+        // bolt start = the whole pre-bolt + magazine segment (transitions
+        // included) after the swap-state start
+        reloadBoltStartMs = empty ? now + preBoltMs
                 + dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                         .reloadPhaseMs(gun, reloadRoundMode, stats.reloadSpeed) : 0;
         reloadBatch = reloadRoundMode ? Math.max(1, stats.feed.loadAmount) : stats.feed.clipSize;
@@ -593,7 +616,15 @@ public final class ClientGunInput {
         reloadingSlot = player.getInventory().selected;
         reloadBoltFired = false;
         reloading = true;
-        GunAnimationDriver.onReloadStart();
+        if (reloadPreBoltStartMs > 0) {
+            // pre_bolt opens the chain (its own controller trigger, fired
+            // right here: no chained-stage transition, see onReloadStart);
+            // onReloadStart waits for the magazine-swap boundary in tickReload
+            GunAnimationDriver.onPreBolt(stats.reloadSpeed);
+        } else {
+            GunAnimationDriver.onReloadStart();
+            reloadSwapStarted = true;
+        }
     }
 
     /**
@@ -697,6 +728,15 @@ public final class ClientGunInput {
             interruptReload();
             return;
         }
+        // pre_bolt -> reload handoff at the magazine-swap boundary. The
+        // pre-bolt animation fired at startReload; the magazine swap's own
+        // trigger fires here once the pre-bolt window elapsed (0 ms when
+        // there is no stage: reloadSwapStarted already latched in startReload)
+        if (reloadEmpty && !reloadSwapStarted
+                && System.currentTimeMillis() >= reloadPreBoltStartMs + preBoltMs(gun, stats)) {
+            reloadSwapStarted = true;
+            GunAnimationDriver.onReloadStart();
+        }
         if (reloading && reloadEmpty && !reloadBoltFired
                 && System.currentTimeMillis() >= reloadBoltStartMs) {
             // the bolt plays as its own animation instead of the reload
@@ -717,12 +757,21 @@ public final class ClientGunInput {
         GunNbt.setAmmoCount(gun, Math.min(stats.feed.clipSize,
                 GunNbt.getAmmoCount(gun) + reloadBatch));
         if (reloadRoundMode && GunNbt.getAmmoCount(gun) < stats.feed.clipSize) {
-            // next batch: no bolt cycle (chamber already loaded)
+            // next batch: no bolt cycle (chamber already loaded), and the
+            // chain flags reset so a later empty batch (impossible here,
+            // kept symmetric with startReload) cannot re-fire stages
             reloadEndMs = System.currentTimeMillis() + dev.ignis.createpneumatictacticals.client.render
                     .GunAnimTiming.reloadBatchMs(gun, true, false, stats.reloadSpeed);
+            reloadSwapStarted = true; // the swap segment IS running
         } else {
             reloading = false;
         }
+    }
+
+    /** pre_bolt stage length in ms, reloadSpeed-scaled (0 = no stage) */
+    private static long preBoltMs(ItemStack gun, GunStats stats) {
+        return (long) (dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .preBoltTicks(gun) * 50.0 / Math.max(0.1, stats.reloadSpeed));
     }
 
     /**
@@ -797,12 +846,16 @@ public final class ClientGunInput {
         int batch = tailBatch[slot];
         boolean roundMode = tailRoundMode[slot];
         tailGun[slot] = null;
-        // the tail window is exactly what the empty batch adds over the
-        // magazine phase (bolt animation + the two GeckoLib transitions)
-        long phaseMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
-                .reloadBatchMs(gun, roundMode, false, stats.reloadSpeed);
+        // the tail window is the bolt segment: what the empty batch adds
+        // over the pre-bolt + magazine phases, pre_bolt included (its
+        // length is zero for guns without the stage, so the arithmetic is
+        // unchanged for them)
         long batchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, roundMode, true, stats.reloadSpeed);
+        long prePhaseMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .preBoltTicks(gun) > 0 ? preBoltMs(gun, stats) : 0;
+        long phaseMs = prePhaseMs + dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .reloadBatchMs(gun, roundMode, false, stats.reloadSpeed);
         reloadingGun = gun;
         reloadingSlot = slot;
         reloadRoundMode = roundMode;
@@ -813,6 +866,9 @@ public final class ClientGunInput {
         // segment (it is already swapped)
         reloadBoltFired = true;
         reloadBoltStartMs = 0;
+        reloadPreBoltStartMs = 0;
+
+        reloadSwapStarted = true; // parked past the magazine swap: never re-fire
         reloadEndMs = System.currentTimeMillis() + Math.max(50, batchMs - phaseMs);
         reloading = true;
         GunAnimationDriver.onBolt(stats.reloadSpeed);
@@ -823,6 +879,8 @@ public final class ClientGunInput {
         if (!reloading) return;
         reloading = false;
         reloadBoltFired = false;
+
+        reloadSwapStarted = false;
         reloadPending = false;
         reloadPendingGun = null;
         reloadingSlot = -1;

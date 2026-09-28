@@ -10,6 +10,15 @@ import software.bernie.geckolib.core.animation.RawAnimation;
  * plays); "bolt" (empty-reload bolt cycle). Sound keyframes are authored
  * in the animation json (sound_effects) and played via GeckoLib's
  * SoundKeyframeHandler (software.bernie.geckolib.core.keyframe.event.SoundKeyframeEvent).
+ *
+ * <p>Aim animations live on their own "aim" controller (registered AFTER
+ * "anim", so its bones win conflicts — see GunAnimationDriver.AIM): the
+ * one-shot "anim" controller re-triggers fire/reload on every event and a
+ * shared controller would cancel a running aim loop with each shot. The
+ * four aim edges are one-shot thenPlay stages; the two hold animations
+ * are the loop the hold settles into (AimAnimationState starts them after
+ * the start animation finishes — GeckoLib never chains thenPlay into a
+ * different name by itself).
  */
 public final class GunAnimations {
 
@@ -18,6 +27,13 @@ public final class GunAnimations {
     public static final RawAnimation RELOAD_MAGAZINE = RawAnimation.begin().thenPlay("reload");
     public static final RawAnimation RELOAD_ROUND = RawAnimation.begin().thenPlay("reload_round");
     public static final RawAnimation BOLT = RawAnimation.begin().thenPlay("bolt");
+    public static final RawAnimation PRE_BOLT = RawAnimation.begin().thenPlay("pre_bolt");
+    public static final RawAnimation AIM_START = RawAnimation.begin().thenPlay("aim_start");
+    public static final RawAnimation AIM_END = RawAnimation.begin().thenPlay("aim_end");
+    public static final RawAnimation TACTICAL_AIM_START = RawAnimation.begin().thenPlay("tactical_aim_start");
+    public static final RawAnimation TACTICAL_AIM_END = RawAnimation.begin().thenPlay("tactical_aim_end");
+    public static final RawAnimation AIM_LOOP = RawAnimation.begin().thenLoop("aim");
+    public static final RawAnimation TACTICAL_AIM_LOOP = RawAnimation.begin().thenLoop("tactical_aim");
 
     private GunAnimations() {}
 

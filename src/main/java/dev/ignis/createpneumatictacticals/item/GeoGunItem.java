@@ -106,6 +106,17 @@ public class GeoGunItem extends GunItem implements GeoItem {
                     event -> dev.ignis.createpneumatictacticals.client.render.GunSoundKeyframes.play(event));
         }
         registrar.add(anim);
+        // aim controller (aim_start/end + the hold loop), driven by the same
+        // GunAnimationDriver broadcast. Registered AFTER "anim": GeckoLib's
+        // processor walks controllers in registration order and the later
+        // writer wins a shared bone, so aim overrides the one-shot poses on
+        // conflict while fire/reload keep the "anim" controller to
+        // themselves. Same CONTINUE rule as above (STOP would cancel a
+        // forced setAnimation on the very next process()).
+        AnimationController<GeoGunItem> aim = new AnimationController<>(this,
+                dev.ignis.createpneumatictacticals.client.GunAnimationDriver.AIM_CONTROLLER, 2,
+                state -> PlayState.CONTINUE);
+        registrar.add(aim);
     }
 
     @Override

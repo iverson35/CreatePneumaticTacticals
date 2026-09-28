@@ -19,8 +19,9 @@ public final class GunAnimTiming {
 
     private GunAnimTiming() {}
 
-    /** reload PHASE only (no bolt, no bolt transition) — when the third-person
-     * choreography should start its up-swing, aligned with the bolt start */
+    /** reload PHASE only (no pre-bolt, no bolt, no transitions) — when the
+     *  third-person choreography should start its up-swing, aligned with
+     *  the bolt start */
     public static long reloadPhaseMs(ItemStack gun, boolean round, double reloadSpeed) {
         double ticks = animLengthTicks(gun, round ? "reload_round" : "reload",
                 round ? FALLBACK_ROUND_TICKS : FALLBACK_RELOAD_TICKS);
@@ -29,19 +30,45 @@ public final class GunAnimTiming {
 
     /**
      * Duration of one reload batch in milliseconds. Round mode: one batch =
-     * one reload_round animation. Empty magazine appends the bolt cycle.
+     * one reload_round animation. Empty magazine plays the full empty chain
+     * pre_bolt → reload → bolt (pre_bolt only when the receiver's animation
+     * file defines it — a missing one adds nothing; the bolt's fallback
+     * length applies when the file lacks it, exactly the pre-pre_bolt
+     * behavior).
      */
     public static long reloadBatchMs(ItemStack gun, boolean round, boolean empty, double reloadSpeed) {
         double ticks = animLengthTicks(gun, round ? "reload_round" : "reload",
                 round ? FALLBACK_ROUND_TICKS : FALLBACK_RELOAD_TICKS);
         if (empty) {
+            double pre = preBoltTicks(gun);
+            ticks += pre;
             ticks += animLengthTicks(gun, "bolt", FALLBACK_BOLT_TICKS);
-            // two 2-tick GeckoLib transitions (reload start + bolt start):
-            // without them the lock expires before the bolt finishes
-            // blending and a held click truncates its tail
-            ticks += 4;
+            // one 2-tick GeckoLib transition per stage start (pre-bolt /
+            // reload / bolt; the bolt always counts — its fallback length
+            // applies when the file lacks it). 4 ticks for the classic
+            // two-stage reload (unchanged), 6 with a pre_bolt.
+            ticks += 2 * (2 + (pre > 0 ? 1 : 0));
         }
         return (long) (ticks * 50.0 / Math.max(0.1, reloadSpeed));
+    }
+
+    /**
+     * pre_bolt stage length in ticks, 0 when the receiver's animation file
+     * does not define pre_bolt. Deliberately NOT animLengthTicks with a
+     * fallback: a missing pre_bolt must add no time at all (the fallback
+     * path exists for guns with NO animation file, where the whole reload
+     * needs SOME length).
+     */
+    public static double preBoltTicks(ItemStack gun) {
+        if (!hasNamedAnimation(gun, "pre_bolt")) return 0;
+        return animLengthTicks(gun, "pre_bolt", 0);
+    }
+
+    /** does the receiver's animation file define the named animation? */
+    public static boolean hasNamedAnimation(ItemStack gun, String name) {
+        ResourceLocation file = GunAssets.forStack(gun).animation();
+        BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(file);
+        return baked != null && GunAnimations.resolve(baked, name) != null;
     }
 
     /** animation length in ticks from the gun's current animation file */

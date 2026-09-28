@@ -23,16 +23,27 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Drives the "anim" controller of the held gun AND every installed module.
- * Animations broadcast (plan_v3): fire/reload/bolt are triggered on the
- * receiver and on each module's own animation json under the same animation
- * name — modules that don't define it stay silent (filterExisting). E.g.
- * reload cycles the receiver's charge handle while the feed module ejects
- * its magazine; fire can move a bolt on any part that ships one.
+ * Drives the one-shot "anim" controller (fire/reload/bolt/pre_bolt) and the
+ * parallel "aim" controller (aim_start/end + the aim hold loop) of the held
+ * gun AND every installed module. Animations broadcast (plan_v3):
+ * fire/reload/bolt are triggered on the receiver and on each module's own
+ * animation json under the same animation name — modules that don't define
+ * it stay silent (filterExisting). E.g. reload cycles the receiver's charge
+ * handle while the feed module ejects its magazine; fire can move a bolt on
+ * any part that ships one.
+ *
+ * <p>Two controllers, one broadcast: the one-shot "anim" controller is
+ * re-triggered by every fire/reload event, which would cancel a running aim
+ * loop — so the aim animations live on their own "aim" controller and the
+ * two chains stack. GeckoLib's processor walks a manager's controllers in
+ * registration order and the later writer wins a shared bone, so both sides
+ * register "aim" AFTER "anim" and the aim pose overrides while held.
  */
 public final class GunAnimationDriver {
 
     public static final String CONTROLLER = "anim";
+    /** aim-loop controller; registered after {@link #CONTROLLER} on both the gun and module animatables */
+    public static final String AIM_CONTROLLER = "aim";
 
     private GunAnimationDriver() {}
 
@@ -81,6 +92,28 @@ public final class GunAnimationDriver {
     }
 
     /**
+     * Empty-reload pre-bolt stage (the part before the magazine swap, e.g.
+     * the charging handle parked back). Same standalone-trigger contract as
+     * {@link #onBolt}: not a chained stage, so the transition start is never
+     * stale. AW skins only get it when the receiver's OWN animation file
+     * defines pre_bolt — the skin side has no filterExisting to consult, and
+     * the gun visibly parking its handle is the author's signal that the
+     * whole three-stage reload is intended.
+     */
+    public static void onPreBolt(double speed) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+        ItemStack gun = player.getMainHandItem();
+        if (!(gun.getItem() instanceof GeoGunItem)) return;
+        if (!GunAnimations.hasAnimation(
+                dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation(),
+                "pre_bolt")) {
+            return; // no pre_bolt authored: no stage, no AW broadcast
+        }
+        broadcast(gun, GunAnimations.PRE_BOLT, speed, 2);
+    }
+
+    /**
      * Fire animation (charge handle / bolt cycle / mag feed) on all parts,
      * with a single-tick transition. GeckoLib keeps the controller in
      * TRANSITIONING for transitionLength ticks before the animation runs, so
@@ -96,36 +129,99 @@ public final class GunAnimationDriver {
         broadcast(gun, GunAnimations.FIRE, 1.0, 1);
     }
 
+    /**
+     * Aim-edge one-shot (aim_start / aim_end / tactical_aim_start /
+     * tactical_aim_end) on the "aim" controller of the receiver and every
+     * module. Modules without the animation stay silent. AW skins get the
+     * same bare name; AwCompat plays it only on skins that define it. No
+     * loop chaining here: GeckoLib plays thenPlay stages once and stops the
+     * controller, leaving bones at the final keyframe, so the hold loop can
+     * take over any time (AimAnimationState queues it after the start's
+     * length).
+     */
+    public static void onAimEdge(String bareName) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+        ItemStack gun = player.getMainHandItem();
+        if (!(gun.getItem() instanceof GeoGunItem)) return;
+        RawAnimation anim = switch (bareName) {
+            case "aim_start" -> GunAnimations.AIM_START;
+            case "aim_end" -> GunAnimations.AIM_END;
+            case "tactical_aim_start" -> GunAnimations.TACTICAL_AIM_START;
+            case "tactical_aim_end" -> GunAnimations.TACTICAL_AIM_END;
+            default -> null;
+        };
+        if (anim == null) return;
+        broadcastAim(gun, anim, 1.0, 2, bareName);
+    }
+
+    /**
+     * The aim hold loop (aim / tactical_aim) on the "aim" controller. Same
+     * broadcast shape as the edges; the loop keeps the aim pose alive on
+     * parts whose loop animation exists (a gun may define aim_start only —
+     * then the raise is the whole animation and the controller stops with
+     * bones at the start's last frame, which IS the aim pose).
+     */
+    public static void onAimLoop(boolean tactical) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+        ItemStack gun = player.getMainHandItem();
+        if (!(gun.getItem() instanceof GeoGunItem)) return;
+        RawAnimation anim = tactical ? GunAnimations.TACTICAL_AIM_LOOP : GunAnimations.AIM_LOOP;
+        broadcastAim(gun, anim, 1.0, 2, tactical ? "tactical_aim" : "aim");
+    }
+
     /** receiver + every installed module (each plays the animation only if it defines it) */
     private static void broadcast(ItemStack gun, RawAnimation anim, double speed, int transitionTicks) {
-        triggerReceiver(gun, anim, speed, transitionTicks);
+        broadcast(gun, anim, speed, transitionTicks, CONTROLLER, null);
+    }
+
+    /** aim-controller twin of {@link #broadcast}; name is the bare animation
+     *  name handed to AW (null = not broadcast to skins) */
+    private static void broadcastAim(ItemStack gun, RawAnimation anim, double speed, int transitionTicks,
+            String awName) {
+        broadcast(gun, anim, speed, transitionTicks, AIM_CONTROLLER, awName);
+    }
+
+    /**
+     * Core broadcast: receiver + modules on the given controller, then AW
+     * skins with the given bare name. awName null skips the AW pass (the
+     * one-shot broadcast derives it from the RawAnimation; the aim side
+     * passes its stage name explicitly).
+     */
+    private static void broadcast(ItemStack gun, RawAnimation anim, double speed, int transitionTicks,
+            String controller, String awName) {
+        triggerReceiver(gun, anim, speed, transitionTicks, controller);
         // per-gun-stack module animation instances (mirrors GunModulesLayer)
         long gunId = GeoItem.getId(gun);
         Set<ResourceLocation> seen = new HashSet<>();
         for (ModuleDefinition def : GunNbt.readModules(gun).values()) {
             if (def.type != ModuleType.RECEIVER && seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId, speed, transitionTicks);
+                triggerModule(def.id, anim, gunId, speed, transitionTicks, controller);
             }
         }
         for (ModuleDefinition def : GunNbt.readHandguardAttachments(gun).values()) {
             if (seen.add(def.id)) {
-                triggerModule(def.id, anim, gunId, speed, transitionTicks);
+                triggerModule(def.id, anim, gunId, speed, transitionTicks, controller);
             }
         }
         // AW skins ride the same broadcast: play() no-ops on skins that
         // don't define the name, so unskinned guns pay nothing (the guard
         // inside is a cheap static boolean when AW is absent)
+        String name = awName != null ? awName : animName(anim);
         if (AwCompat.loaded()) {
-            AwCompat.onGunAnimation(gunId, animName(anim), speed);
+            AwCompat.onGunAnimation(gunId, name, speed);
         }
     }
+
 
     /** the single animation name of a RawAnimation built with thenPlay */
     private static String animName(RawAnimation anim) {
         return anim.getAnimationStages().get(0).animationName();
     }
 
-    private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed, int transitionTicks) {
+    private static void triggerReceiver(ItemStack gun, RawAnimation anim, double speed, int transitionTicks,
+            String controller) {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
         RawAnimation filtered = GunAnimations.filterExisting(anim,
                 dev.ignis.createpneumatictacticals.client.render.GunAssets.forStack(gun).animation());
@@ -136,25 +232,26 @@ public final class GunAnimationDriver {
         // can land on another gun / the placeholder (silent no-op stubs)
         dev.ignis.createpneumatictacticals.client.render.GunHandsAwareRenderer.activeModel()
                 .withStack(gun, () -> triggerOn("recv", id,
-                        item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed, transitionTicks));
+                        item.getAnimatableInstanceCache().getManagerForId(id), filtered, speed, transitionTicks,
+                        controller));
     }
 
     private static void triggerModule(ResourceLocation moduleId, RawAnimation anim, long gunId, double speed,
-            int transitionTicks) {
+            int transitionTicks, String controller) {
         RawAnimation filtered = GunAnimations.filterExisting(anim, ModuleAnimatable.animationId(moduleId));
         if (filtered == null) return; // module omits this animation: silent
         ModuleAnimatable module = ModuleAnimatable.of(moduleId);
         triggerOn("mod:" + moduleId, gunId, module.getAnimatableInstanceCache().getManagerForId(gunId), filtered,
-                speed, transitionTicks);
+                speed, transitionTicks, controller);
     }
     private static void triggerOn(String scope, long instanceId, AnimatableManager<? extends GeoAnimatable> manager,
-            RawAnimation anim, double speed, int transitionTicks) {
+            RawAnimation anim, double speed, int transitionTicks, String controller) {
         if (manager == null) return;
-        AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
-        if (controller == null) return;
+        AnimationController<?> ctrl = manager.getAnimationControllers().get(controller);
+        if (ctrl == null) return;
         // per-trigger: 2 ticks for reload/bolt (they blend in from whatever
         // the gun was doing), 1 for fire (see onFire)
-        controller.transitionLength(transitionTicks);
+        ctrl.transitionLength(transitionTicks);
         // GeckoLib blends the transition start from its bone-snapshot table,
         // which went stale the moment the previous animation finished (it
         // only updates while an animation is RUNNING). Replay the pose the
@@ -162,7 +259,7 @@ public final class GunAnimationDriver {
         // this, fire->reload visibly twitches the bolt from the stale
         // mid-animation value before blending back to 0.
         dev.ignis.createpneumatictacticals.client.render.GunAnimations.refreshSnapshotsFromLivePose(scope, instanceId, manager);
-        controller.setAnimationSpeed(Math.max(0.1, speed));
+        ctrl.setAnimationSpeed(Math.max(0.1, speed));
         // forceAnimationReset only marks the controller for reload
         // (needsAnimationReload); setAnimation still enters the normal
         // TRANSITIONING path. It is required when REPLAYING the same
@@ -170,18 +267,22 @@ public final class GunAnimationDriver {
         // otherwise treat the equal RawAnimation as "already playing" and
         // keep the old run. For a different animation it is skipped purely
         // to keep the transition blending from the refreshed pose above.
-        if (anim.equals(controller.getCurrentRawAnimation())) {
-            controller.forceAnimationReset();
+        // Skipped for the aim loop as well: re-queuing the same loop while
+        // it is already running would restart it from tick 0.
+        if (anim.equals(ctrl.getCurrentRawAnimation())) {
+            ctrl.forceAnimationReset();
         }
-        controller.setAnimation(anim);
+        ctrl.setAnimation(anim);
     }
 
     /**
      * Hard interrupt (slot switch / screen opened mid-reload): stops the
-     * one-shot controller on the receiver and every installed module, then
-     * snaps all poses back to rest. forceAnimationReset + a zero-length wait
-     * is the clean stop: stop() alone gets revived by the CONTINUE predicate
-     * and a bare forceAnimationReset replays the queued animation.
+     * one-shot AND aim controllers on the receiver and every installed
+     * module, then snaps all poses back to rest. forceAnimationReset + a
+     * zero-length wait is the clean stop: stop() alone gets revived by the
+     * CONTINUE predicate and a bare forceAnimationReset replays the queued
+     * animation. The aim controller stops with the same event — the aim
+     * state machine re-triggers its edge when the gun is aimed again.
      */
     public static void interrupt(ItemStack gun) {
         if (!(gun.getItem() instanceof GeoGunItem item)) return;
@@ -214,9 +315,11 @@ public final class GunAnimationDriver {
 
     private static void stopOn(AnimatableManager<? extends GeoAnimatable> manager) {
         if (manager == null) return;
-        AnimationController<?> controller = manager.getAnimationControllers().get(CONTROLLER);
-        if (controller == null) return;
-        controller.forceAnimationReset();
-        controller.setAnimation(STOP);
+        for (String name : new String[]{CONTROLLER, AIM_CONTROLLER}) {
+            AnimationController<?> controller = manager.getAnimationControllers().get(name);
+            if (controller == null) continue;
+            controller.forceAnimationReset();
+            controller.setAnimation(STOP);
+        }
     }
 }
