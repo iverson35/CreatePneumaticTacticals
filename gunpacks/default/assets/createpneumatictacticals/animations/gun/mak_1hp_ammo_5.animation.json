@@ -1,0 +1,118 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.mak_1hp_ammo_5.reload": {
+			"animation_length": 3,
+			"bones": {
+				"mag": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.5": {
+							"vector": [0, 0, 0]
+						},
+						"0.6667": {
+							"vector": [-5, 0, 0],
+							"easing": "easeOutBack"
+						},
+						"0.75": {
+							"vector": [-5, 0, 0]
+						},
+						"1.2917": {
+							"vector": [-5, 0, 0]
+						},
+						"1.5": {
+							"vector": [-4.0032, 2.30812, 29.91932]
+						},
+						"1.8333": {
+							"vector": [0, 0, 0]
+						},
+						"2.125": {
+							"vector": [0, 0, 0]
+						},
+						"2.5417": {
+							"vector": [0, 0, 0]
+						},
+						"2.6667": {
+							"vector": [-5, 0, 0]
+						},
+						"2.75": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutCirc"
+						},
+						"3.0": {
+							"vector": [0, 0, 0]
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.5": {
+							"vector": [0, 0, 0]
+						},
+						"0.75": {
+							"vector": [0, 0, 0]
+						},
+						"1.0": {
+							"vector": [0, -3.7, 0],
+							"easing": "linear"
+						},
+						"1.5": {
+							"vector": [-4, -21, -1],
+							"easing": "linear"
+						},
+						"1.8333": {
+							"vector": [0, -8, 0]
+						},
+						"2.3333": {
+							"vector": [0, -8, 0]
+						},
+						"2.5417": {
+							"vector": [0, -1, 0],
+							"easing": "linear"
+						},
+						"2.6667": {
+							"vector": [0, -1, 0],
+							"easing": "linear"
+						},
+						"2.75": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutExpo"
+						},
+						"3.0": {
+							"vector": [0, 0, 0]
+						}
+					},
+					"scale": {
+						"1.4167": {
+							"vector": [1, 1, 1]
+						},
+						"1.5": {
+							"vector": [0, 0, 0]
+						},
+						"1.8333": {
+							"vector": [0, 0, 0]
+						},
+						"2.0417": {
+							"vector": [1, 1, 1]
+						}
+					}
+				}
+			},
+			"sound_effects": {
+				"0.5": {
+					"effect": "createpneumatictacticals:gun.gbb.open"
+				},
+				"0.6667": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_out"
+				},
+				"2.625": {
+					"effect": "createpneumatictacticals:gun.pistol.mag_in"
+				}
+			}
+		}
+	},
+	"geckolib_format_version": 2
+}

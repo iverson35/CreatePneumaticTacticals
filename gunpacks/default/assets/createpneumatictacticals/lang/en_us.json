@@ -20,5 +20,10 @@
   "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 Handgun Red Dot Sight",
   "module.createpneumatictacticals.8dvo_muzzle_brake_competition": ".8vo Competition Muzzle Brake",
   "module.createpneumatictacticals.mak_1_barrel_long": "MAK-1 Long Barrel",
-  "module.createpneumatictacticals.mak_1_shooter_handguard": "MAK-1 Shooter Handguard"
+  "module.createpneumatictacticals.mak_1_shooter_handguard": "MAK-1 Shooter Handguard",
+  "module.createpneumatictacticals.mak_1hp_receiver": "MAK-1HP Receiver",
+  "module.createpneumatictacticals.mak_1hp_barrel": "MAK-1HP Barrel",
+  "module.createpneumatictacticals.mak_1hp_ammo_5": "MAK-1HP 5-Round Magazine",
+  "gun.createpneumatictacticals.mak_1hp": "MAK-1HP Large-Caliber SMG",
+  "module.createpneumatictacticals.14dvo_silencer_a": "14DVO Standard Silencer"
 }

@@ -36,10 +36,14 @@ public final class GunLength {
     /** legacy default when the bone chain is absent (matches the old constants) */
     public static final float DEFAULT = 0.5f;
 
-    /** z of receiver.loc_barrel in blocks; NaN sentinel handled inside */
+    /**
+     * z of receiver.loc_barrel in blocks, negative when the barrel mounts
+     * forward of the gun origin (the normal case: -Z is the muzzle
+     * direction); NaN when the receiver has no such bone.
+     */
     public static float barrelMountZ(ResourceLocation receiverId) {
         Float z = RECEIVER_BARREL_MOUNT.get(receiverId);
-        return z == null ? DEFAULT : z;
+        return z == null ? Float.NaN : z;
     }
 
     /** load-time hook from ModuleDefinition.fromJson: remember a receiver's
@@ -61,7 +65,7 @@ public final class GunLength {
         ModuleDefinition receiver = modules.get(ModuleType.RECEIVER);
         if (receiver == null) return DEFAULT;
         float z = barrelMountZ(receiver.id);
-        if (z == DEFAULT || z <= 0f) return DEFAULT; // no loc_barrel bone or degenerate
+        if (Float.isNaN(z)) return DEFAULT; // no loc_barrel bone: legacy length
         ModuleDefinition barrel = modules.get(ModuleType.BARREL);
         if (barrel == null || Float.isNaN(barrel.muzzleOffsetZ)) return DEFAULT;
         ModuleDefinition muzzle = modules.get(ModuleType.MUZZLE);

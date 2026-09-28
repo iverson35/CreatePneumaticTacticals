@@ -147,7 +147,7 @@ public final class ModCreativeTabs {
         Map<ModuleType, ModuleDefinition> installed = new HashMap<>();
         installed.put(ModuleType.RECEIVER, receiver);
         for (ModuleType slot : List.of(ModuleType.FEED, ModuleType.BARREL, ModuleType.SUPPLY)) {
-            ModuleDefinition pick = firstAffected(receiver, slot);
+            ModuleDefinition pick = firstInstallable(receiver, slot, installed);
             if (pick == null) return null; // incomplete: no sample
             installed.put(slot, pick);
         }
@@ -163,11 +163,27 @@ public final class ModCreativeTabs {
         return gun;
     }
 
-    private static ModuleDefinition firstAffected(ModuleDefinition receiver, ModuleType slot) {
+    /**
+     * First module of {@code slot} the receiver's {@code module_affected} rules
+     * accept AND the bench would actually install, with the parts picked so far
+     * already in {@code installed} (so the caliber lock and the feed&harr;supply
+     * pairing apply to the sample exactly as they do in the workbench).
+     *
+     * <p>Matching the id regex alone is not enough: `mak_1.+` happily matches the
+     * heavy `mak_1hp_*` family too, which is how a medium mak_1 sample gun came
+     * out with a heavy magazine - whichever family happened to come first in
+     * {@link ModuleManager#all()}'s iteration order won. An affected rule that
+     * cannot be satisfied by any acceptable module leaves the sample out.
+     */
+    private static ModuleDefinition firstInstallable(ModuleDefinition receiver, ModuleType slot,
+                                                     Map<ModuleType, ModuleDefinition> installed) {
         for (ModuleDefinition def : ModuleManager.all().values()) {
             if (def.type != slot) continue;
             for (ModuleDefinition.Affected a : receiver.affected) {
-                if (a.type() == slot && a.matches(def.id)) return def;
+                if (a.type() == slot && a.matches(def.id)
+                        && GunNbt.validate(installed, List.of(), def) == null) {
+                    return def;
+                }
             }
         }
         return null;

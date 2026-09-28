@@ -65,6 +65,10 @@ public final class GunStats {
     @Nullable public ModuleDefinition supply;
     @Nullable public ModuleDefinition barrel;
     @Nullable public ModuleDefinition muzzle;
+    /** SoundEvent id of the shot sound: muzzle override, else the receiver's;
+     * null = the vanilla potato-cannon default. Volume and attenuation live in
+     * the sound definition itself (the pack's sounds.json) */
+    @Nullable public String fireSound;
 
     /** handling-speed ratio bounds applied to ergonomics (aim/stance/ready feel) */
     public static final double ERGO_MIN = 0.25, ERGO_MAX = 3.0;
@@ -118,6 +122,14 @@ public final class GunStats {
         s.barrel = installed.get(ModuleType.BARREL);
         s.supply = installed.get(ModuleType.SUPPLY);
         s.muzzle = installed.get(ModuleType.MUZZLE);
+        // suppressor: a muzzle device that declares fire_sound wins over the
+        // receiver's own; both call sites (local shot sound + server broadcast
+        // to everyone else) read this field so they can never disagree
+        if (s.muzzle != null && s.muzzle.fireSound != null) {
+            s.fireSound = s.muzzle.fireSound;
+        } else if (s.receiver != null) {
+            s.fireSound = s.receiver.fireSound;
+        }
         if (installed.containsKey(ModuleType.SIGHT)) {
             s.aimZoom = installed.get(ModuleType.SIGHT).aimZoom;
         }

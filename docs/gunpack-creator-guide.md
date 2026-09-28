@@ -118,6 +118,7 @@ gunpacks/<枪包目录名>/
 - **`volume` ≤ 1 不会缩短可听距离**：客户端的可听半径是 `max(播放音量 × 条目音量, 1) × attenuation_distance`，那个 `max(…, 1)` 把小于 1 的部分挡在外面——0.3 的音效和 1.0 的音效一样在 `attenuation_distance` 处才硬截止，只是全程更轻、实际上更早听不清。**但 `volume` > 1 会连距离一起放大**（比如 2.0 会把可听距离翻倍），想要"远但轻"应该调 `attenuation_distance` 而不是把音量压小。
 - `weight`（多条目随机权重）、`stream`、`preload` 同样是原版键，可用。
 - **`attenuation_distance` = 可听距离（格）**，默认 16：客户端按它衰减（音量 = 播放音量 × `(1 − 距离/距离上限)²`），服务端按它决定把声音包发给谁——**枪声想传远就调这个**（默认包 `gun.gbb.shoot*` 已设 64，消音手枪保持 16）。一个事件写了多条 `sounds` 时取**最大的**那个。注意它和 `volume` 不同：`volume` 是响度、改完 F3+T 就生效；`attenuation_distance` 在事件注册时定死，**改它要重启**。
+- **开火声音的优先级**：枪口装置的 `fire_sound` > 机匣的 `fire_sound` > 原版 `create:fwoomp`。消音器就是靠这个键顶掉机匣的枪声——「有多安静」不取决于这个键本身，而取决于它指向的那条事件：`volume` 决定多轻、`attenuation_distance` 决定多远还能听见（注意 §1.5.1 上面那条：**16 格是下限**，写更小也会被抬到 16）。同一个键**两端生效**：开火者本地即时播，服务端再用同一份解析结果广播给其他人（不含开火者）。id 写错、或事件没注册 = 这一枪**完全无声**。
 - 事件键（顶层键）**新增/删除需要重启**（注册表内容）；**改 `volume`/`pitch`/ogg 文件本身只要 F3+T**（资源层，见 §1.6）。
 
 ### 1.6 热重载与调试
@@ -129,7 +130,7 @@ gunpacks/<枪包目录名>/
 | 重启 | `sounds.json` 新增/删除**事件键**（注册表内容）必须重启 |
 
 - 日志关键字：`Gunpack root: ...`（启动时的枪包根目录与内容哈希）、`Loaded N modules ...`、`Failed to read module file ...`（某个 JSON 坏了，该文件被跳过，其余照常加载）。
-- 创造模式物品栏里有一个 **`gunpacks`** 标签页：列出**所有已加载的模块定义**，以及每种机匣的**示例整枪**——这是最快的测试入口（不需要配方）。
+- 创造模式物品栏里有一个 **`gunpacks`** 标签页：列出**所有已加载的模块定义**，以及每种机匣的**示例整枪**——这是最快的测试入口（不需要配方）。示例整枪按机匣的 `module_affected` 挑件，**并且逐个过装配台那套校验**（口径、供弹↔供气配对…）：同族命名带前缀时尤其重要，比如 `mak_1.+` 会同时命中重型 `mak_1hp_*`，被校验挡掉后才会往下挑真正同口径的件；某个槽位挑不出合法模块时，这把机匣就没有示例枪。
 
 ### 1.7 五分钟：一个能开枪的最小枪包
 
@@ -345,7 +346,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 2. 把它的 **pivot 拖到安装点**：模块的原点会精确落在 pivot 上，且**模块模型本身的坐标是相对它自己的原点的**。
 3. 需要让模块倾斜/翻转，就**旋转定位骨**（例如侧挂的供气模块 `loc_supply` 用 `[0,0,-90]`），不要去改模块模型的角度。
 4. 护木：在护木模型里放 `loc_handguard_<位置>`，然后在护木 JSON 的 `attachment_points` 里声明同样的位置列表；配件模型统一按「顶部朝向」建，位置差异交给定位骨的旋转。
-5. 枪长与枪口烟雾依赖 `loc_barrel` / `loc_muzzle` / `loc_muzzle_attachment` 的 pivot z；缺失时回退成 0.5 方块的旧默认值（枪口烟雾会出现在错误位置）。
+5. 枪长与枪口烟雾依赖 `loc_barrel` / `loc_muzzle` / `loc_muzzle_attachment` 的 pivot z；**朝枪口方向的 z 是负的**（Blockbench 里枪口朝 −Z；机匣上的 `loc_barrel` 通常是个小负数），锚点骨骼缺失时回退成 0.5 方块的旧默认值（枪口烟雾会出现在错误位置）。算出来的枪长用在三处：枪口烟雾/弹丸的出膛距离、以及**墙边收枪判定**——离墙小于一米多点就摆出收枪姿势、锁开火与瞄准，所以长枪管和枪口装置会让「贴墙收枪」的触发距离明显变长（手枪 ≈ 0.45 方块，长枪 ≈ 0.78，再加枪口装置 ≈ 0.94）。
 6. 瞄具：除了模型本身，建议在**瞄具模型**里也放一个 `ads_camera`（pivot = 眼睛点），这样每把瞄具都能自己决定瞄准眼位。
 
 ### 2.5 贴图要求与建议
@@ -486,11 +487,11 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 | `module_type` | 槽位必需 | 挂载定位骨 | 专属字段 |
 |---|---|---|---|
-| `receiver` 机匣 | ✅ | （宿主本体） | `gun_type`\*、`fire_modes`\*、`fire_sound`、`gun_name`、`base_recoil_pitch`、`base_recoil_yaw`、`ignore_ammo_pitch` |
+| `receiver` 机匣 | ✅ | （宿主本体） | `gun_type`\*、`fire_modes`\*、`fire_sound`（可被枪口装置覆盖）、`gun_name`、`base_recoil_pitch`、`base_recoil_yaw`、`ignore_ammo_pitch` |
 | `feed` 供弹 | ✅ | `loc_feed` | `gun_type`\*、`load_type`\*、`load_amount`、`clip_size` |
 | `supply` 供气 | ✅ | `loc_supply` | `supply_type`\*、`air_capacity`、`air_per_shot` |
 | `barrel` 枪管 | ✅ | `loc_barrel` | `gun_type`\* |
-| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gun_type`\*、`gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
+| `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gun_type`\*、`fire_sound`（**覆盖机匣枪声**，消音器）、`gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
 | `handguard` 护木 | ❌ | `loc_handguard` | `attachment_points` |
 | `handguard_attachment` 配件 | ❌ | 护木上的 `loc_handguard_<位置>` | `positions`\* |
 | `sight` 瞄具 | ❌ | `loc_sight` | `aim_zoom` |

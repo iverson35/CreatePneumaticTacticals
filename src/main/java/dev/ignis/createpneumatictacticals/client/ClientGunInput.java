@@ -438,7 +438,7 @@ public final class ClientGunInput {
         // behavior as the potato cannon) unless the receiver opts out via
         // ignore_ammo_pitch; currentType is null only for unknown ammo, and
         // Create's fallback pitch there is 1 anyway
-        String soundId = stats.receiver.fireSound != null ? stats.receiver.fireSound : "create:fwoomp";
+        String soundId = stats.fireSound != null ? stats.fireSound : "create:fwoomp";
         float pitch = stats.receiver.ignoreAmmoPitch ? 1.0f
                 : (currentType != null ? currentType.soundPitch() : 1.0f);
         var fireSoundEvent = net.minecraftforge.registries.ForgeRegistries.SOUND_EVENTS

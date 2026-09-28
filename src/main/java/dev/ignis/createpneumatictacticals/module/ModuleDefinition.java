@@ -62,6 +62,9 @@ public final class ModuleDefinition {
     /** receiver/barrel: gun type; barrel must match the installed receiver's */
     @Nullable public final GunType gunType;
     @Nullable public final List<FireMode> fireModes;
+    /** shot sound as a SoundEvent id; receiver-defined, overridden by a muzzle
+     * device that declares one (suppressors). Volume/attenuation live in the
+     * sound definition itself (the pack's sounds.json) */
     @Nullable public final String fireSound;
     /** receiver-only: lang key for the auto-created gun's display name */
     @Nullable public final String gunName;
@@ -262,6 +265,11 @@ public final class ModuleDefinition {
             b.gunType = GunType.byName(json.get("gun_type").getAsString(), null);
             if (b.gunType == null) throw new IllegalArgumentException("bad gun_type in " + id);
         }
+        // fire sound: a receiver defines it, a muzzle device may override it
+        // (suppressors) - GunStats.fireSound resolves which one wins
+        if (type == ModuleType.RECEIVER || type == ModuleType.MUZZLE) {
+            b.fireSound = GsonHelper.getAsString(json, "fire_sound", null);
+        }
         if (type == ModuleType.RECEIVER) {
             if (!json.has("fire_modes")) throw new IllegalArgumentException("receiver requires fire_modes: " + id);
             List<FireMode> modes = new ArrayList<>();
@@ -270,7 +278,6 @@ public final class ModuleDefinition {
             }
             if (modes.isEmpty()) throw new IllegalArgumentException("empty fire_modes in " + id);
             b.fireModes = modes;
-            b.fireSound = GsonHelper.getAsString(json, "fire_sound", null);
             b.gunName = GsonHelper.getAsString(json, "gun_name", null);
             b.baseRecoilPitch = GsonHelper.getAsDouble(json, "base_recoil_pitch", 0);
             b.baseRecoilYaw = GsonHelper.getAsDouble(json, "base_recoil_yaw", 0);
@@ -336,6 +343,7 @@ public final class ModuleDefinition {
             if (type == ModuleType.RECEIVER && !Float.isNaN(geoOut.locBarrelZ)) {
                 dev.ignis.createpneumatictacticals.gun.GunLength.noteReceiverBarrelMount(id, geoOut.locBarrelZ);
             }
+            b.geo(geoOut);
         }
         return b.build();
     }
@@ -392,6 +400,15 @@ public final class ModuleDefinition {
         public Builder addAffected(ModuleType t, AffectedMode mode, List<ResourceLocation> value,
                                     @Nullable List<java.util.regex.Pattern> regex) {
             affected.add(new Affected(t, mode, value, regex));
+            return this;
+        }
+
+        /** Z-axis measurements parsed from the module's own geo JSON */
+        Builder geo(GeometryZ z) {
+            this.muzzleOffsetZ = z.locMuzzleZ;
+            this.muzzleAttachmentZ = z.locMuzzleAttachmentZ;
+            this.locBarrelZ = z.locBarrelZ;
+            this.frontZ = z.frontZ;
             return this;
         }
 

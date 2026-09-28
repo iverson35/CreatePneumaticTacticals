@@ -1,0 +1,10 @@
+{
+  "name": "createpneumatictacticals:mak_1hp_ammo_5",
+  "module_type": "feed",
+  "gun_type": "heavy",
+  "gun_properties": {
+    "reload_speed": -0.2
+  },
+  "load_type": "magazine",
+  "clip_size": 5
+}

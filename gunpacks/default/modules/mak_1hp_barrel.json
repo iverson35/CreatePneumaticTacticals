@@ -1,0 +1,8 @@
+{
+  "name": "createpneumatictacticals:mak_1hp_barrel",
+  "module_type": "barrel",
+  "gun_type": "heavy",
+  "gun_properties": {
+    "ergonomics": -0.1
+  }
+}

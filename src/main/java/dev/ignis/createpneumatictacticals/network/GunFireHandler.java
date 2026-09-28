@@ -356,7 +356,7 @@ public final class GunFireHandler {
         // feedback), so exclude them from the broadcast. Pitch follows the
         // ammo's sound_pitch (Create potato projectile type) unless the
         // receiver opts out via ignore_ammo_pitch ---
-        String soundId = receiver.fireSound != null ? receiver.fireSound : "create:fwoomp";
+        String soundId = stats.fireSound != null ? stats.fireSound : "create:fwoomp";
         SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.tryParse(soundId));
         if (sound != null) {
             float pitch = receiver.ignoreAmmoPitch ? 1.0f : type.soundPitch();

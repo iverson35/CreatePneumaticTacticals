@@ -1,0 +1,13 @@
+{
+  "name": "createpneumatictacticals:14dvo_silencer_a",
+  "module_type": "muzzle",
+  "gun_type": "heavy",
+  "gun_properties": {
+    "recoil_vertical_multiplier": -0.2,
+    "recoil_horizontal_multiplier": -0.1,
+    "ergonomics": -0.4,
+    "gas_suppression": 1,
+    "bullet_speed": 0.2,
+    "fire_sound": "createpneumatictacticals:gun.gbb.shoot_2"
+  }
+}

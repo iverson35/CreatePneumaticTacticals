@@ -1,0 +1,113 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.mak_1hp_receiver.reload": {
+			"animation_length": 3,
+			"bones": {
+				"main": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.0833": {
+							"vector": [0, 0, 0]
+						},
+						"0.5": {
+							"vector": [5, 2.5, -35],
+							"easing": "easeOutBack"
+						},
+						"2.75": {
+							"vector": [5, 2.5, -35],
+							"easing": "easeOutBack"
+						},
+						"3.0": {
+							"vector": [0, 0, 0]
+						}
+					}
+				}
+			}
+		},
+		"animation.mak_1hp_receiver.fire": {
+			"animation_length": 0.125,
+			"bones": {
+				"bolt": {
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 2]
+						},
+						"0.125": {
+							"vector": [0, 0, 0],
+							"easing": "easeInQuad"
+						}
+					}
+				}
+			}
+		},
+		"animation.mak_1hp_receiver.bolt": {
+			"animation_length": 0.5417,
+			"bones": {
+				"main": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [-2.5, 0, 0],
+							"easing": "easeOutBack"
+						},
+						"0.375": {
+							"vector": [-2.5, 0, 0],
+							"easing": "easeOutBack"
+						},
+						"0.5417": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					},
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.25": {
+							"vector": [0, 0, 0.5],
+							"easing": "easeOutBack"
+						},
+						"0.375": {
+							"vector": [0, 0, 0.5],
+							"easing": "easeOutBack"
+						},
+						"0.5417": {
+							"vector": [0, 0, 0],
+							"easing": "easeOutBack"
+						}
+					}
+				},
+				"bolt": {
+					"position": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"0.1667": {
+							"vector": [0, 0, 3]
+						},
+						"0.375": {
+							"vector": [0, 0, 3]
+						},
+						"0.4583": {
+							"vector": [0, 0, 0]
+						}
+					}
+				}
+			},
+			"sound_effects": {
+				"0.0417": {
+					"effect": "createpneumatictacticals:gun.rifle.bolt_pull"
+				},
+				"0.375": {
+					"effect": "createpneumatictacticals:gun.rifle.bolt_release"
+				}
+			}
+		}
+	},
+	"geckolib_format_version": 2
+}

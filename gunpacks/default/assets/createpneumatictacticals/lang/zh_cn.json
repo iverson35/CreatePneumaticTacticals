@@ -20,5 +20,10 @@
   "module.createpneumatictacticals.psts_sight_small_doc1": "DOC-1 手枪红点瞄具",
   "module.createpneumatictacticals.8dvo_muzzle_brake_competition": ".8vo 竞赛型手枪制退器",
   "module.createpneumatictacticals.mak_1_barrel_long": "MAK-1 长枪管",
-  "module.createpneumatictacticals.mak_1_shooter_handguard": "MAK-1 射手护木"
+  "module.createpneumatictacticals.mak_1_shooter_handguard": "MAK-1 射手护木",
+  "module.createpneumatictacticals.mak_1hp_receiver": "MAK-1HP 机匣",
+  "module.createpneumatictacticals.mak_1hp_barrel": "MAK-1HP 枪管",
+  "module.createpneumatictacticals.mak_1hp_ammo_5": "MAK-1HP 5发弹匣",
+  "gun.createpneumatictacticals.mak_1hp": "MAK-1HP 冲锋枪",
+  "module.createpneumatictacticals.14dvo_silencer_a": "14DVO 标准消音器"
 }
