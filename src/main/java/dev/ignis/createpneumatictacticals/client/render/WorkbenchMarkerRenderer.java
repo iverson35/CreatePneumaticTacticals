@@ -23,7 +23,8 @@ import org.joml.Matrix4f;
 
 /**
  * Draws the workbench markers as camera-facing quads ([+] free mounts,
- * [-] occupied mounts translucent, [▼] take) plus the translucent blue
+ * [-] occupied mounts translucent, [▼] take, [i] stats plaque — its icon
+ * names the plaque state) plus the translucent blue
  * module preview at the hovered [+] mount.
  *
  * <p>Only the markers {@link BenchTargetPicker#isVisible} admits are drawn,
@@ -48,6 +49,18 @@ final class WorkbenchMarkerRenderer {
     private static final ResourceLocation TEX_PLUS = tex("wb_plus");
     private static final ResourceLocation TEX_MINUS = tex("wb_minus");
     private static final ResourceLocation TEX_TAKE = tex("wb_take");
+    private static final ResourceLocation TEX_INFO_OPEN = tex("wb_info_open");
+    private static final ResourceLocation TEX_INFO_NEXT = tex("wb_info_next");
+    private static final ResourceLocation TEX_INFO_CLOSE = tex("wb_info_close");
+
+    /** the [i] icon names the plaque's current state */
+    private static ResourceLocation infoTexture(GunWorkbenchBlockEntity.InfoState state) {
+        return switch (state) {
+            case OPEN -> TEX_INFO_OPEN;
+            case NEXT -> TEX_INFO_NEXT;
+            case CLOSE -> TEX_INFO_CLOSE;
+        };
+    }
 
     private static ResourceLocation tex(String name) {
         return new ResourceLocation(CreatePneumaticTacticals.MODID, "textures/gui/" + name + ".png");
@@ -80,7 +93,7 @@ final class WorkbenchMarkerRenderer {
             // the same rule, so what is on screen is what can be hovered)
             if (!BenchTargetPicker.isVisible(bench, m)) continue;
             drawBillboard(poseStack, buffer, m, cam, origin,
-                    BenchTargetPicker.isHovered(bench, m), packedLight);
+                    BenchTargetPicker.isHovered(bench, m), packedLight, infoTexture(bench.getInfoState()));
         }
     }
 
@@ -90,7 +103,7 @@ final class WorkbenchMarkerRenderer {
 
     private static void drawBillboard(PoseStack poseStack, MultiBufferSource buffer,
                                       WorkbenchOverlay.Marker m, Vec3 cam, Vec3 origin,
-                                      boolean hovered, int packedLight) {
+                                      boolean hovered, int packedLight, ResourceLocation infoTex) {
         Vec3 pos = m.worldPos().subtract(origin); // block-relative
         Vec3 camRel = cam.subtract(origin); // camera in the same frame
         Vec3 toMarker = pos.subtract(camRel);
@@ -112,7 +125,7 @@ final class WorkbenchMarkerRenderer {
             float yaw = (float) Math.atan2(camRel.x - rel.x, camRel.z - rel.z);
             poseStack.mulPose(com.mojang.math.Axis.YP.rotation(yaw));
             Matrix4f mat = poseStack.last().pose();
-            quad(vc(buffer, m), mat, size, alpha, packedLight);
+            quad(vc(buffer, m, infoTex), mat, size, alpha, packedLight);
         } finally {
             poseStack.popPose();
         }
@@ -154,12 +167,15 @@ final class WorkbenchMarkerRenderer {
     /**
      * The slot a marker belongs to: the module type its mount accepts ("后托"
      * for the stock mount), or the handguard position for a handguard
-     * attachment point ("护木(上)"). The [▼] take button is not a slot — it
-     * names its own action ("取下").
+     * attachment point ("护木(上)"). The bench's own buttons are not slots and
+     * name their action instead ([▼] "取下", [i] "数据").
      */
     private static @Nullable Component label(WorkbenchOverlay.Marker m) {
         if (m.isTake()) {
             return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".take");
+        }
+        if (m.isInfo()) {
+            return Component.translatable("gui." + CreatePneumaticTacticals.MODID + ".info");
         }
         HandguardPosition pos = WorkbenchAssembler.handguardPosFromMount(m.mountId());
         if (pos != null) {
@@ -183,8 +199,11 @@ final class WorkbenchMarkerRenderer {
      * The text shader ignores the lightmap, so markers stay legible in the
      * dark — deliberate for UI.
      */
-    private static VertexConsumer vc(MultiBufferSource buffer, WorkbenchOverlay.Marker m) {
-        ResourceLocation tex = m.isTake() ? TEX_TAKE : m.occupied() ? TEX_MINUS : TEX_PLUS;
+    private static VertexConsumer vc(MultiBufferSource buffer, WorkbenchOverlay.Marker m,
+                                     ResourceLocation infoTex) {
+        ResourceLocation tex = m.isTake() ? TEX_TAKE
+                : m.isInfo() ? infoTex
+                : m.occupied() ? TEX_MINUS : TEX_PLUS;
         return buffer.getBuffer(RenderType.textSeeThrough(tex));
     }
 

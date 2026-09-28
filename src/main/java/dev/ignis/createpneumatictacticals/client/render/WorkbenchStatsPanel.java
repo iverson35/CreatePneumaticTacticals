@@ -29,12 +29,13 @@ import java.util.List;
 
 /**
  * Stats plaque floating just off the workbench side that faces the player.
- * Trigger is the old crosshair panel's: the crosshair on the bench's [▼] take
- * marker with a gun staged.
+ * Two triggers: the crosshair on the bench's [▼] take marker with a gun
+ * staged (while the plaque state is OPEN), or the bench's [i] state, which
+ * keeps it up regardless of where the player looks.
  *
  * <p>Two shapes. Default: the recoil chart next to a single column (the core
- * multipliers + the Shift hint). With Shift held: no chart, and the full spec
- * split into two columns.
+ * multipliers + the Shift hint). With Shift held (hover trigger) or while the
+ * state is CLOSE: no chart, and the full spec split into two columns.
  *
  * <p>Drawn inside the bench's own BER frame, so the plaque is part of the
  * world: it picks the horizontal side the camera is on and reads straight-on
@@ -99,14 +100,26 @@ final class WorkbenchStatsPanel {
                        int packedLight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        // same trigger as the markers: this bench, its take marker, a gun on it
-        BenchTargetPicker.Hover hover = BenchTargetPicker.currentHover();
-        if (hover == null || !hover.marker().isTake() || !hover.benchPos().equals(bench.getBlockPos())) return;
+        // Trigger: the [i] state pins the plaque up (nothing to hover — that is
+        // the point of the switch), OPEN leaves it to the crosshair, the old
+        // trigger: this bench's [▼] take marker with a gun staged.
+        GunWorkbenchBlockEntity.InfoState state = bench.getInfoState();
+        if (state == GunWorkbenchBlockEntity.InfoState.OPEN) {
+            BenchTargetPicker.Hover hover = BenchTargetPicker.currentHover();
+            if (hover == null || !hover.marker().isTake()
+                    || !hover.benchPos().equals(bench.getBlockPos())) {
+                return;
+            }
+        }
         if (!WorkbenchOverlay.uiInRange(bench.getBlockPos())) return;
         ItemStack gun = bench.getGunSlot().getItem(0);
         if (!(gun.getItem() instanceof GunItem)) return;
 
-        Panel panel = layout(gun, GunStats.ofGun(gun), Screen.hasShiftDown());
+        // the [i] state pins the shape too; only the hover trigger reads Shift
+        boolean full = state == GunWorkbenchBlockEntity.InfoState.CLOSE
+                || (state == GunWorkbenchBlockEntity.InfoState.OPEN && Screen.hasShiftDown());
+
+        Panel panel = layout(gun, GunStats.ofGun(gun), full);
 
         // the side of the bench the camera is on: yaw from the side vector so
         // local +Z is that side's outward normal and local +X the viewer's

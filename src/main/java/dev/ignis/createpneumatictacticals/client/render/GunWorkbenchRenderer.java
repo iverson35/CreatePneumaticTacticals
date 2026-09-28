@@ -51,7 +51,7 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
         BenchTargetPicker.Hover hover = BenchTargetPicker.currentHover();
         if (hover == null || !hover.benchPos().equals(bench.getBlockPos())) return null;
         WorkbenchOverlay.Marker m = hover.marker();
-        if (m.occupied() || m.isTake()) return null;
+        if (m.occupied() || m.isTake() || m.isInfo()) return null;
         ItemStack held = hover.heldModule();
         dev.ignis.createpneumatictacticals.module.ModuleDefinition def =
                 dev.ignis.createpneumatictacticals.module.ModuleManager.definitionOf(held);

@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.client.render;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock;
 import dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.item.GunItem;
@@ -10,6 +11,7 @@ import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -31,16 +33,19 @@ import java.util.Map;
  * stock to their right), then lift so the gun's lowest point (gun-space
  * minY) sits on the bench surface.
  *
- * <p>Marker kinds: MOUNT (a loc bone; free = [+], occupied = [-]) and TAKE
- * ([▼], at the gun's bounds center). mountId semantics: receiver loc bone
- * names ("loc_barrel", ...), "loc_muzzle_attachment", or handguard position
- * bones ("loc_handguard_top", ...) — exactly what
- * {@link WorkbenchAssembler} resolves server-side; TAKE for the gun.
+ * <p>Marker kinds: MOUNT (a loc bone; free = [+], occupied = [-]), TAKE
+ * ([▼], on the table itself) and INFO ([i], beside it — the stats plaque
+ * switch). mountId semantics: receiver loc bone names ("loc_barrel", ...),
+ * "loc_muzzle_attachment", or handguard position bones ("loc_handguard_top",
+ * ...) — exactly what {@link WorkbenchAssembler} resolves server-side; TAKE
+ * and INFO for the bench's own buttons.
  */
 public final class WorkbenchOverlay {
 
     /** semantic id of the [▼] take marker */
     public static final ResourceLocation TAKE_ID = new ResourceLocation(CreatePneumaticTacticals.MODID, "take");
+    /** semantic id of the [i] stats-plaque marker */
+    public static final ResourceLocation INFO_ID = new ResourceLocation(CreatePneumaticTacticals.MODID, "info");
     /** semantic id of the muzzle-device mount (on the barrel) */
     public static final ResourceLocation MOUNT_MUZZLE_ATTACHMENT = new ResourceLocation(
             CreatePneumaticTacticals.MODID, "loc_muzzle_attachment");
@@ -65,6 +70,10 @@ public final class WorkbenchOverlay {
         }
         public boolean isTake() {
             return TAKE_ID.equals(mountId);
+        }
+        /** the [i] button: cycles the stats plaque's always-on state */
+        public boolean isInfo() {
+            return INFO_ID.equals(mountId);
         }
     }
 
@@ -103,6 +112,8 @@ public final class WorkbenchOverlay {
         // +z 6/16, centre x, 18/16 above the block bottom, turned with the
         // blockstate so the button follows the bench's facing
         out.add(new Marker(takeButtonWorld(bench), Vec3.ZERO, TAKE_ID, null));
+        // [i] on the same front edge, one block along it — the plaque switch
+        out.add(new Marker(infoButtonWorld(bench), Vec3.ZERO, INFO_ID, null));
 
         // receiver single-slot mounts
         for (ModuleType type : MOUNT_ORDER) {
@@ -159,36 +170,52 @@ public final class WorkbenchOverlay {
     }
 
     /**
-     * [▼] button offset from the block centre, model-space +z (blocks)
+     * Button offsets from the block centre in model space (blocks): both ride
+     * the table's front edge, model-space +z {@link #BUTTON_OFFSET_Z} — the
+     * side the player stands on. [▼] is centred on the table; [i] sits half a
+     * block along it, still over the tabletop (which spans ±12 px = ±0.75
+     * blocks, so +0.5 keeps 4 px of table under the icon).
      */
-    private static final double TAKE_OFFSET_Z = -6.0 / 16.0;
-    /** [▼] button height above the block's bottom face (blocks) */
-    private static final double TAKE_HEIGHT = 18.0 / 16.0;
+    private static final double BUTTON_OFFSET_Z = -6.0 / 16.0;
+    private static final double INFO_OFFSET_X = 8.0 / 16.0;
+    /** button height above the block's bottom face (blocks) */
+    private static final double BUTTON_HEIGHT = 18.0 / 16.0;
+
+    /** [▼]: centred on the front edge */
+    private static Vec3 takeButtonWorld(GunWorkbenchBlockEntity bench) {
+        return buttonWorld(bench, 0.0, BUTTON_OFFSET_Z);
+    }
+
+    /** [i]: one block along the front edge from [▼] */
+    private static Vec3 infoButtonWorld(GunWorkbenchBlockEntity bench) {
+        return buttonWorld(bench, INFO_OFFSET_X, BUTTON_OFFSET_Z);
+    }
 
     /**
-     * World position of the [▼] take button: fixed on the bench model, not on
-     * the staged gun — model space (centre x, +z {@link #TAKE_OFFSET_Z},
-     * {@link #TAKE_HEIGHT} above the block bottom), turned by the blockstate's
-     * y-rotation. Mirrors {@code GunWorkbenchBlock#rotateCube}: north is as
-     * authored and every facing step turns the offset 90°, so the button keeps
-     * the same place on the table however the bench is placed (model +z ends up
-     * pointing away from the block's front face).
+     * World position of a marker button: fixed on the bench model, not on
+     * the staged gun — model space (centre + (ox, oz),
+     * {@link #BUTTON_HEIGHT} above the block bottom), turned by the
+     * blockstate's y-rotation. Mirrors {@code GunWorkbenchBlock#rotateCube}:
+     * north is as authored and every facing step turns the offset 90°, so a
+     * button keeps the same place on the table however the bench is placed
+     * (model +z ends up pointing away from the block's front face).
      */
-    private static Vec3 takeButtonWorld(GunWorkbenchBlockEntity bench) {
-        net.minecraft.core.Direction facing = bench.getBlockState()
-                .getValue(dev.ignis.createpneumatictacticals.block.GunWorkbenchBlock.FACING);
+    private static Vec3 buttonWorld(GunWorkbenchBlockEntity bench, double ox, double oz) {
+        Direction facing = bench.getBlockState().getValue(GunWorkbenchBlock.FACING);
         double dx = switch (facing) {
-            case EAST -> -TAKE_OFFSET_Z;
-            case WEST -> TAKE_OFFSET_Z;
-            default -> 0.0; // north / south: the offset rides on z
+            case EAST -> -oz;
+            case WEST -> oz;
+            case SOUTH -> -ox;
+            default -> ox; // north
         };
         double dz = switch (facing) {
-            case NORTH -> TAKE_OFFSET_Z;
-            case SOUTH -> -TAKE_OFFSET_Z;
-            default -> 0.0; // east / west: the offset rides on x
+            case NORTH -> oz;
+            case SOUTH -> -oz;
+            case EAST -> ox;
+            default -> -ox; // west
         };
         BlockPos pos = bench.getBlockPos();
-        return new Vec3(pos.getX() + 0.5 + dx, pos.getY() + TAKE_HEIGHT, pos.getZ() + 0.5 + dz);
+        return new Vec3(pos.getX() + 0.5 + dx, pos.getY() + BUTTON_HEIGHT, pos.getZ() + 0.5 + dz);
     }
 
     /**

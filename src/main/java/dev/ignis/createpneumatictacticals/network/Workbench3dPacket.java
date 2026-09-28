@@ -26,12 +26,14 @@ import java.util.function.Supplier;
  * removes the module from NBT and hands the item back (dye travels).</li>
  * <li>TAKE — right-clicked the [▼] marker with an empty hand; the gun
  * leaves the bench (modules are baked into its NBT).</li>
+ * <li>CYCLE_INFO — right-clicked the [i] marker with an empty hand; the
+ * bench cycles its stats-plaque state (no item moves).</li>
  * </ul>
  */
 public class Workbench3dPacket {
 
     public enum Action {
-        STAGE, INSTALL, REMOVE, TAKE
+        STAGE, INSTALL, REMOVE, TAKE, CYCLE_INFO
     }
 
     public final Action action;
@@ -89,6 +91,14 @@ public class Workbench3dPacket {
                     WorkbenchAssembler.removeModule(player, msg.pos, msg.mountId);
                 }
                 case TAKE -> WorkbenchAssembler.takeGun(player, msg.pos);
+                case CYCLE_INFO -> {
+                    // pure bench state: no item moves, no hand validation —
+                    // only the bench's own plaque changes
+                    if (player.level().getBlockEntity(msg.pos)
+                            instanceof dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity bench) {
+                        bench.cycleInfoState();
+                    }
+                }
             }
         });
         ctx.get().setPacketHandled(true);

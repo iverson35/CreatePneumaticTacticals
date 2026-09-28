@@ -96,6 +96,7 @@
   "gui.createpneumatictacticals.reject.excludes_installed": "该模块排斥已装模块",
   "gui.createpneumatictacticals.reject.requires_other": "该模块要求换装其他模块",
   "gui.createpneumatictacticals.reject.requires_empty": "该模块要求对应槽位留空",
+  "gui.createpneumatictacticals.info": "数据",
   "gui.createpneumatictacticals.take": "取下",
   "hg_pos.createpneumatictacticals.top": "(上)",
   "hg_pos.createpneumatictacticals.bottom": "(下)",

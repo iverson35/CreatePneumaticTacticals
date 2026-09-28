@@ -20,10 +20,41 @@ import net.minecraft.world.level.block.state.BlockState;
  * the block. Assembly state lives on the gun ItemStack NBT (GunNbt); there
  * is no GUI and no session mirroring. Deliberately NOT a Container and
  * exposes no IItemHandler capability, so hoppers/pipes cannot touch the gun.
- * getUpdatePacket/getUpdateTag sync the staged gun to the client for the
- * 3D renderer.
+ * getUpdatePacket/getUpdateTag sync the staged gun AND the stats plaque's
+ * [i] state to the client for the 3D renderer.
  */
 public class GunWorkbenchBlockEntity extends BlockEntity {
+
+    /**
+     * How much of the stats plaque the bench shows, cycled by the [i] marker
+     * and kept on the bench (not per player): the plaque is a world object, so
+     * everyone looking at the bench reads the same one.
+     */
+    public enum InfoState {
+        /** nothing but the [i] button */
+        OPEN,
+        /** the plaque stays up: chart + the brief single column */
+        NEXT,
+        /** the plaque stays up: the full spec, two columns, no chart */
+        CLOSE;
+
+        public InfoState next() {
+            InfoState[] all = values();
+            return all[(ordinal() + 1) % all.length];
+        }
+    }
+
+    private InfoState infoState = InfoState.OPEN;
+
+    public InfoState getInfoState() {
+        return this.infoState;
+    }
+
+    /** [i] click: OPEN -> NEXT -> CLOSE -> OPEN, then re-sync to clients */
+    public void cycleInfoState() {
+        this.infoState = this.infoState.next();
+        this.setChanged();
+    }
 
     private final net.minecraft.world.SimpleContainer gunSlot =
             new net.minecraft.world.SimpleContainer(1) {
@@ -47,6 +78,7 @@ public class GunWorkbenchBlockEntity extends BlockEntity {
         // "no data" on the wire, and the client then drops the update
         // entirely — a take would leave a stale gun rendered forever.
         tag.putBoolean("HasGun", !gun.isEmpty());
+        tag.putByte("InfoState", (byte) this.infoState.ordinal());
         if (!gun.isEmpty()) {
             tag.put("Gun", gun.save(new net.minecraft.nbt.CompoundTag()));
         }
@@ -58,6 +90,9 @@ public class GunWorkbenchBlockEntity extends BlockEntity {
         this.gunSlot.setItem(0, tag.contains("Gun")
                 ? net.minecraft.world.item.ItemStack.of(tag.getCompound("Gun"))
                 : net.minecraft.world.item.ItemStack.EMPTY);
+        // an out-of-range byte (older or future build) wraps to a known state
+        // instead of throwing out of a chunk load
+        this.infoState = InfoState.values()[Math.floorMod(tag.getByte("InfoState"), InfoState.values().length)];
     }
 
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =

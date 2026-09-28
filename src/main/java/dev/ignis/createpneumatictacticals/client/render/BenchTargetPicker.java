@@ -163,7 +163,7 @@ public final class BenchTargetPicker {
      */
     private static ItemStack installCandidate(GunWorkbenchBlockEntity bench, WorkbenchOverlay.Marker m) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || m.occupied() || m.isTake()) return ItemStack.EMPTY;
+        if (mc.player == null || m.occupied() || m.isTake() || m.isInfo()) return ItemStack.EMPTY;
         ItemStack main = mc.player.getMainHandItem();
         ModuleDefinition mainDef = ModuleManager.definitionOf(main);
         if (mainDef != null && WorkbenchMarkerRenderer.previewReject(bench, mainDef, m) == null) return main;
@@ -177,12 +177,12 @@ public final class BenchTargetPicker {
      * Marker visibility — the renderer skips drawing and the picker skips
      * picking, so a hidden marker can never be hovered: [+] only while the
      * held candidate would install at that mount, [-] only with an empty
-     * acting (main) hand, [▼] always.
+     * acting (main) hand, [▼] and [i] always.
      */
     private static boolean visible(WorkbenchOverlay.Marker m, ItemStack candidate) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
-        if (m.isTake()) return true;
+        if (m.isTake() || m.isInfo()) return true;
         if (m.occupied()) return mc.player.getMainHandItem().isEmpty();
         return !candidate.isEmpty();
     }
@@ -217,6 +217,16 @@ public final class BenchTargetPicker {
                 }
                 CptNetwork.CHANNEL.sendToServer(new Workbench3dPacket(
                         Workbench3dPacket.Action.TAKE, pos, false, null));
+                return true;
+            }
+            if (m.isInfo()) {
+                // [i]: cycles the bench's stats plaque. Empty acting hand, like
+                // [▼] — the button is a bench setting, not an item interaction
+                if (!mc.player.getMainHandItem().isEmpty()) {
+                    return false;
+                }
+                CptNetwork.CHANNEL.sendToServer(new Workbench3dPacket(
+                        Workbench3dPacket.Action.CYCLE_INFO, pos, false, null));
                 return true;
             }
             if (m.occupied()) {
