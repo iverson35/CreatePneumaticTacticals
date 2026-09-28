@@ -60,6 +60,8 @@ public final class ClientGunInput {
     /** tick the last shot was sent on — the local rate gate counts ticks,
      *  not wall-clock ms (see tryFire) */
     private static int lastFireTick = -1;
+    /** monotonic client tick counter (the local rate gate's unit) */
+    private static int clientTicks;
     /** shots sent but not yet reflected in the synced AmmoCount */
     private static int pendingShots;
     private static int lastSeenAmmo = Integer.MIN_VALUE;
@@ -128,7 +130,6 @@ public final class ClientGunInput {
         ReadyModel.tick(player, holdingGun);
         if (!holdingGun) {
             wasFiring = false;
-            fireDiagEndBurst();
             // the gun left the hand: void the reload, except in its bolt tail
             // (see interruptReload — the magazine is swapped and the batch is
             // owed, so that one resumes when the gun comes back)
@@ -157,20 +158,11 @@ public final class ClientGunInput {
                 // round-mode reload keeps its rounds and stays silent)
                 if (!wasFiring && magazineEmpty(stats, gun)) playAmmoEmpty(player);
                 wasFiring = true;
-                fireDiagBlocked(BLOCK_RELOADING);
             } else {
-                long before = lastLocalShotMs;
-                int prevFireTick = lastFireTick;
                 tryFire(player, gun, stats);
-                if (lastLocalShotMs != before) {
-                    fireDiagShot(prevFireTick);
-                } else {
-                    fireDiagBlocked(blockedReason(gun, stats));
-                }
             }
         } else {
             wasFiring = false;
-            fireDiagEndBurst();
         }
 
         // --- reload state machine ---
@@ -290,93 +282,6 @@ public final class ClientGunInput {
         return lastLocalShotMs;
     }
 
-    // ---------------------------------------------------------------
-    // fire-rate diagnostics
-    // ---------------------------------------------------------------
-
-    /**
-     * Per-tick fire accounting, summarised once per trigger pull. Answers the
-     * question the numbers raise: <em>did a tick fail to fire, and why?</em>
-     *
-     * <p>The local gate used to be WALL-CLOCK ({@code now - lastShot < 50 * ticks})
-     * while the game advances in 50 ms ticks: a tick landing 49 ms after the
-     * last shot was skipped and the next one landed 99 ms later, so a 1-tick
-     * ammo read as ~1.37 ticks per shot (12×1t + 7×2t gaps for 20 shots, with
-     * exactly 7 local-gate-blocked ticks). It now counts ticks. The gap
-     * histogram and the blocked-tick tally are what exposed that — and the
-     * same line proves whether a shot was actually SENT, which separates a
-     * client gate from a server rejection (see the matching log in
-     * {@code GunFireHandler}).
-     */
-    private static final String[] BLOCK_REASONS = {
-            "incomplete", "ready-pose", "muzzle", "semi-held", "no-ammo", "mag-empty",
-            "local-gate", "reloading"
-    };
-    private static final int BLOCK_LOCAL_GATE = 6;
-    private static final int BLOCK_RELOADING = 7;
-
-    /** monotonic client tick counter (the summary's tick unit) */
-    private static int clientTicks;
-    private static int burstFirstTick;
-    private static int burstShots;
-    private static boolean burstOpen;
-    /** tick gaps between consecutive shots; index = min(gap, 8) */
-    private static final int[] burstGaps = new int[9];
-    private static final int[] burstBlocked = new int[BLOCK_REASONS.length];
-    /** the local gate's last interval in ticks (logged as the nominal rate) */
-    private static long lastLocalIntervalTicks;
-
-    /** why this tick did not fire, in the order tryFire checks its gates */
-    private static int blockedReason(ItemStack gun, GunStats stats) {
-        if (!stats.isComplete()) return 0;
-        if (!ReadyModel.canFire()) return 1;
-        if (MuzzleClearance.isBlocked()) return 2;
-        if (GunNbt.getFireMode(gun) == FireMode.SEMI && wasFiring) return 3;
-        String ammoId = GunNbt.getAmmo(gun);
-        if (ammoId == null || ammoId.isEmpty()) return 4;
-        if (magazineEmpty(stats, gun)) return 5;
-        return BLOCK_LOCAL_GATE; // the tick interval (or a burst/sequence gate)
-    }
-
-    private static void fireDiagShot(int prevFireTick) {
-        if (!burstOpen) {
-            burstOpen = true;
-            burstFirstTick = clientTicks;
-        } else if (prevFireTick >= 0) {
-            burstGaps[Math.min(clientTicks - prevFireTick, burstGaps.length - 1)]++;
-        }
-        burstShots++;
-    }
-
-    private static void fireDiagBlocked(int reason) {
-        if (burstOpen) burstBlocked[reason]++;
-    }
-
-    private static void fireDiagEndBurst() {
-        if (!burstOpen) return;
-        burstOpen = false;
-        if (burstShots > 1) {
-            StringBuilder gaps = new StringBuilder();
-            for (int i = 1; i < burstGaps.length; i++) {
-                if (burstGaps[i] == 0) continue;
-                gaps.append(i == burstGaps.length - 1 ? "8+t" : i + "t").append(" x").append(burstGaps[i]).append(' ');
-            }
-            StringBuilder blocked = new StringBuilder();
-            for (int i = 0; i < burstBlocked.length; i++) {
-                if (burstBlocked[i] == 0) continue;
-                blocked.append(BLOCK_REASONS[i]).append(" x").append(burstBlocked[i]).append(' ');
-            }
-            CreatePneumaticTacticals.LOGGER.info(
-                    "[CPT fire] {} shots in {} ticks, local gate {}t ({} ms) — gaps: {}| blocked ticks: {}",
-                    burstShots, clientTicks - burstFirstTick, lastLocalIntervalTicks,
-                    lastLocalIntervalTicks * 50, gaps.isEmpty() ? "none " : gaps,
-                    blocked.isEmpty() ? "none" : blocked.toString().trim());
-        }
-        burstShots = 0;
-        java.util.Arrays.fill(burstGaps, 0);
-        java.util.Arrays.fill(burstBlocked, 0);
-    }
-
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
         if (!stats.isComplete()) {
             feedback(player, "incomplete");
@@ -416,7 +321,6 @@ public final class ClientGunInput {
         long intervalTicks = currentType != null
                 ? AmmoExtension.fireIntervalTicks(currentType, stats.fireRateMultiplier)
                 : 1; // unknown type: 10/s fallthrough, server will gate
-        lastLocalIntervalTicks = intervalTicks;
         if (clientTicks - lastFireTick < intervalTicks) return;
         if (reloading) return;
 
