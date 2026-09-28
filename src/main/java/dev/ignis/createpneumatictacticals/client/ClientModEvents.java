@@ -44,8 +44,15 @@ public final class ClientModEvents {
                 dev.ignis.createpneumatictacticals.client.render.GunGlowLayer.invalidateCaches();
                 dev.ignis.createpneumatictacticals.client.render.DyedTextures.invalidateCaches();
                 dev.ignis.createpneumatictacticals.client.render.GunTextureAtlas.invalidate();
+                dev.ignis.createpneumatictacticals.client.render.PodItemModel.invalidateLayers();
             }
         });
+    }
+
+    /** Layer the content item's icon into the pod icons (see {@link PodItemModel}). */
+    @SubscribeEvent
+    public static void onModifyBakingResult(net.minecraftforge.client.event.ModelEvent.ModifyBakingResult event) {
+        dev.ignis.createpneumatictacticals.client.render.PodItemModel.wrap(event.getModels());
     }
 
     @SubscribeEvent
