@@ -167,11 +167,18 @@ public final class GunFireHandler {
         PotatoCannonProjectileType type = typeOpt.get();
         long intervalTicks = AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier);
         Long last = LAST_SHOT.get(key);
-        if (last != null && now - last < intervalTicks) {
+        // One tick of slack: the shooter's client gates on ITS ticks, and a
+        // server tick that overruns puts two of its consecutive shots in the
+        // same server tick — with a strict gate that shot is dropped silently
+        // while the client has already played the sound and the recoil
+        // (measured on a local client: 3 of 23 shots). Both gates stay
+        // tick-quantised, so this only forgives same-tick pairs; a 1-tick ammo
+        // is then purely client-gated, which is all a tick-quantised gate can
+        // enforce anyway.
+        if (last != null && now - last < intervalTicks - 1) {
             // Diagnostic: the client gates locally before sending, so a
-            // rejection here means the two gates disagree (the client's is
-            // wall-clock ms, this one counts ticks) — the shot is then lost
-            // with no feedback to the shooter.
+            // rejection here means the two gates disagree — the shot is then
+            // lost with no feedback to the shooter.
             CreatePneumaticTacticals.LOGGER.info(
                     "[CPT fire] server rate gate rejected a shot: {}t since the last, {}t needed",
                     now - last, intervalTicks);

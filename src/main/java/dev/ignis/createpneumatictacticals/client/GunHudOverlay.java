@@ -160,7 +160,9 @@ public final class GunHudOverlay implements IGuiOverlay {
         int anchorRight = width - 8 + Config.gunHudOffsetX;
         int blockBottom = height - 8 + Config.gunHudOffsetY;
 
-        int clip = GunNbt.getAmmoCount(gun);
+        // predicted, not the raw synced count: the readout must agree with the
+        // trigger, which already spends shots the server has not confirmed
+        int clip = ClientGunInput.predictedAmmo(gun);
         // the deferred window (fire animation still blending after the last
         // shot) counts too, or the readout would flash a red 0 between the
         // trigger and the reload actually starting

@@ -60,6 +60,9 @@ public final class ClientGunInput {
     /** tick the last shot was sent on — the local rate gate counts ticks,
      *  not wall-clock ms (see tryFire) */
     private static int lastFireTick = -1;
+    /** shots sent but not yet reflected in the synced AmmoCount */
+    private static int pendingShots;
+    private static int lastSeenAmmo = Integer.MIN_VALUE;
 
     // --- client reload state machine: R starts it, completion sends the result packet ---
     private static boolean reloading = false;
@@ -446,6 +449,7 @@ public final class ClientGunInput {
         if (fireSoundEvent != null) player.playSound(fireSoundEvent, 1.0f, pitch);
         lastLocalShotMs = now;
         lastFireTick = clientTicks;
+        pendingShots++;
         wasFiring = true;
         // fire animation occupancy (fire length + the reload's blend margin):
         // startReload must wait this out or it snapshots the pose mid-fire and
@@ -468,12 +472,34 @@ public final class ClientGunInput {
      * Actionbar hint for client-side fire rejection; key names resolve from the
      * player's actual keybinds, never hardcoded.
      */
+    /**
+     * Rounds the client believes are in the magazine: the synced AmmoCount
+     * minus the shots it has already sent. The sync trails the server's
+     * decrement by a tick or two, so reading the raw count let the client fire
+     * "phantom" rounds off a stale magazine — audible as extra shots (23
+     * packets for a 20-round mag, measured), every one of them dropped by the
+     * server. The debt is settled from the count's own movement: a drop means
+     * the server consumed some of what we owe, a rise (a reload) clears it.
+     */
+    public static int predictedAmmo(ItemStack gun) {
+        int synced = GunNbt.getAmmoCount(gun);
+        if (synced != lastSeenAmmo) {
+            if (synced < lastSeenAmmo) {
+                pendingShots = Math.max(0, pendingShots - (lastSeenAmmo - synced));
+            } else {
+                pendingShots = 0;
+            }
+            lastSeenAmmo = synced;
+        }
+        return synced - pendingShots;
+    }
+
     /** nothing loaded: non-backpack feeds with an empty magazine (a gun fed
      *  straight from the backpack has no magazine to be empty) */
     private static boolean magazineEmpty(GunStats stats, ItemStack gun) {
         return stats.feed != null
                 && stats.feed.feedType != dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK
-                && GunNbt.getAmmoCount(gun) <= 0;
+                && predictedAmmo(gun) <= 0;
     }
 
     /** dry-fire click; loudness is the sounds.json entry's volume (0.5) */
