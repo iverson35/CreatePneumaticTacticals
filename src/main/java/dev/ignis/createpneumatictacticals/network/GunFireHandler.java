@@ -23,6 +23,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import javax.annotation.Nullable;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -109,9 +111,16 @@ public final class GunFireHandler {
      *                  shoot around corners
      * @param aim       the same frame's ADS progress (0 = hip, 1 = sights up);
      *                  scales the spread cone like the client crosshair does
+     * @param muzzle    the shooter's render-pass muzzle tip in world space
+     *                  (null when it had no sample); only ever feeds the
+     *                  cosmetic plume relayed to nearby clients, and is
+     *                  validated against the eye before that
+     * @param muzzleUp  the gun's up axis for the gas-guide port roll, same
+     *                  provenance and treatment as {@code muzzle}
      */
-    public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir, float aim) {
-        fire(player, clientEye, clientDir, aim);
+    public static void onFireRequest(ServerPlayer player, Vec3 clientEye, Vec3 clientDir, float aim,
+                                     @Nullable Vec3 muzzle, @Nullable Vec3 muzzleUp) {
+        fire(player, clientEye, clientDir, aim, muzzle, muzzleUp);
     }
 
     /**
@@ -122,13 +131,14 @@ public final class GunFireHandler {
      * backpack feed without an inventory) is simply silent.
      */
     public static void onMobFire(LivingEntity shooter) {
-        fire(shooter, null, null, 0f);
+        fire(shooter, null, null, 0f, null, null);
     }
 
     /**
      * The shared fire core; see the class javadoc for the caller contract.
      */
-    private static void fire(LivingEntity shooter, Vec3 clientEye, Vec3 clientDir, float aim) {
+    private static void fire(LivingEntity shooter, Vec3 clientEye, Vec3 clientDir, float aim,
+                             @Nullable Vec3 muzzle, @Nullable Vec3 muzzleUp) {
         ItemStack gun = shooter.getMainHandItem();
         if (!(gun.getItem() instanceof dev.ignis.createpneumatictacticals.item.GunItem)) return;
 
@@ -364,9 +374,12 @@ public final class GunFireHandler {
         // plume from their own copy of the gunpack. Semantics only: who fired,
         // which ammo, which muzzle device ---
         if (shooter.level() instanceof net.minecraft.server.level.ServerLevel smokeLevel) {
+            // the trusted aim direction (post client-eye/dir validation) is the
+            // axis the shot itself followed, so the plume leaves along it too
             MuzzleSmokePacket smoke = new MuzzleSmokePacket(shooter.getId(), ammoId,
                     stats.muzzle != null ? stats.muzzle.id.toString() : null,
-                    (float) stats.gasSuppression);
+                    (float) stats.gasSuppression,
+                    sanitizeMuzzle(muzzle, eye), sanitizeMuzzleUp(muzzleUp), look);
             for (ServerPlayer nearby : smokeLevel.players()) {
                 if (nearby == shooter) continue; // already puffed client-side
                 if (nearby.distanceToSqr(shooter) <= MuzzleSmokePacket.RADIUS * MuzzleSmokePacket.RADIUS) {
@@ -374,6 +387,37 @@ public final class GunFireHandler {
                 }
             }
         }
+    }
+
+    /**
+     * Bound on how far the claimed muzzle tip may sit from the shooting eye:
+     * a long gun's barrel end stays well under this, so anything farther is a
+     * bogus tip and is dropped (receivers then fall back to the eye).
+     */
+    private static final double MAX_MUZZLE_OFFSET = 6.0;
+
+    /**
+     * Sanitize the client-claimed muzzle tip. It only ever drives a cosmetic
+     * plume on OTHER clients, so the stakes are low, but a hacked client must
+     * not be able to paint smoke across the map: finite and near the eye, or
+     * nothing. Rejecting (rather than clamping) keeps the origin honest.
+     */
+    @Nullable
+    private static Vec3 sanitizeMuzzle(@Nullable Vec3 muzzle, Vec3 eye) {
+        if (muzzle == null || !isFinite(muzzle)) return null;
+        return muzzle.distanceToSqr(eye) > MAX_MUZZLE_OFFSET * MAX_MUZZLE_OFFSET ? null : muzzle;
+    }
+
+    /** Gun up axis for the port roll: finite and unit-ish, normalized. */
+    @Nullable
+    private static Vec3 sanitizeMuzzleUp(@Nullable Vec3 up) {
+        if (up == null || !isFinite(up)) return null;
+        double len = up.length();
+        return len < 0.5 || len > 2.0 ? null : up.normalize();
+    }
+
+    private static boolean isFinite(Vec3 v) {
+        return Double.isFinite(v.x) && Double.isFinite(v.y) && Double.isFinite(v.z);
     }
 
     /** Finds a plain pod whose content item maps to the selected ammo TYPE id. */

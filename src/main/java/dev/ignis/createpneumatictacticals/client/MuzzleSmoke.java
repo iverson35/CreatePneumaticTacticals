@@ -30,8 +30,11 @@ import java.util.Random;
  * shot's energy.
  *
  * <p>Other players' shots arrive as {@link MuzzleSmokePacket} and are spawned
- * by {@link #onRemoteFire}: same local data (ammo cadence + muzzle device gas
- * guides), but without the shooter's render-pass muzzle anchor.
+ * by {@link #onRemoteFire} from the frame the SHOOTER sampled ({@link
+ * #sampleFrame}: world-space muzzle tip + gun up + ballistic direction) — the
+ * animated bone is only known on the shooter's client, so it has to travel.
+ * Without a frame (mob shooter, hacked client, no render pass yet) the plume
+ * falls back to the eye + look approximation.
  */
 public final class MuzzleSmoke {
     /** reloadTicks that map to the 1x potato-cannon baseline */
@@ -41,7 +44,51 @@ public final class MuzzleSmoke {
 
     private MuzzleSmoke() {}
 
-    public static void onFire(Player player) {
+    /**
+     * The shot's muzzle frame, sampled on the shooter's client during the
+     * render pass (the only place the animated bone transform is known):
+     * world-space muzzle tip, the gun's up axis (carries the roll for
+     * gas-guide ports) and the ballistic direction. {@code pos}/{@code up}
+     * are null when no capture exists; {@code dir} always is present.
+     */
+    public record MuzzleFrame(@Nullable Vec3 pos, @Nullable Vec3 up, Vec3 dir) {}
+
+    /**
+     * Sample the frame for a shot fired right now. Both the local plume and
+     * the {@code FireRequestPacket} use the same values, so remote clients
+     * puff from the same point this client shows.
+     */
+    public static MuzzleFrame sampleFrame(Minecraft mc, Player player, Vec3 dir) {
+        Camera cam = mc.gameRenderer.getMainCamera();
+        // both FP and TP render passes produce the same view space
+        // (v = R·(world − camPos), R = camera rotation composed as
+        // mulPose(XP(pitch))·mulPose(YP(yaw+180))). Undo R for world axes:
+        // R⁻¹ = YP(−(yaw+180))·XP(−pitch), then shift by the camera pos.
+        org.joml.Quaternionf inv = new org.joml.Quaternionf()
+                .rotationY((float) Math.toRadians(-(cam.getYRot() + 180.0f)))
+                .rotateX((float) Math.toRadians(-cam.getXRot()));
+        Vec3 location = null;
+        float[] anchor = MuzzleAnchor.viewSample();
+        if (anchor != null) {
+            org.joml.Vector3f v = new org.joml.Vector3f(anchor[0], anchor[1], anchor[2]).rotate(inv);
+            Vec3 cp = cam.getPosition();
+            location = new Vec3(cp.x + v.x, cp.y + v.y, cp.z + v.z);
+        }
+        // live gun-frame UP in world space: the render pass captured the
+        // model +Y direction through the full gun pose matrix (stance cant,
+        // recoil, animations included). This carries the gun's ROLL for
+        // gas-guide ports — the plume axis stays ballistic, the port phase
+        // follows the gun.
+        Vec3 barrelUp = null;
+        float[] upSample = MuzzleAnchor.viewUp();
+        if (upSample != null) {
+            org.joml.Vector3f u = new org.joml.Vector3f(upSample[0], upSample[1], upSample[2]).rotate(inv);
+            barrelUp = new Vec3(u.x, u.y, u.z);
+        }
+        return new MuzzleFrame(location, barrelUp, dir);
+    }
+
+    public static void onFire(Player player, @Nullable MuzzleFrame frame) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         if (level == null) return;
@@ -52,51 +99,27 @@ public final class MuzzleSmoke {
 
         // smoke anchors at the actual muzzle tip when a render-pass sample
         // exists (first AND third person); otherwise falls back to the eye
-        Vec3 location;
-        float[] anchor = MuzzleAnchor.viewSample();
-        Camera cam = mc.gameRenderer.getMainCamera();
-        if (anchor != null) {
-            // both FP and TP render passes produce the same view space
-            // (v = R·(world − camPos), R = camera rotation composed as
-            // mulPose(XP(pitch))·mulPose(YP(yaw+180))). Undo R for world axes:
-            // R⁻¹ = YP(−(yaw+180))·XP(−pitch), then shift by the camera pos.
-            org.joml.Quaternionf inv = new org.joml.Quaternionf()
-                    .rotationY((float) Math.toRadians(-(cam.getYRot() + 180.0f)))
-                    .rotateX((float) Math.toRadians(-cam.getXRot()));
-            org.joml.Vector3f v = new org.joml.Vector3f(anchor[0], anchor[1], anchor[2]).rotate(inv);
-            Vec3 cp = cam.getPosition();
-            location = new Vec3(cp.x + v.x, cp.y + v.y, cp.z + v.z);
-        } else {
-            Vec3 eye = player.getEyePosition();
-            Vec3 look = player.getLookAngle();
-            location = eye.add(look.scale(1.0));
-        }
-        // live gun-frame UP in world space: the render pass captured the
-        // model +Y direction through the full gun pose matrix (stance cant,
-        // recoil, animations included); undo the camera rotation like above.
-        // This carries the gun's ROLL for gas-guide ports — the plume axis
-        // stays ballistic (view ray), but the port phase follows the gun.
+        Vec3 location = null;
         Vec3 barrelUp = null;
-        float[] upSample = MuzzleAnchor.viewUp();
-        if (upSample != null) {
-            org.joml.Quaternionf inv = new org.joml.Quaternionf()
-                    .rotationY((float) Math.toRadians(-(cam.getYRot() + 180.0f)))
-                    .rotateX((float) Math.toRadians(-cam.getXRot()));
-            org.joml.Vector3f u = new org.joml.Vector3f(upSample[0], upSample[1], upSample[2]).rotate(inv);
-            barrelUp = new Vec3(u.x, u.y, u.z);
+        if (frame != null) {
+            location = frame.pos();
+            barrelUp = frame.up();
         }
-        // smoke velocity follows the view direction (approximation: the
-        // server's exact per-pellet dir is not known client-side)
-        Vec3 dir = player.getLookAngle();
+        if (location == null) {
+            Vec3 look = frame != null ? frame.dir() : player.getLookAngle();
+            location = player.getEyePosition().add(look.scale(1.0));
+        }
+        // plume axis = the shot's own direction, so the local and the remote
+        // plume leave along the same ray
+        Vec3 dir = frame != null ? frame.dir() : player.getLookAngle();
         spawn(level, location, dir, barrelUp, reloadTicks, stats.muzzle, stats.gasSuppression);
     }
 
     /**
-     * Another player's shot, relayed by the server. No render-pass sample of
-     * their gun exists on this client, so the plume starts at their eye (one
-     * block along the look, the same fallback the local path uses when its own
-     * anchor is missing) and the gas-guide ports fall back to the world-up
-     * frame instead of the gun's roll.
+     * Another player's shot, relayed by the server with the frame their own
+     * client sampled (muzzle tip + gun roll + ballistic direction). Only the
+     * eye approximation is used when that frame is missing — a mob shooter,
+     * a client that had not rendered its gun yet, or a rejected frame.
      */
     public static void onRemoteFire(MuzzleSmokePacket msg) {
         Minecraft mc = Minecraft.getInstance();
@@ -114,9 +137,9 @@ public final class MuzzleSmoke {
         net.minecraft.resources.ResourceLocation muzzleId = msg.muzzleId == null ? null
                 : net.minecraft.resources.ResourceLocation.tryParse(msg.muzzleId);
         ModuleDefinition muzzle = muzzleId == null ? null : ModuleManager.get(muzzleId);
-        Vec3 dir = shooter.getLookAngle();
-        spawn(level, shooter.getEyePosition().add(dir.scale(1.0)), dir, null,
-                reloadTicks, muzzle, msg.gasSuppression);
+        Vec3 dir = msg.dir;
+        Vec3 location = msg.muzzle != null ? msg.muzzle : shooter.getEyePosition().add(dir.scale(1.0));
+        spawn(level, location, dir, msg.muzzleUp, reloadTicks, muzzle, msg.gasSuppression);
     }
 
     /**

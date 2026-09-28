@@ -421,12 +421,17 @@ public final class ClientGunInput {
         float punchPitch = player.getXRot() - (float) dev.ignis.createpneumatictacticals.client.RecoilModel.pitchDegrees();
         float punchYaw = player.getYRot() - (float) dev.ignis.createpneumatictacticals.client.RecoilModel.yawDegrees();
         net.minecraft.world.phys.Vec3 punchDir = net.minecraft.world.phys.Vec3.directionFromRotation(punchPitch, punchYaw);
+        // one frame for both: the muzzle tip/roll the shooter's own render
+        // pass captured (world space) rides to the server so nearby clients
+        // puff from the barrel, and drives the local plume identically
+        MuzzleSmoke.MuzzleFrame smokeFrame = MuzzleSmoke.sampleFrame(Minecraft.getInstance(), player, punchDir);
         CptNetwork.CHANNEL.sendToServer(new FireRequestPacket(
                 player.getEyePosition(1.0f), punchDir,
                 // same frame's ADS progress: the server closes the spread cone
                 // on the client's own curve, so shots fired while the gun is
                 // still coming up are not yet pinpoint
-                AimHandler.aimProgress(Minecraft.getInstance().getFrameTime())));
+                AimHandler.aimProgress(Minecraft.getInstance().getFrameTime()),
+                smokeFrame.pos(), smokeFrame.up()));
         // instant local fire sound (default: potato-cannon FWOOMP); the
         // server broadcast excludes the shooter. Pitch follows the ammo's
         // sound_pitch (Create potato projectile type — same variable-pitch
@@ -455,7 +460,7 @@ public final class ClientGunInput {
         SpreadModel.addBloom(ext);
         // muzzle smoke: puffed here, and relayed to nearby clients by the
         // server (MuzzleSmokePacket) so they puff it from their own gunpack
-        MuzzleSmoke.onFire(player);
+        MuzzleSmoke.onFire(player, smokeFrame);
         GunAnimationDriver.onFire(gun);
     }
 
