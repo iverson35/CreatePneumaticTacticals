@@ -83,11 +83,11 @@ public final class CptJeiPlugin implements IModPlugin {
 
                     ItemStack pressurizedOut = PodItem.ofContent(item, ModItems.PRESSURIZED_POD.get());
                     display.add(new ShapelessRecipe(
-                            new ResourceLocation(CreatePneumaticTacticals.MODID, "jei_pod_assembly/" + suffix),
-                            "createpneumatictacticals.pod_assembly", CraftingBookCategory.MISC, pressurizedOut,
+                            new ResourceLocation(CreatePneumaticTacticals.MODID, "jei_pod_filling_pressurized/" + suffix),
+                            "createpneumatictacticals.pod_filling", CraftingBookCategory.MISC, pressurizedOut,
                             NonNullList.of(Ingredient.EMPTY,
-                                    Ingredient.of(podOut.copy()),
-                                    Ingredient.of(ModItems.PRESSURIZED_AIR_VIAL.get()))));
+                                    Ingredient.of(ModItems.PRESSURIZED_AIR_VIAL.get()),
+                                    Ingredient.of(item))));
                 }));
         registration.addRecipes(RecipeTypes.CRAFTING, display);
     }

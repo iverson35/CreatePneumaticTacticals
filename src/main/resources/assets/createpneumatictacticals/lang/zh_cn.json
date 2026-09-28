@@ -83,7 +83,7 @@
   "gui.createpneumatictacticals.fail.no_ammo_selected": "未选择弹种",
   "gui.createpneumatictacticals.fail.no_air": "气压不足",
   "gui.createpneumatictacticals.fail.no_pod": "背包中没有匹配的封装弹",
-  "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（封装弹+加压气动瓶合成）",
+  "gui.createpneumatictacticals.fail.no_pressurized_pod": "整装气瓶需要加压封装弹（加压气瓶+物品合成）",
   "gui.createpneumatictacticals.fail.ammo_type_mismatch": "该弹种与机匣类型不兼容",
   "gun_type.createpneumatictacticals.heavy": "大口径弹药",
   "fire_mode.createpneumatictacticals.semi": "半自动",
