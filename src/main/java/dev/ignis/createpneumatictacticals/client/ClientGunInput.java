@@ -79,6 +79,11 @@ public final class ClientGunInput {
     /** a pull older than this many ticks is forgotten (a click during a long
      *  reload must not fire when the reload ends) */
     private static final int PRESS_CREDIT_TICKS = 10;
+    /** the buffer only pays for itself on fast guns: at 600 RPM (one shot per
+     *  2 ticks) or quicker a lost click is a sampling loss. Below that the
+     *  second click is the gun's own cadence, and queuing it would only make
+     *  the round late. */
+    private static final long BUFFERED_MAX_INTERVAL_TICKS = 2;
     /** shots sent but not yet reflected in the synced AmmoCount */
     private static int pendingShots;
     private static int lastSeenAmmo = Integer.MIN_VALUE;
@@ -328,6 +333,9 @@ public final class ClientGunInput {
      *
      * <p>Presses closer than {@link #PRESS_DEBOUNCE_MS} are dropped: a
      * chattering button would otherwise read as a very fast double click.
+     *
+     * <p>Only guns at {@value #BUFFERED_MAX_INTERVAL_TICKS} ticks per shot or
+     * quicker (600 RPM) get the buffer — see the constant.
      */
     public static void onAttackPress() {
         Minecraft mc = Minecraft.getInstance();
@@ -335,11 +343,26 @@ public final class ClientGunInput {
         ItemStack gun = mc.player.getMainHandItem();
         if (!(gun.getItem() instanceof GeoGunItem)) return;
         if (GunNbt.getFireMode(gun) == FireMode.AUTO) return;
+        long intervalTicks = resolveIntervalTicks(mc.player, gun, GunStats.ofGun(gun));
+        if (intervalTicks < 0 || intervalTicks > BUFFERED_MAX_INTERVAL_TICKS) return;
         long now = System.currentTimeMillis();
         if (now - lastAttackPressMs < PRESS_DEBOUNCE_MS) return;
         lastAttackPressMs = now;
         attackPressCredits = Math.min(2, attackPressCredits + 1);
         attackPressTick = clientTicks;
+    }
+
+    /** ticks between shots for this gun + ammo, or -1 when the ammo type is
+     *  unknown — the same two lookups tryFire gates on, without touching the
+     *  {@link #currentType} field the muzzle smoke reads */
+    private static long resolveIntervalTicks(Player player, ItemStack gun, GunStats stats) {
+        String ammoId = GunNbt.getAmmo(gun);
+        if (ammoId == null || ammoId.isEmpty()) return -1;
+        PotatoCannonProjectileType type = PotatoCannonProjectileType
+                .getTypeForItem(player.level().registryAccess(),
+                        AmmoExtension.contentItemFor(player.level().registryAccess(), ammoId))
+                .map(ref -> ref.value()).orElse(null);
+        return type == null ? -1 : AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier);
     }
 
     private static void tryFire(Player player, ItemStack gun, GunStats stats) {
