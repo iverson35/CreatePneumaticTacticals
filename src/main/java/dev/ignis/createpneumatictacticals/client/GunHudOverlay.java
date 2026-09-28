@@ -76,8 +76,13 @@ public final class GunHudOverlay implements IGuiOverlay {
         LocalPlayer player = mc.player;
         if (player == null || mc.options.hideGui) return;
 
-        // 3D workbench: stats panel while looking at the [▼] take marker
-        renderBenchStats(g, mc, width, height);
+        // 3D workbench: stats panel + recoil chart while looking at the [▼]
+        // take marker (the panel needs nothing held — the chart neither)
+        ItemStack benchGun = hoveredBenchGun(mc);
+        if (benchGun != null) {
+            renderBenchStats(g, mc, benchGun, width, height);
+            renderRecoilPreview(g, benchGun, width, height);
+        }
 
         ItemStack gun = heldGun();
         if (gun == null) return;
@@ -103,22 +108,29 @@ public final class GunHudOverlay implements IGuiOverlay {
     private static final int LINE_H = 11;
 
     /**
+     * The staged gun the crosshair's [▼] take marker points at, or null when
+     * the crosshair is not on a bench take marker / nothing is staged.
+     */
+    private static ItemStack hoveredBenchGun(Minecraft mc) {
+        dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.Hover hover =
+                dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.currentHover();
+        if (hover == null || !hover.marker().isTake()) return null;
+        // the staged gun lives on the bench BE (marker carries no stack)
+        if (!(mc.level.getBlockEntity(hover.benchPos())
+                instanceof dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity bench)) {
+            return null;
+        }
+        ItemStack gun = bench.getGunSlot().getItem(0);
+        return gun.getItem() instanceof GunItem ? gun : null; // nothing staged
+    }
+
+    /**
      * While the crosshair hovers the bench's take marker, draw the staged
      * gun's stats: caliber + the core multipliers, and with Shift the full
      * spec (every aggregate stat plus the feed/supply module data). The gun
      * item's tooltip uses the same default/full split.
      */
-    private static void renderBenchStats(GuiGraphics g, Minecraft mc, int width, int height) {
-        dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.Hover hover =
-                dev.ignis.createpneumatictacticals.client.render.BenchTargetPicker.currentHover();
-        if (hover == null || !hover.marker().isTake()) return;
-        // the staged gun lives on the bench BE (marker carries no stack)
-        if (!(mc.level.getBlockEntity(hover.benchPos())
-                instanceof dev.ignis.createpneumatictacticals.block.entity.GunWorkbenchBlockEntity bench)) {
-            return;
-        }
-        ItemStack gun = bench.getGunSlot().getItem(0);
-        if (!(gun.getItem() instanceof GunItem)) return; // nothing staged
+    private static void renderBenchStats(GuiGraphics g, Minecraft mc, ItemStack gun, int width, int height) {
         GunStats stats = GunStats.ofGun(gun);
         boolean full = Screen.hasShiftDown();
 
@@ -172,6 +184,72 @@ public final class GunHudOverlay implements IGuiOverlay {
         if (!full) {
             g.drawString(mc.font, Component.translatable(
                     "gui." + CreatePneumaticTacticals.MODID + ".stats_full_hint"), x, y, HINT_COLOR);
+        }
+    }
+
+    // --- 3D workbench recoil chart (left of the crosshair) ---
+
+    /** chart box height in px — the vertical axis spans MAX_VERTICAL_DEGREES */
+    private static final int PREVIEW_H = 120;
+    /** widest the chart may get; a wider pattern shrinks instead of reaching
+     *  the crosshair */
+    private static final int PREVIEW_MAX_W = 110;
+    /** mirror of the stats panel's offset from the crosshair */
+    private static final int PREVIEW_GAP = 12;
+    private static final int PREVIEW_MIN_W = 20;
+    private static final int AXIS_COLOR = 0x60808080;
+    private static final int CAP_COLOR = 0x40C08080;
+    private static final int DOT_COLOR = 0xFFE0E0E0;
+    private static final int START_COLOR = 0xFF7CD87C;
+
+    /**
+     * Recoil prediction, left of the crosshair: the staged gun's spray path as
+     * one dot per shot (the first green), vertical axis 0..{@link
+     * RecoilPreview#MAX_VERTICAL_DEGREES} degrees up, horizontal axis the yaw
+     * offset at the same px-per-degree — the chart is the true angular path,
+     * not a stretched thumbnail.
+     */
+    private static void renderRecoilPreview(GuiGraphics g, ItemStack gun, int width, int height) {
+        GunStats stats = GunStats.ofGun(gun);
+        if (stats.receiver == null || stats.receiver.id == null) return;
+        // ADS stance: same shape as hipfire, and the one a player learns
+        RecoilPreview.compute(stats.receiver.id, stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw,
+                stats.recoilVerticalMultiplier, stats.recoilHorizontalMultiplier, true);
+        int n = RecoilPreview.count();
+        if (n == 0) return;
+
+        double maxX = 0;
+        for (int i = 0; i < n; i++) maxX = Math.max(maxX, Math.abs(RecoilPreview.x(i)));
+        // equal scale on both axes; the width cap only bites on patterns wider
+        // than the box, and a gun with no drift at all still gets a readable
+        // strip (its dots then sit on the centre line, which is the truth)
+        double pxPerDeg = Math.min((double) PREVIEW_H / RecoilPreview.MAX_VERTICAL_DEGREES,
+                PREVIEW_MAX_W / Math.max(2 * maxX, 0.5));
+        int chartH = (int) Math.round(RecoilPreview.MAX_VERTICAL_DEGREES * pxPerDeg);
+        int chartW = Math.max(PREVIEW_MIN_W, (int) Math.round(2 * maxX * pxPerDeg));
+        int right = width / 2 - PREVIEW_GAP;
+        int bottom = height / 2 + chartH / 2;
+        int top = bottom - chartH;
+        int left = right - chartW;
+        int axisX = left + chartW / 2; // x = 0
+
+        // axes: the centre line, the baseline (0 deg pitch) and the cap line
+        // the simulation stops at
+        g.fill(axisX, top, axisX + 1, bottom, AXIS_COLOR);
+        g.fill(left, bottom - 1, right, bottom, AXIS_COLOR);
+        g.fill(left, top, right, top + 1, CAP_COLOR);
+
+        for (int i = 0; i < n; i++) {
+            int px = axisX + (int) Math.round(RecoilPreview.x(i) * pxPerDeg);
+            // the shot that crossed the cap overshoots it by its own kick:
+            // pin it to the top line instead of drawing past the chart
+            int py = bottom - (int) Math.round(
+                    Math.min(RecoilPreview.y(i), RecoilPreview.MAX_VERTICAL_DEGREES) * pxPerDeg);
+            if (i == 0) {
+                g.fill(px - 1, py - 1, px + 2, py + 2, START_COLOR); // start marker
+            } else {
+                g.fill(px - 1, py - 1, px + 1, py + 1, DOT_COLOR);
+            }
         }
     }
 
