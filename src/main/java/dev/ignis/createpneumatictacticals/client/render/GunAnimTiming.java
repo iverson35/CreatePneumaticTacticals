@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.cache.GeckoLibCache;
 import software.bernie.geckolib.core.animation.Animation;
 import software.bernie.geckolib.loading.object.BakedAnimations;
+import dev.ignis.createpneumatictacticals.gun.GunStats;
 
 /**
  * Reload timing derived from the receiver's animation lengths (plan: 换弹时间
@@ -25,7 +26,7 @@ public final class GunAnimTiming {
     public static long reloadPhaseMs(ItemStack gun, boolean round, double reloadSpeed) {
         double ticks = animLengthTicks(gun, round ? "reload_round" : "reload",
                 round ? FALLBACK_ROUND_TICKS : FALLBACK_RELOAD_TICKS);
-        return (long) (ticks * 50 / Math.max(0.1, reloadSpeed));
+        return (long) (ticks * 50 / Math.max(GunStats.RELOAD_SPEED_MIN, reloadSpeed));
     }
 
     /**
@@ -49,7 +50,7 @@ public final class GunAnimTiming {
             // two-stage reload (unchanged), 6 with a pre_bolt.
             ticks += 2 * (2 + (pre > 0 ? 1 : 0));
         }
-        return (long) (ticks * 50.0 / Math.max(0.1, reloadSpeed));
+        return (long) (ticks * 50.0 / Math.max(GunStats.RELOAD_SPEED_MIN, reloadSpeed));
     }
 
     /**

@@ -188,7 +188,9 @@ final class WorkbenchStatsPanel {
         if (full) {
             addFeedLine(body, stats);
             addSupplyLine(body, stats);
-            body.add(fmt("reload_speed", stats.reloadSpeed));
+            // the RAW stat (1 + module sum), not the curve-mapped playback rate
+            // the engine uses - the panel is a stat sheet (see rawReloadSpeed)
+            body.add(fmt("reload_speed", stats.rawReloadSpeed()));
             body.add(fmt("damage_multiplier", stats.damageMultiplier));
             body.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
             body.add(fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier));

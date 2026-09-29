@@ -1,0 +1,32 @@
+{
+  "name": "createpneumatictacticals:mak_3b_receiver",
+  "module_type": "receiver",
+  "gun_properties": {
+    "reload_speed": 0.0,
+    "fire_rate_multiplier": 2,
+    "bullet_speed": 1,
+    "gravity_multiplier": -0.9,
+    "drag_multiplier": -0.2,
+    "ergonomics": 0.2,
+    "recoil_recovery": -0.8,
+    "hipfire_accuracy_multiplier": -0.2
+  },
+  "gun_type": "heavy",
+  "burst_count": 3,
+  "fire_modes": [
+    "semi"
+  ],
+  "fire_sound": "createpneumatictacticals:gun.pistol.silenced.shoot",
+  "base_recoil_pitch": 6,
+  "base_recoil_yaw": 4,
+  "ignore_ammo_pitch": false,
+  "gun_name": "gun.createpneumatictacticals.mak_3b",
+  "module_affected": [
+    { "module_type": "sight",  "mode": "include", "value": ["REGEX=pica_sight_small.+"] },
+    { "module_type": "barrel", "mode": "include", "value": ["REGEX=mak_3.+"] },
+    { "module_type": "stock",  "mode": "include", "value": ["REGEX=mak_1.+"] },
+    { "module_type": "feed",   "mode": "include", "value": ["REGEX=mak_3.+"] },
+    { "module_type": "supply", "mode": "include", "value": ["REGEX=mak_standard_supply"] },
+    { "module_type": "charm",  "mode": "include", "value": ["REGEX=charm.+"] }
+  ]
+}

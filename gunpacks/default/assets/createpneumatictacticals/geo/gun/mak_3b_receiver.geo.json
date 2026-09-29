@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.mak_3u_receiver",
+				"identifier": "geometry.mak_3b_receiver",
 				"texture_width": 32,
 				"texture_height": 32,
 				"visible_bounds_width": 3,
@@ -15,6 +15,18 @@
 					"name": "main",
 					"pivot": [0, 0, 0],
 					"cubes": [
+						{
+							"origin": [-0.5, 4.8, -1],
+							"size": [1, 0.4, 4],
+							"uv": {
+								"north": {"uv": [1, 8], "uv_size": [1, 0.5]},
+								"east": {"uv": [3, 8], "uv_size": [4, 0.5]},
+								"south": {"uv": [7, 8], "uv_size": [1, 0.5]},
+								"west": {"uv": [8, 6], "uv_size": [4, 0.5]},
+								"up": {"uv": [2, 8], "uv_size": [1, 4]},
+								"down": {"uv": [8, 6], "uv_size": [1, -4]}
+							}
+						},
 						{
 							"origin": [-1, 0.5, -3.5],
 							"size": [2, 3, 8],
@@ -40,9 +52,9 @@
 							}
 						},
 						{
-							"origin": [-0.1, 3.32635, -3.51519],
+							"origin": [-0.1, 4.62635, -2.01519],
 							"size": [0.2, 0.5, 1],
-							"pivot": [-0.9, 3.32635, -2.51519],
+							"pivot": [-0.9, 4.62635, -1.01519],
 							"rotation": [-10, 0, 0],
 							"uv": {
 								"north": {"uv": [16, 11], "uv_size": [0.5, 0.5]},
@@ -80,18 +92,6 @@
 							}
 						},
 						{
-							"origin": [-0.5, 3.5, -1],
-							"size": [1, 0.4, 4],
-							"uv": {
-								"north": {"uv": [1, 8], "uv_size": [1, 0.5]},
-								"east": {"uv": [3, 8], "uv_size": [4, 0.5]},
-								"south": {"uv": [7, 8], "uv_size": [1, 0.5]},
-								"west": {"uv": [8, 6], "uv_size": [4, 0.5]},
-								"up": {"uv": [2, 8], "uv_size": [1, 4]},
-								"down": {"uv": [8, 6], "uv_size": [1, -4]}
-							}
-						},
-						{
 							"origin": [-1, 0.5, 4.5],
 							"size": [2, 3, 6],
 							"uv": {
@@ -116,15 +116,53 @@
 							}
 						},
 						{
-							"origin": [-0.5, -2, 9],
-							"size": [1, 2.5, 1],
+							"origin": [0.57164, 0.65349, 3.4],
+							"size": [1.2, 2, 4.2],
+							"pivot": [1.17164, 1.65349, 5.5],
+							"rotation": [0, 0, 157.5],
 							"uv": {
-								"north": {"uv": [0, 10], "uv_size": [1, 2.5]},
-								"east": {"uv": [16, 15], "uv_size": [1, 2.5]},
-								"south": {"uv": [17, 3], "uv_size": [1, 2.5]},
-								"west": {"uv": [17, 6], "uv_size": [1, 2.5]},
-								"up": {"uv": [7, 9], "uv_size": [1, 1]},
-								"down": {"uv": [1, 11], "uv_size": [1, -1]}
+								"north": {"uv": [7, 9], "uv_size": [1, 2]},
+								"east": {"uv": [16, 15], "uv_size": [4, 2]},
+								"south": {"uv": [16.5, 8], "uv_size": [1, 2]},
+								"west": {"uv": [16, 15], "uv_size": [4, 2]},
+								"up": {"uv": [17.4, 3.4], "uv_size": [1.2, 4.2]},
+								"down": {"uv": [20, 7], "uv_size": [1, -4]}
+							}
+						},
+						{
+							"origin": [0.34329, 2.30698, 3.4],
+							"size": [1, 0.5, 4.2],
+							"uv": {
+								"north": {"uv": [0, 10], "uv_size": [1, 0.5]},
+								"east": {"uv": [17, 11], "uv_size": [4, 0.5]},
+								"south": {"uv": [0, 10], "uv_size": [1, 0.5]},
+								"west": {"uv": [17, 11], "uv_size": [4, 0.5]},
+								"up": {"uv": [19, 3], "uv_size": [1, 4]},
+								"down": {"uv": [19, 11], "uv_size": [1, -4]}
+							}
+						},
+						{
+							"origin": [-0.6, 4.3, -2],
+							"size": [1.2, 0.5, 5],
+							"uv": {
+								"north": {"uv": [6, 10], "uv_size": [1, 0.5]},
+								"east": {"uv": [17, 13], "uv_size": [5, 0.5]},
+								"south": {"uv": [10, 7], "uv_size": [1, 0.5]},
+								"west": {"uv": [17, 14], "uv_size": [5, 0.5]},
+								"up": {"uv": [13, 18], "uv_size": [1, 5]},
+								"down": {"uv": [14, 23], "uv_size": [1, -5]}
+							}
+						},
+						{
+							"origin": [-0.5, 3.5, -2],
+							"size": [1, 0.8, 5],
+							"uv": {
+								"north": {"uv": [1, 10], "uv_size": [1, 1]},
+								"east": {"uv": [12, 17], "uv_size": [5, 1]},
+								"south": {"uv": [5, 10], "uv_size": [1, 1]},
+								"west": {"uv": [17, 12], "uv_size": [5, 1]},
+								"up": {"uv": [17, 17], "uv_size": [1, 5]},
+								"down": {"uv": [12, 23], "uv_size": [1, -5]}
 							}
 						}
 					]
@@ -138,13 +176,13 @@
 				{
 					"name": "tactical_camera",
 					"parent": "main",
-					"pivot": [-1.8, 3.5, 6],
+					"pivot": [-2, 4.5, 6],
 					"rotation": [0, 0, -45]
 				},
 				{
 					"name": "ads_camera",
 					"parent": "main",
-					"pivot": [0, 4.1, 6.5]
+					"pivot": [0, 5.4, 6.5]
 				},
 				{
 					"name": "loc_handguard",
@@ -159,12 +197,12 @@
 				{
 					"name": "loc_sight_side",
 					"parent": "main",
-					"pivot": [0, 3.9, 2.5]
+					"pivot": [0, 5.2, 2.5]
 				},
 				{
 					"name": "loc_sight",
 					"parent": "main",
-					"pivot": [0, 3.9, 0.5]
+					"pivot": [0, 5.2, 0.5]
 				},
 				{
 					"name": "loc_barrel",
@@ -174,7 +212,8 @@
 				{
 					"name": "loc_feed",
 					"parent": "main",
-					"pivot": [0, 0.5, 7.5]
+					"pivot": [1.55428, 0.72962, 7.5],
+					"rotation": [0, 0, -22.5]
 				},
 				{
 					"name": "loc_charm",

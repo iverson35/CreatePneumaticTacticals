@@ -602,7 +602,7 @@ public final class ClientGunInput {
         reloadPreBoltStartMs = empty && preBoltTicks > 0 ? now : 0;
 
         reloadSwapStarted = false;
-        long preBoltMs = (long) (preBoltTicks * 50.0 / Math.max(0.1, stats.reloadSpeed));
+        long preBoltMs = (long) (preBoltTicks * 50.0 / Math.max(GunStats.RELOAD_SPEED_MIN, stats.reloadSpeed));
         reloadBatchMs = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .reloadBatchMs(gun, reloadRoundMode, empty, stats.reloadSpeed);
         reloadEndMs = now + reloadBatchMs;
@@ -771,7 +771,7 @@ public final class ClientGunInput {
     /** pre_bolt stage length in ms, reloadSpeed-scaled (0 = no stage) */
     private static long preBoltMs(ItemStack gun, GunStats stats) {
         return (long) (dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
-                .preBoltTicks(gun) * 50.0 / Math.max(0.1, stats.reloadSpeed));
+                .preBoltTicks(gun) * 50.0 / Math.max(GunStats.RELOAD_SPEED_MIN, stats.reloadSpeed));
     }
 
     /**

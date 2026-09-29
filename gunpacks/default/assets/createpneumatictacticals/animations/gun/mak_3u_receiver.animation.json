@@ -1,7 +1,7 @@
 {
 	"format_version": "1.8.0",
 	"animations": {
-		"animation.mak_3u_receiver.reload": {
+		"animation.mak_3b_receiver.reload": {
 			"animation_length": 3,
 			"bones": {
 				"main": {
@@ -23,11 +23,23 @@
 						"3.0": {
 							"vector": [0, 0, 0]
 						}
+					},
+					"position": {
+						"2.6667": {
+							"vector": [0, 0, 0]
+						},
+						"2.75": {
+							"vector": [-0.98369, 0.52734, -0.06526],
+							"easing": "easeOutQuart"
+						},
+						"2.8333": {
+							"vector": [0, 0, 0]
+						}
 					}
 				}
 			}
 		},
-		"animation.mak_3u_receiver.fire": {
+		"animation.mak_3b_receiver.fire": {
 			"animation_length": 0.125,
 			"bones": {
 				"bolt": {
@@ -43,7 +55,7 @@
 				}
 			}
 		},
-		"animation.mak_3u_receiver.bolt": {
+		"animation.mak_3b_receiver.bolt": {
 			"animation_length": 0.5417,
 			"bones": {
 				"main": {

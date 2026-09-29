@@ -22,9 +22,11 @@
   "module.createpneumatictacticals.mak_1_barrel_long": "MAK-1 长枪管",
   "module.createpneumatictacticals.mak_shooter_handguard": "MAK射手护木",
   "module.createpneumatictacticals.mak_3u_receiver": "MAK-3U 机匣",
+  "module.createpneumatictacticals.mak_3b_receiver": "MAK-3B 机匣",
   "module.createpneumatictacticals.mak_3_barrel": "MAK-3 枪管",
   "module.createpneumatictacticals.mak_3_ammo_5": "MAK-3 5发弹匣",
   "gun.createpneumatictacticals.mak_3u": "MAK-3U 射手步枪",
+  "gun.createpneumatictacticals.mak_3b": "MAK-3B 战斗步枪",
   "module.createpneumatictacticals.14dvo_silencer_a": "14DVO 标准消音器",
   "module.createpneumatictacticals.mak_1_ammo_50": "MAK-1 50发弹鼓"
 }
