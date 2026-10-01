@@ -15,7 +15,10 @@ split_unified_bbmodel.py -- 把「统合枪模」.bbmodel 拆成每模块一个 
   内嵌回 bbmodel 并同时写出 <id>.png）；若统合 bbmodel 旁存在同尺寸的
   <名>_glowmask.png / <名>_dye.png，按同一映射拆出每模块的掩码；
 - 动画按骨骼归属分给各模块（只保留该模块骨骼的 animator），
-  每个输出模型的根骨骼统一改名 main。
+  每个输出模型的根骨骼统一改名 main。音效关键帧默认分给机匣，
+  effect 无命名空间时补 createpneumatictacticals:；同帧指令关键帧
+  （timeline）的 script 若是模块 id，则该帧音效分给对应模块，
+  且标识用指令帧不写入任何输出。
 
 用法：
     python tools/split_unified_bbmodel.py gecko/marble_17/marble_17.bbmodel
@@ -528,21 +531,87 @@ def _img_to_data_url(img):
 # ---------------------------------------------------------------- 动画拆分
 
 
-def _split_animations(model, mod, all_bone_uuids, warn):
-    """动画按骨骼归属拆分；音效/粒子时间轴只留在机匣。"""
+# 音效缺省命名空间（effect 没写命名空间时补上）
+DEFAULT_SOUND_NAMESPACE = "createpneumatictacticals"
+# 「同帧」判定容差（秒）：Blockbench 时间按 1/24s 取整存 5 位小数
+SOUND_ROUTE_EPS = 1e-4
+
+
+def _route_effect_animator(animator, module_ids, receiver_id, anim_name,
+                           warn):
+    """把 effect animator（音效/指令/粒子）的关键帧按模块路由。
+
+    返回 {module_id: [kf, ...]}：
+    - sound 帧：同帧（±SOUND_ROUTE_EPS）有 script == 模块 id 的指令帧
+      -> 分给该模块；否则分给机匣。effect 无命名空间时补
+      createpneumatictacticals:。
+    - 标识用指令帧（timeline 且 script == 模块 id）：只作路由标记，
+      不输出到任何文件。
+    - 其余帧（粒子、非标识指令帧）：留在机匣。
+    """
+    kfs = animator.get("keyframes", [])
+
+    def script_of(kf):
+        return str((kf.get("data_points") or [{}])[0].get("script", "")
+                   ).strip()
+
+    markers = []
+    for kf in kfs:
+        if kf.get("channel") == "timeline":
+            script = script_of(kf)
+            if script in module_ids:
+                markers.append((float(kf.get("time", 0) or 0), script))
+    sound_times = [float(kf.get("time", 0) or 0) for kf in kfs
+                   if kf.get("channel") == "sound"]
+
+    routed = {}
+    for kf in kfs:
+        ch = kf.get("channel")
+        t = float(kf.get("time", 0) or 0)
+        if ch == "timeline":
+            script = script_of(kf)
+            if script in module_ids:
+                continue  # 标识用指令帧，不输出
+            if script and any(abs(t - st) < SOUND_ROUTE_EPS
+                              for st in sound_times):
+                warn(f"动画 {anim_name}：{t}s 指令帧 script={script!r} "
+                     f"不匹配任何模块 id，同帧音效留在机匣")
+            routed.setdefault(receiver_id, []).append(copy.deepcopy(kf))
+        elif ch == "sound":
+            hits = [mid for mt, mid in markers
+                    if abs(mt - t) < SOUND_ROUTE_EPS]
+            if len(hits) > 1:
+                warn(f"动画 {anim_name}：{t}s 处有多个模块指令帧 "
+                     f"{hits}，该帧音效留在机匣")
+            target = hits[0] if len(hits) == 1 else receiver_id
+            kf2 = copy.deepcopy(kf)
+            for dp in kf2.get("data_points", []):
+                eff = dp.get("effect")
+                if eff and ":" not in eff:
+                    dp["effect"] = f"{DEFAULT_SOUND_NAMESPACE}:{eff}"
+            routed.setdefault(target, []).append(kf2)
+        else:
+            routed.setdefault(receiver_id, []).append(copy.deepcopy(kf))
+    return routed
+
+
+def _split_animations(model, mod, anim_routes, warn):
+    """动画按骨骼归属拆分；音效/指令关键帧按 anim_routes 路由结果分配。"""
     out = []
     rt = _mat4_rot3(mod.rebase)
     for anim in model.data.get("animations", []):
         sub = {}
-        effects = {}
         for auuid, animator in anim.get("animators", {}).items():
-            if animator.get("type", "bone") != "bone" or \
-                    auuid not in all_bone_uuids:
-                effects[auuid] = copy.deepcopy(animator)
-            elif auuid in mod.bone_uuids:
-                sub[auuid] = copy.deepcopy(animator)
-        if mod.type == "receiver":
-            sub.update(effects)
+            if animator.get("type", "bone") == "bone":
+                if auuid in mod.bone_uuids:
+                    sub[auuid] = copy.deepcopy(animator)
+            else:
+                kflist = anim_routes.get((anim.get("uuid"), auuid), {}
+                                         ).get(mod.id)
+                if kflist:
+                    eff = copy.deepcopy(animator)
+                    eff["keyframes"] = kflist
+                    sub[auuid] = eff
         if not sub:
             continue
         if mod.root_uuid in sub:
@@ -696,15 +765,50 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
                     errors.append(f"{mod.id}: UV 越界 {face['uv']}")
 
         # 4. 动画完整性
+        module_ids = {m.id for m in src_modules}
         out_bones = set(out_model.bones)
         for anim in out.get("animations", []):
             for auuid, animator in anim.get("animators", {}).items():
-                if animator.get("type", "bone") == "bone" and \
-                        auuid not in out_bones:
-                    errors.append(f"{mod.id}: 动画 {anim['name']} 引用了"
-                                  f"不存在的骨骼 {auuid}")
-                if auuid == mod.root_uuid and animator["name"] != "main":
-                    errors.append(f"{mod.id}: 根骨 animator 未改名 main")
+                if animator.get("type", "bone") == "bone":
+                    if auuid not in out_bones:
+                        errors.append(f"{mod.id}: 动画 {anim['name']} 引用了"
+                                      f"不存在的骨骼 {auuid}")
+                    if auuid == mod.root_uuid and animator["name"] != "main":
+                        errors.append(f"{mod.id}: 根骨 animator 未改名 main")
+                else:
+                    for kf in animator.get("keyframes", []):
+                        ch = kf.get("channel")
+                        dp0 = (kf.get("data_points") or [{}])[0]
+                        if ch == "sound" and ":" not in str(
+                                dp0.get("effect", "")):
+                            errors.append(
+                                f"{mod.id}: 动画 {anim['name']} 的音效 "
+                                f"{dp0.get('effect')!r} 缺命名空间")
+                        if ch == "timeline" and str(
+                                dp0.get("script", "")).strip() in module_ids:
+                            errors.append(
+                                f"{mod.id}: 动画 {anim['name']} 残留标识用"
+                                f"指令帧 {dp0.get('script')!r}")
+
+    # 4b. 音效守恒：每个事件的 sound 帧总数 == 源模型
+    def count_sounds(anims):
+        counts = {}
+        for anim in anims:
+            event = anim["name"].split(".")[-1]
+            n = sum(1 for a in anim.get("animators", {}).values()
+                    if a.get("type", "bone") != "bone"
+                    for kf in a.get("keyframes", [])
+                    if kf.get("channel") == "sound")
+            counts[event] = counts.get(event, 0) + n
+        return counts
+
+    src_sounds = count_sounds(src_model.data.get("animations", []))
+    out_sounds = {}
+    for out in outputs.values():
+        for event, n in count_sounds(out.get("animations", [])).items():
+            out_sounds[event] = out_sounds.get(event, 0) + n
+    if src_sounds != out_sounds:
+        errors.append(f"音效帧不守恒：源 {src_sounds} vs 输出 {out_sounds}")
 
     # 5. 像素级贴图核对
     for label, mapping, new_img, src_imgs in pixel_checks:
@@ -755,6 +859,16 @@ def split(bbmodel_path, out_dir):
     preexisting |= {p.name for p in out_dir.glob("*.png")}
 
     all_bone_uuids = set(model.bones)
+    receiver = next(m for m in modules_order if m.type == "receiver")
+    module_ids = set(modules)
+    # 音效/指令关键帧路由：每个动画只算一次
+    anim_routes = {}
+    for anim in data.get("animations", []):
+        for auuid, animator in anim.get("animators", {}).items():
+            if animator.get("type", "bone") == "bone":
+                continue
+            anim_routes[(anim.get("uuid"), auuid)] = _route_effect_animator(
+                animator, module_ids, receiver.id, anim["name"], warn)
     outputs = {}
     pixel_checks = []
     summary = []
@@ -798,13 +912,17 @@ def split(bbmodel_path, out_dir):
             "uv_height": h,
             "source": _img_to_data_url(new_img),
             "saved": True,
-            "uuid": str(uuidlib.uuid4()),
+            # 确定性 uuid：同一模块重复拆分得到同一个贴图 uuid，
+            # 避免「重新生成后整份文件都 diff」
+            "uuid": str(uuidlib.uuid5(
+                uuidlib.NAMESPACE_URL,
+                f"{src_tex.get('uuid', '0')}/{mod.id}")),
             "id": "0",
             "relative_path": png_name,
         })
 
         # --- 动画
-        anims = _split_animations(model, mod, all_bone_uuids, warn)
+        anims = _split_animations(model, mod, anim_routes, warn)
 
         # --- 组装输出 bbmodel
         skip_keys = {"elements", "outliner", "textures", "animations",
