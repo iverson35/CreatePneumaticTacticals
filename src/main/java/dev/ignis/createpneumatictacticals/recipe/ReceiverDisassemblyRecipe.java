@@ -105,8 +105,8 @@ public class ReceiverDisassemblyRecipe extends CustomRecipe {
 
     /**
      * Gun -> receiver item: the materialize copy mirrors
-     * WorkbenchAssembler.removeModule (rolls, colors, skin, hidden flag
-     * travel out of the gun's render copies; the item is the authority
+     * WorkbenchAssembler.removeModule (rolls, colors, skin, hidden flag,
+     * paint travel out of the gun's render copies; the item is the authority
      * again once re-staged).
      */
     public static ItemStack disassemble(ItemStack gun) {
@@ -123,7 +123,7 @@ public class ReceiverDisassemblyRecipe extends CustomRecipe {
         if (skin != null) {
             ModuleItem.setSkinTag(out, skin);
         }
-        ModuleItem.setHidden(out, GunNbt.isHidden(gun, receiver.id));
+        ModuleItem.setPaint(out, GunNbt.getPaint(gun, receiver.id));
         return out;
     }
 

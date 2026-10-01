@@ -52,6 +52,9 @@ public final class ModuleManager {
             }
         }
         MODULES = Map.copyOf(fresh);
+        // paints reload on the same chain: /cpt reload, F3+T and commonSetup
+        // all funnel through this method
+        PaintManager.loadFromGunPacks();
         LOGGER.info("Loaded {} module definitions from gunpacks", MODULES.size());
     }
 }

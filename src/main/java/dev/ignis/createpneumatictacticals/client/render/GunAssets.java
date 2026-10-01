@@ -3,6 +3,8 @@ package dev.ignis.createpneumatictacticals.client.render;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
+import dev.ignis.createpneumatictacticals.module.PaintManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -35,9 +37,20 @@ public final class GunAssets {
         if (receiver == null) return new Assets(PLACEHOLDER_MODEL, PLACEHOLDER_TEXTURE, PLACEHOLDER_ANIM);
         String ns = receiver.id.getNamespace();
         String path = receiver.id.getPath();
+        ResourceLocation texture = new ResourceLocation(ns, "textures/gun/" + path + ".png");
+        // receiver paint (涂装): the gun-side copy swaps the receiver's BASE
+        // texture; the three GunTextureAtlas acquire sites that render
+        // through this model (GunHandsAwareRenderer getRenderType /
+        // renderStandalone, GunGlowLayer.render) all read it here. Missing
+        // paint art renders unpainted — the lenient fallback everywhere
+        ResourceLocation paintTex = PaintManager.texture(GunNbt.getPaint(stack, receiver.id), receiver.id);
+        if (paintTex != null && Minecraft.getInstance().getResourceManager()
+                .getResource(paintTex).isPresent()) {
+            texture = paintTex;
+        }
         return new Assets(
                 new ResourceLocation(ns, "geo/gun/" + path + ".geo.json"),
-                new ResourceLocation(ns, "textures/gun/" + path + ".png"),
+                texture,
                 new ResourceLocation(ns, "animations/gun/" + path + ".animation.json"));
     }
 

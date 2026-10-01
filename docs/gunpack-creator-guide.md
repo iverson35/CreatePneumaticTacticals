@@ -51,9 +51,9 @@ Blockbench 建模 → 导出 gecko 模型/动画 → 放进 gunpacks/<包名>/as
 
 ### 1.2 服务端 / 客户端一致性（重要）
 
-模组启动时会把**所有枪包里 `modules/*.json` 的内容**做一次 SHA-1，作为网络握手协议版本。
+模组启动时会把**所有枪包里 `modules/*.json` 与 `paints/*.json` 的内容**做一次 SHA-1，作为网络握手协议版本。
 
-> **客户端与服务端的 `modules/` 必须完全一致**，否则 Forge 握手阶段直接拒绝连接。
+> **客户端与服务端的 `modules/` + `paints/` 必须完全一致**，否则 Forge 握手阶段直接拒绝连接。
 > 只有贴图/模型/音效不一致不会影响握手（但会看起来不对），所以发布时请把整包一起发。
 
 ### 1.3 内置默认枪包
@@ -71,6 +71,9 @@ Blockbench 建模 → 导出 gecko 模型/动画 → 放进 gunpacks/<包名>/as
 gunpacks/<枪包目录名>/
 ├── modules/                                  ← 模块定义（必需，客户端+服务端都读）
 │   ├── mak_1_receiver.json
+│   └── ...
+├── paints/                                   ← 涂装定义（可选，客户端+服务端都读，参与握手哈希）
+│   ├── desert.json
 │   └── ...
 └── assets/<命名空间>/                         ← 客户端资源（作为内置资源包注入）
     ├── geo/gun/<模块id>.geo.json               GeckoLib 模型（文件名词干 = 模块 id 的 path）
@@ -93,7 +96,9 @@ gunpacks/<枪包目录名>/
 | 贴图 | `assets/<namespace>/textures/gun/<path>.png` |
 | 发光掩码 | `assets/<namespace>/textures/gun/<path>_glowmask.png` |
 | 染色掩码 | `assets/<namespace>/textures/gun/<path>_dye.png` |
+| 涂装贴图 | `assets/<namespace>/textures/gun/<path>_<涂装path>.png`（§3.10） |
 | 动画 | `assets/<namespace>/animations/gun/<path>.animation.json` |
+| 涂装名 | 语言键 `paint.<namespace>.<path>`（§3.10） |
 | 模块物品名 | 语言键 `module.<namespace>.<path>` |
 | 成品枪名 | 机匣里的 `gun_name`（语言键，随你写） |
 
@@ -125,8 +130,9 @@ gunpacks/<枪包目录名>/
 
 | 操作 | 作用 |
 |---|---|
-| `F3+T`（客户端） | 重载枪包资源（模型/贴图/动画/语言/**音效音量音调与 ogg**）+ 重新读取模块定义；图集与掩码缓存一并清空 |
-| `/cpt reload`（服务端，需要 OP 2 级） | 重新读取服务端的模块定义（不改资源） |
+| `F3+T`（客户端） | 重载枪包资源（模型/贴图/动画/语言/**音效音量音调与 ogg**）+ 重新读取模块与涂装定义；图集与掩码缓存一并清空 |
+| `/cpt reload`（服务端，需要 OP 2 级） | 重新读取服务端的模块与涂装定义（不改资源） |
+| `/cpt paint <id>` / `/cpt paint clear`（服务端，OP 2 级） | 测试涂装：给**主手模块物品**写入/清除涂装（§3.10） |
 | 重启 | `sounds.json` 新增/删除**事件键**（注册表内容）必须重启 |
 
 - 日志关键字：`Gunpack root: ...`（启动时的枪包根目录与内容哈希）、`Loaded N modules ...`、`Failed to read module file ...`（某个 JSON 坏了，该文件被跳过，其余照常加载）。
@@ -800,6 +806,60 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 **挂件皮肤与隐藏的互动**：挂件隐藏且带皮肤时走「皮肤顶替吊坠」特例——链条照常物理摆动，`pendant` 骨骼的内容隐藏，皮肤渲染在 pendant 骨骼的动画位置。给挂件做皮肤的作者应把皮肤对准吊坠（皮肤画在 pendant 骨骼原点，即最末链节下方）。模型没有 `pendant` 骨骼时无处安放皮肤，隐藏挂件整体不画（隐藏语义优先）。
 
+
+### 3.10 涂装（paints）
+
+**涂装**是枪包作者预制的模块外观变体：给模块贴图做一套换色版本，玩家就能在**不碰染色系统**的前提下给模块换外观。涂装改变的是**基础贴图本身**，玩家的染色（工作台染色区）随后**叠加**在涂装之上——两者独立、互不干扰。
+
+#### 声明文件
+
+每个涂装一个 JSON，放在 `gunpacks/<包名>/paints/<涂装名>.json`：
+
+```json
+{
+  "name": "createpneumatictacticals:desert",
+  "applies_to": ["createpneumatictacticals:mak_1_barrel_short"]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `name` | 涂装 id | `<命名空间>:<名字>`，与模块 id 同构；缺省时取 `<模组命名空间>:<文件名>` |
+| `applies_to` | 字符串数组 | 该涂装可以应用到的模块 id。支持 `REGEX=` 前缀正则（语义同 §3.5 `module_affected`，用 `find()` 匹配整串 id）；必填非空 |
+
+#### 贴图命名（唯一规则）
+
+涂装贴图**不用在 JSON 里声明**，按命名约定推导：
+
+``+ `assets/<命名空间>/textures/gun/<模块path>_<涂装path>.png`
+
+即「模块贴图文件名词干 + `_` + 涂装 id 的 path」。涂装贴图放在**模块自己的命名空间**里（和模块贴图同目录）。
+
+**发光与染色掩码按最终贴图 id 的兄弟命名自动跟随**：
+
+- `…_<模块>_<涂装>_glowmask.png` —— 涂装版发光掩码
+- `…_<模块>_<涂装>_dye.png` —— 涂装版染色掩码
+
+缺了兄弟掩码时沿用既有规则（发光掩码缺 = 不发光；染色掩码缺 = 该涂装不可染色/纯色覆盖，视既有语义）。这三种图都不用登记——放进目录即生效。
+
+#### 显示名
+
+语言键 `paint.<命名空间>.<path>`（与模块名的 `module.<命名空间>.<path>` 对齐），写在枪包自己的 lang 文件里。
+
+#### 玩家侧使用
+
+- **测试命令**：手拿模块，`/cpt paint <涂装id>` 设置、`/cpt paint clear` 清除（OP 2 级）。命令只改**物品侧** NBT。
+- **装枪/拆下**：涂装随物品装上枪（枪 NBT 存一份渲染副本）、拆下时逐字节带回物品——与染色、隐藏标志、AW 皮肤同一条往返链路（机匣也支持涂装，拆解合成同样保留）。
+- **工具提示**：非默认涂装的模块物品显示一行「涂装：XXX」。
+- **失效回退**：涂装 id 不在注册表里（比如枪包被移除）、或涂装贴图文件缺失时，**不删物品、不报错**——渲染回退到模块基础贴图，与缺贴图时的 lenient 规则一致。
+
+#### 与其他系统的互动
+
+- **染色叠加**：涂装先换底图，玩家的染色再参数化它——涂装贴图提供自己的 `_dye.png` 掩码时，染色区域也随涂装变。
+- **AW 皮肤优先**：模块带 AW 皮肤时整体跳过模型体渲染，涂装不生效（皮肤自带贴图）。
+- **ghost 预览**：装配台预览读的是**手持物品自身的涂装**（装上去会是什么样），已装模块读枪侧副本——与隐藏标志同语义。
+- **握手哈希**：`paints/*.json` 与 `modules/*.json` 一起参与启动 SHA-1（§1.2），两端必须一致。
+
 ---
 
 ## 4. 弹药自定义
@@ -986,6 +1046,8 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 资源侧：`assets/createpneumatictacticals/geo/gun/*.geo.json`（18 个模型）、`textures/gun/*.png`（16×16 / 32×32 / 64×64，32×32 为主）、`animations/gun/*.animation.json`（4 个）、`sounds.json` + `sounds/*.ogg`（13 个）。
 
+涂装侧：`paints/desert.json`（`applies_to` 精确 id：短枪管的沙漠换色）、`paints/arctic.json`（瞄具涂装 + 配套 `_arctic_glowmask.png`——演示涂装的发光掩码兄弟件）。
+
 ### 5.2 游戏内提示速查
 
 **装配（气动枪械装配台）**
@@ -1038,6 +1100,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `/cpt reload` | `gunpack/CptCommand.java` |
 | 模块 JSON 解析 | `module/ModuleDefinition.java`、`module/ModuleType.java` |
 | 模块注册表 | `module/ModuleManager.java` |
+| 涂装定义/注册表/`/cpt paint` | `module/PaintDefinition.java`、`module/PaintManager.java`、`gunpack/CptCommand.java` |
 | 制造随机（掷点） | `module/ModuleRoll.java` |
 | 配件调整台（敲击 / 校准） | `module/ModuleRoll.java`、`menu/ModuleTunerMenu.java`、`block/ModuleTunerBlock.java` |
 | 属性聚合与钳制 | `gun/GunStats.java` |

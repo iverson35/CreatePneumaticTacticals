@@ -92,6 +92,10 @@ public final class WorkbenchAssembler {
         }
         dev.ignis.createpneumatictacticals.gun.GunNbt.setHidden(newGun, receiverDef.id,
                 dev.ignis.createpneumatictacticals.item.ModuleItem.isHidden(held));
+        // paint travels onto the gun like the hidden flag (receivers are
+        // paintable too — the receiver body pass reads the gun-side copy)
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setPaint(newGun, receiverDef.id,
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getPaint(held));
         if (receiverDef.gunName != null) {
             newGun.setHoverName(net.minecraft.network.chat.Component.translatable(receiverDef.gunName));
         }
@@ -186,6 +190,11 @@ public final class WorkbenchAssembler {
         // shown module can never inherit the previous occupant's hidden flag
         dev.ignis.createpneumatictacticals.gun.GunNbt.setHidden(gun, def.id,
                 dev.ignis.createpneumatictacticals.item.ModuleItem.isHidden(held));
+        // item-as-paint-authority: unconditional copy, same contract as
+        // the hidden flag — an unpainted item clears any stale gun-side
+        // paint the previous occupant of the slot left behind
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setPaint(gun, def.id,
+                dev.ignis.createpneumatictacticals.item.ModuleItem.getPaint(held));
         held.shrink(1);
         bench.setChanged();
         click(player, pos, ModSoundEvents.MODULE_ASSEMBLE.get());
@@ -252,6 +261,10 @@ public final class WorkbenchAssembler {
         dev.ignis.createpneumatictacticals.item.ModuleItem.setHidden(out,
                 dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(gun, moduleId));
         dev.ignis.createpneumatictacticals.gun.GunNbt.clearHidden(gun, moduleId);
+        // paint travels back out, then the gun's copy is dropped
+        dev.ignis.createpneumatictacticals.item.ModuleItem.setPaint(out,
+                dev.ignis.createpneumatictacticals.gun.GunNbt.getPaint(gun, moduleId));
+        dev.ignis.createpneumatictacticals.gun.GunNbt.clearPaint(gun, moduleId);
         // dependency ejection mirrors the old menu: removing the barrel drops
         // the muzzle; removing the handguard drops its attachments
         var dependents = dependentsOf(removed, installed, atts);
@@ -273,6 +286,10 @@ public final class WorkbenchAssembler {
             dev.ignis.createpneumatictacticals.item.ModuleItem.setHidden(depOut,
                     dev.ignis.createpneumatictacticals.gun.GunNbt.isHidden(gun, dep.getValue().id));
             dev.ignis.createpneumatictacticals.gun.GunNbt.clearHidden(gun, dep.getValue().id);
+            // same paint round-trip as the primary removal
+            dev.ignis.createpneumatictacticals.item.ModuleItem.setPaint(depOut,
+                    dev.ignis.createpneumatictacticals.gun.GunNbt.getPaint(gun, dep.getValue().id));
+            dev.ignis.createpneumatictacticals.gun.GunNbt.clearPaint(gun, dep.getValue().id);
             give(player, depOut);
         }
         give(player, out);

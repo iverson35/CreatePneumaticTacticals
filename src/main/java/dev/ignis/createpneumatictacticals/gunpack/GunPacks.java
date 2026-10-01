@@ -73,16 +73,26 @@ public final class GunPacks {
     }
 
     /**
-     * All module definitions from all installed packs, as {@code id -> json}.
-     * The id comes from the JSON's {@code name} field, falling back to
-     * {@code <modid>:<filename>}. First pack wins on collision.
+     * All paint (涂装) definitions from all installed packs, as
+     * {@code id -> json}. Same loading rules as the module JSONs: the id
+     * comes from the JSON's {@code name} field, falling back to
+     * {@code <modid>:<filename>}; first pack wins on collision.
      */
-    public static Map<ResourceLocation, JsonObject> loadModuleJsons() {
+    public static Map<ResourceLocation, JsonObject> loadPaintJsons() {
+        return loadJsons("paints", "paint");
+    }
+
+    /**
+     * Generic {@code <pack>/<dir>/*.json} loader shared by modules and
+     * paints: sorted file scan, {@code name} field id (fallback
+     * {@code <modid>:<filename>}), first pack wins on collision.
+     */
+    private static Map<ResourceLocation, JsonObject> loadJsons(String dir, String kind) {
         Map<ResourceLocation, JsonObject> out = new LinkedHashMap<>();
         for (Path pack : installedPacks()) {
-            Path modules = pack.resolve("modules");
-            if (!Files.isDirectory(modules)) continue;
-            try (Stream<Path> stream = Files.list(modules)) {
+            Path folder = pack.resolve(dir);
+            if (!Files.isDirectory(folder)) continue;
+            try (Stream<Path> stream = Files.list(folder)) {
                 for (Path file : stream.filter(p -> p.getFileName().toString().endsWith(".json")).sorted().toList()) {
                     try {
                         JsonObject json = JsonParser.parseString(
@@ -95,10 +105,10 @@ public final class GunPacks {
                             id = new ResourceLocation(CreatePneumaticTacticals.MODID, name);
                         }
                         if (out.putIfAbsent(id, json) != null) {
-                            LOGGER.warn("Module {} defined by multiple gunpacks; keeping the first", id);
+                            LOGGER.warn("{} {} defined by multiple gunpacks; keeping the first", kind, id);
                         }
                     } catch (Exception ex) {
-                        LOGGER.error("Failed to read module file {}: {}", file, ex.getMessage());
+                        LOGGER.error("Failed to read {} file {}: {}", kind, file, ex.getMessage());
                     }
                 }
             } catch (Exception ex) {
@@ -108,16 +118,27 @@ public final class GunPacks {
         return out;
     }
 
-    /** sha1 over every module file's path + content, order-independent */
+    /**
+     * All module definitions from all installed packs, as {@code id -> json}.
+     * The id comes from the JSON's {@code name} field, falling back to
+     * {@code <modid>:<filename>}. First pack wins on collision.
+     */
+    public static Map<ResourceLocation, JsonObject> loadModuleJsons() {
+        return loadJsons("modules", "module");
+    }
+
+    /** sha1 over every module + paint file's path + content, order-independent */
     private static String computeHash() {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
             List<Path> files = new ArrayList<>();
             for (Path pack : installedPacks()) {
-                Path modules = pack.resolve("modules");
-                if (!Files.isDirectory(modules)) continue;
-                try (Stream<Path> stream = Files.list(modules)) {
-                    stream.filter(p -> p.getFileName().toString().endsWith(".json")).forEach(files::add);
+                for (String dir : new String[]{"modules", "paints"}) {
+                    Path folder = pack.resolve(dir);
+                    if (!Files.isDirectory(folder)) continue;
+                    try (Stream<Path> stream = Files.list(folder)) {
+                        stream.filter(p -> p.getFileName().toString().endsWith(".json")).forEach(files::add);
+                    }
                 }
             }
             files.sort(Comparator.comparing(p -> ROOT.relativize(p).toString()));
@@ -133,6 +154,7 @@ public final class GunPacks {
             return "0";
         }
     }
+
 
     /**
      * Relative paths of every file bundled under {@code /gunpack_defaults/} in the

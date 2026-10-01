@@ -29,6 +29,8 @@ import java.util.Map;
  *   Skins: CompoundTag module-id -> the item's whole "ArmourersWorkshop"
  *          descriptor Compound, copied verbatim (AW item skins; never parsed)
  *   Hidden: CompoundTag module-id -> byte 1/0 (module hidden by the player)
+ *   Paints: CompoundTag module-id -> paint id string (涂装 render copy;
+ *           authority = the module item's own Paint NBT)
  */
 public final class GunNbt {
 
@@ -52,6 +54,12 @@ public final class GunNbt {
      *  module item's own Hidden NBT; the gun keeps a render copy, same
      *  contract as Colors/Skins */
     public static final String KEY_HIDDEN = "Hidden";
+    /** paint (涂装) ids: module-id -> paint id string. Authority = the
+     *  module item's own Paint NBT; the gun keeps a render copy, same
+     *  contract as Colors/Skins/Hidden */
+    public static final String KEY_PAINTS = "Paints";
+
+
 
     private GunNbt() {}
 
@@ -291,6 +299,39 @@ public final class GunNbt {
         CompoundTag hidden = root.getCompound(KEY_HIDDEN);
         hidden.remove(moduleId.toString());
         if (hidden.isEmpty()) root.remove(KEY_HIDDEN);
+    }
+
+    // --- paint (authority = the module item's Paint NBT; the gun keeps a
+    // render copy — same contract as Colors/Skins/Hidden) ---
+
+    /** Copies the item's paint id into the gun's render copy. Writing the
+     *  string unconditionally keeps the copy in step with the item;
+     *  use {@link #clearPaint} to drop the key entirely (uninstall). */
+    public static void setPaint(ItemStack stack, ResourceLocation moduleId, @Nullable ResourceLocation paintId) {
+        CompoundTag paints = root(stack).getCompound(KEY_PAINTS);
+        paints.putString(moduleId.toString(), paintId == null ? "" : paintId.toString());
+        root(stack).put(KEY_PAINTS, paints);
+    }
+
+    /** The gun's render copy of the module's paint id, or null. An empty
+     *  string reads as unpainted (setPaint(null) keeps the key in step). */
+    @Nullable
+    public static ResourceLocation getPaint(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_PAINTS, Tag.TAG_COMPOUND)) return null;
+        String key = moduleId.toString();
+        if (!root.getCompound(KEY_PAINTS).contains(key, Tag.TAG_STRING)) return null;
+        String raw = root.getCompound(KEY_PAINTS).getString(key);
+        return raw.isEmpty() ? null : ResourceLocation.tryParse(raw);
+    }
+
+    /** Drops the gun's render copy of a module's paint (uninstall). */
+    public static void clearPaint(ItemStack stack, ResourceLocation moduleId) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(KEY_PAINTS, Tag.TAG_COMPOUND)) return;
+        CompoundTag paints = root.getCompound(KEY_PAINTS);
+        paints.remove(moduleId.toString());
+        if (paints.isEmpty()) root.remove(KEY_PAINTS);
     }
     // --- assembly validation ---
 

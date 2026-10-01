@@ -28,5 +28,7 @@
   "gun.createpneumatictacticals.mak_3u": "MAK-3U Marksman Rifle",
   "gun.createpneumatictacticals.mak_3b": "MAK-3B Battle Rifle",
   "module.createpneumatictacticals.14dvo_silencer_a": "14DVO Standard Silencer",
-  "module.createpneumatictacticals.mak_1_ammo_50": "MAK-1 50-Round Drum Magazine"
+  "module.createpneumatictacticals.mak_1_ammo_50": "MAK-1 50-Round Drum Magazine",
+  "paint.createpneumatictacticals.desert": "Desert",
+  "paint.createpneumatictacticals.arctic": "Arctic"
 }

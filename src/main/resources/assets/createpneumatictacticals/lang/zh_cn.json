@@ -119,6 +119,7 @@
   "supply_type.createpneumatictacticals.internal_tank": "内置气罐",
   "supply_type.createpneumatictacticals.backpack_tank": "背包气罐",
   "tooltip.createpneumatictacticals.aw_skin": "已镶嵌时装工坊皮肤",
+  "tooltip.createpneumatictacticals.paint": "涂装：%s",
   "gui.createpneumatictacticals.visible": "可见",
   "gui.createpneumatictacticals.show_module": "隐藏",
   "recipe.createpneumatictacticals.receiver_disassembly": "机匣拆解"

@@ -44,6 +44,13 @@ public class ModuleItem extends Item implements GeoItem {
      *  Hidden CompoundTag is only a render copy) */
     public static final String TAG_HIDDEN = "Hidden";
 
+    /** paint (涂装) id on the module item: the pack-authored base-texture
+     *  variant to render. Sole authority like Colors/Hidden — the gun's
+     *  Paints CompoundTag is only a render copy. */
+    public static final String TAG_PAINT = "Paint";
+
+
+
     public ModuleItem(Properties properties) {
         super(properties);
     }
@@ -179,6 +186,28 @@ public class ModuleItem extends Item implements GeoItem {
             stack.removeTagKey(TAG_HIDDEN);
         }
     }
+    // --- paint (this item's own Paint id; sole authority, the gun only
+    // keeps a render copy) ---
+
+    /** The paint (涂装) id on the stack, or null when unpainted. A paint id
+     *  that no longer loads renders unpainted (render-layer fallback), the
+     *  same lenient rule as missing art assets. */
+    @Nullable
+    public static ResourceLocation getPaint(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_PAINT, CompoundTag.TAG_STRING)) return null;
+        return ResourceLocation.tryParse(tag.getString(TAG_PAINT));
+    }
+
+    /** Writes (or clears, with null) the paint id onto the stack. */
+    public static void setPaint(ItemStack stack, @Nullable ResourceLocation paintId) {
+        if (paintId == null) {
+            stack.removeTagKey(TAG_PAINT);
+        } else {
+            stack.getOrCreateTag().putString(TAG_PAINT, paintId.toString());
+        }
+    }
+
     public static ItemStack of(ResourceLocation moduleId) {
         ItemStack stack = new ItemStack(dev.ignis.createpneumatictacticals.item.ModItems.MODULE.get());
         stack.getOrCreateTag().putString(TAG_MODULE_ID, moduleId.toString());
@@ -201,6 +230,17 @@ public class ModuleItem extends Item implements GeoItem {
         if (getSkinTag(stack) != null) {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.aw_skin")
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
+        // paint (涂装): surface a non-default paint so the recolor isn't a
+        // surprise; a missing definition falls back to unpainted rendering,
+        // so the line only shows for a paint that actually applies
+        ResourceLocation paintId = getPaint(stack);
+        dev.ignis.createpneumatictacticals.module.PaintDefinition paint =
+                paintId == null ? null : dev.ignis.createpneumatictacticals.module.PaintManager.get(paintId);
+        if (paint != null && paint.appliesTo(id)) {
+            tooltip.add(Component.translatable("tooltip.createpneumatictacticals.paint",
+                    Component.translatable("paint." + paintId.getNamespace() + "." + paintId.getPath()))
+                    .withStyle(ChatFormatting.AQUA));
         }
         if (def.gunType != null) {
             tooltip.add(Component.translatable("stat.createpneumatictacticals.gun_type")

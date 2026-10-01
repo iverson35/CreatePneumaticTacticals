@@ -119,6 +119,7 @@
   "supply_type.createpneumatictacticals.internal_tank": "Internal Tank",
   "supply_type.createpneumatictacticals.backpack_tank": "Backpack Tank",
   "tooltip.createpneumatictacticals.aw_skin": "Armourer's Workshop skin inlaid",
+  "tooltip.createpneumatictacticals.paint": "Paint: %s",
   "gui.createpneumatictacticals.visible": "Visible",
   "gui.createpneumatictacticals.show_module": "Hidden",
   "recipe.createpneumatictacticals.receiver_disassembly": "Receiver disassembly"

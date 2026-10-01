@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.client.render;
 
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
+import dev.ignis.createpneumatictacticals.module.PaintManager;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -36,6 +37,16 @@ public final class ModuleGeoModel extends GeoModel<ModuleItem> {
     @Override
     public ResourceLocation getTextureResource(ModuleItem animatable) {
         ResourceLocation base = resolve("textures/gun/%s.png", PLACEHOLDER_TEXTURE);
+        // paint (涂装): a pack-authored recolor replaces the BASE texture;
+        // dye colors then parameterize it (same bake as the on-gun path).
+        // Missing paint art renders unpainted — same lenient fallback as
+        // the base texture itself
+        ResourceLocation paintTex = PaintManager.texture(ModuleItem.getPaint(currentStack),
+                ModuleItem.getModuleId(currentStack));
+        if (paintTex != null && Minecraft.getInstance().getResourceManager()
+                .getResource(paintTex).isPresent()) {
+            base = paintTex;
+        }
         // dye regions live on the module item's own NBT (set by the
         // workbench dyeing) — same bake as the on-gun path (DyedTextures)
         int[] colors = ModuleItem.getDyeColors(currentStack);

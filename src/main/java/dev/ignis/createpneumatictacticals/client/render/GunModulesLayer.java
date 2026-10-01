@@ -10,6 +10,7 @@ import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleManager;
+import dev.ignis.createpneumatictacticals.module.PaintManager;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -232,7 +233,12 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                         phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
                     }
                     boolean ghostPass = ghostHere != null;
-                    BodyDraw draw = bodyDraw(model, ctx.stack, target, ghostPass);
+                    // paint source mirrors the hidden flag: ghost previews
+                    // read the held item's own Paint NBT (what install will
+                    // actually produce), installed modules the gun's copy
+                    ResourceLocation paintId = ghostPass ? ModuleItem.getPaint(ghostHere.stack())
+                            : GunNbt.getPaint(ctx.stack, target.id);
+                    BodyDraw draw = bodyDraw(model, ctx.stack, target, paintId, ghostPass);
                     getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, draw.type(),
                             ctx.bufferSource.getBuffer(draw.type()), ctx.partialTick, ctx.packedLight,
                             ctx.packedOverlay,
@@ -305,10 +311,20 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
      * (docs/gun-atlas-design.md), else the standalone per-texture path — the
      * dyed dynamic texture from {@link DyedTextures} when a companion
      * {@code <id>_dye.png} mask exists (plan_v2 配件染色).
+     * The paint (涂装) id swaps the BASE texture before the dye colors
+     * parameterize it; missing paint art renders the unpainted base —
+     * the same lenient fallback the placeholder paths use.
      */
     private static BodyDraw bodyDraw(BakedGeoModel model, ItemStack stack, ModuleDefinition def,
-                                     boolean translucent) {
+                                     @Nullable ResourceLocation paintId, boolean translucent) {
         ResourceLocation texture = ModuleGunGeoModel.textureId(def.id);
+        if (paintId != null) {
+            ResourceLocation paintTex = PaintManager.texture(paintId, def.id);
+            if (paintTex != null && Minecraft.getInstance().getResourceManager()
+                    .getResource(paintTex).isPresent()) {
+                texture = paintTex;
+            }
+        }
         int[] colors = GunNbt.getColors(stack, def.id);
         GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, colors);
         if (slot != null && GunTextureAtlas.retarget(model, slot)) {
@@ -344,7 +360,9 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         } finally {
             ctx.poseStack.popPose();
         }
-        BodyDraw draw = bodyDraw(model, ctx.stack, def, false);
+        // hidden-charm skin swap keeps the charm's own paint on the chain
+        BodyDraw draw = bodyDraw(model, ctx.stack, def,
+                GunNbt.getPaint(ctx.stack, def.id), false);
         pendant.setHidden(true);
         try {
             // chain + support only: same pass set the visible charm gets, so a
