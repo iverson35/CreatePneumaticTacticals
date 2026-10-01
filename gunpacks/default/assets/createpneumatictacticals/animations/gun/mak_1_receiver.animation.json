@@ -48,10 +48,13 @@
 			},
 			"sound_effects": {
 				"0.25": {
-					"effect": "createpneumatictacticals:gun.pistol.mag_out"
+					"effect": "createpneumatictacticals:gun.rifle.mag_out"
 				},
 				"1.25": {
-					"effect": "createpneumatictacticals:gun.pistol.mag_in"
+					"effect": "createpneumatictacticals:gun.rifle.mag_in"
+				},
+				"1.4": {
+					"effect": "createpneumatictacticals:gun.rifle.mag_knock"
 				}
 			}
 		},
@@ -129,10 +132,10 @@
 			},
 			"sound_effects": {
 				"0.0417": {
-					"effect": "createpneumatictacticals:gun.rifle.bolt_pull"
+					"effect": "createpneumatictacticals:gun.smg.bolt_pull"
 				},
 				"0.375": {
-					"effect": "createpneumatictacticals:gun.rifle.bolt_release"
+					"effect": "createpneumatictacticals:gun.smg.bolt_release"
 				}
 			}
 		}

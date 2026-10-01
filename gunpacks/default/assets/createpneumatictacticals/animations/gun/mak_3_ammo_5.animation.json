@@ -106,10 +106,13 @@
 					"effect": "createpneumatictacticals:gun.gbb.open"
 				},
 				"0.6667": {
-					"effect": "createpneumatictacticals:gun.pistol.mag_out"
+					"effect": "createpneumatictacticals:gun.rifle.mag_out"
 				},
 				"2.625": {
-					"effect": "createpneumatictacticals:gun.pistol.mag_in"
+					"effect": "createpneumatictacticals:gun.rifle.mag_in"
+				},
+				"2.7": {
+					"effect": "createpneumatictacticals:gun.rifle.mag_knock"
 				}
 			}
 		}

@@ -114,7 +114,7 @@ gunpacks/<枪包目录名>/
 ```json
 "gun.pistol.mag_out": {
   "sounds": [
-    { "name": "createpneumatictacticals:mag_out_pistol", "volume": 0.6, "pitch": 1.0 }
+    { "name": "createpneumatictacticals:pistol_mag_out", "volume": 0.6, "pitch": 1.0 }
   ]
 }
 ```
@@ -1063,7 +1063,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel
 | `mak_1_wire_stock.json` | stock | 纯属性模块；带 `_dye` 掩码 |
 | `charm_crystal.json` / `charm_delta_coin.json` | charm | 完整 `charm` 物理参数块（全部默认值） |
 
-资源侧：`assets/createpneumatictacticals/geo/gun/*.geo.json`（18 个模型）、`textures/gun/*.png`（16×16 / 32×32 / 64×64，32×32 为主）、`animations/gun/*.animation.json`（4 个）、`sounds.json` + `sounds/*.ogg`（13 个）。
+资源侧：`assets/createpneumatictacticals/geo/gun/*.geo.json`（18 个模型）、`textures/gun/*.png`（16×16 / 32×32 / 64×64，32×32 为主）、`animations/gun/*.animation.json`（4 个）、`sounds.json` + `sounds/*.ogg`（21 个）。
 
 涂装侧：`paints/desert.json`（`applies_to` 精确 id：短枪管的沙漠换色）、`paints/arctic.json`（瞄具涂装 + 配套 `_arctic_glowmask.png`——演示涂装的发光掩码兄弟件）。
 

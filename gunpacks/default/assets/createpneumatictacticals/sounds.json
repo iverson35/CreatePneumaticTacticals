@@ -1,41 +1,176 @@
 {
   "gun.gbb.open": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_open", "volume": 1 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_open",
+        "volume": 1
+      }
+    ]
   },
   "gun.gbb.shoot": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot", "volume": 1, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_shoot",
+        "volume": 1,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.gbb.shoot_2": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_2", "volume": 1, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_shoot_2",
+        "volume": 1,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.gbb.shoot_3": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_3", "volume": 0.5, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_shoot_3",
+        "volume": 0.5,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.gbb.shoot_4": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_4", "volume": 1, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_shoot_4",
+        "volume": 1,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.gbb.shoot_5": {
-    "sounds": [{ "name": "createpneumatictacticals:gbb_shoot_5", "volume": 1, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:gbb_shoot_5",
+        "volume": 1,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.pistol.silenced.shoot": {
-    "sounds": [{ "name": "createpneumatictacticals:pistol_shot_silenced", "volume": 0.5, "attenuation_distance": 64 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:pistol_shot_silenced",
+        "volume": 0.5,
+        "attenuation_distance": 64
+      }
+    ]
   },
   "gun.pistol.slide_pull": {
-    "sounds": [{ "name": "createpneumatictacticals:slide_pull", "volume": 0.3 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:slide_pull",
+        "volume": 0.3
+      }
+    ]
   },
   "gun.pistol.slide_release": {
-    "sounds": [{ "name": "createpneumatictacticals:slide_release", "volume": 0.3 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:slide_release",
+        "volume": 0.3
+      }
+    ]
   },
   "gun.pistol.mag_in": {
-    "sounds": [{ "name": "createpneumatictacticals:mag_in_pistol", "volume": 0.3 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:pistol_mag_in",
+        "volume": 0.3
+      }
+    ]
   },
   "gun.pistol.mag_out": {
-    "sounds": [{ "name": "createpneumatictacticals:mag_out_pistol", "volume": 0.5 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:pistol_mag_out",
+        "volume": 0.5
+      }
+    ]
   },
   "gun.rifle.bolt_pull": {
-    "sounds": [{ "name": "createpneumatictacticals:rifle_pull", "volume": 1 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_bolt_pull",
+        "volume": 1
+      }
+    ]
+  },
+  "gun.rifle.bolt_pull_short": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_bolt_pull_short",
+        "volume": 1
+      }
+    ]
   },
   "gun.rifle.bolt_release": {
-    "sounds": [{ "name": "createpneumatictacticals:rifle_release", "volume": 1 } ]
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_bolt_release",
+        "volume": 1
+      }
+    ]
+  },
+  "gun.rifle.bolt_release_short": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_bolt_release_short",
+        "volume": 1
+      }
+    ]
+  },
+  "gun.rifle.bolt_cycle_fast": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_bolt_cycle_fast",
+        "volume": 0.5
+      }
+    ]
+  },
+  "gun.smg.bolt_pull": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:smg_bolt_pull",
+        "volume": 1
+      }
+    ]
+  },
+  "gun.smg.bolt_release": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:smg_bolt_release",
+        "volume": 1
+      }
+    ]
+  },
+  "gun.rifle.mag_in": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_mag_in",
+        "volume": 0.5
+      }
+    ]
+  },
+  "gun.rifle.mag_out": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_mag_out",
+        "volume": 1.0
+      }
+    ]
+  },
+  "gun.rifle.mag_knock": {
+    "sounds": [
+      {
+        "name": "createpneumatictacticals:rifle_mag_knock",
+        "volume": 1.0
+      }
+    ]
   }
 }

@@ -9,10 +9,10 @@
 						"0.0": {
 							"vector": [0, 0, 0]
 						},
-						"0.2917": {
+						"0.25": {
 							"vector": [0, 0, 0]
 						},
-						"0.5625": {
+						"0.3958": {
 							"vector": [0, 0, 60],
 							"easing": "easeInSine"
 						},
@@ -143,6 +143,14 @@
 						}
 					}
 				}
+			},
+			"sound_effects": {
+				"0.2292": {
+					"effect": "rifle_bolt_pull"
+				},
+				"0.9792": {
+					"effect": "rifle_bolt_release_short"
+				}
 			}
 		},
 		"animation.marble_17.reload": {
@@ -261,10 +269,22 @@
 						}
 					}
 				}
+			},
+			"sound_effects": {
+				"0.3333": {
+					"effect": "rifle_mag_out"
+				},
+				"1.5": {
+					"effect": "rifle_mag_in"
+				}
+			},
+			"timeline": {
+				"0.3333": "marble_17_ammo_5;",
+				"1.5": "marble_17_ammo_5;"
 			}
 		},
 		"animation.marble_17.bolt": {
-			"animation_length": 1,
+			"animation_length": 1.125,
 			"bones": {
 				"receiver_marble_17_receiver": {
 					"rotation": {
@@ -301,14 +321,14 @@
 						"0.0": {
 							"vector": [0, 0, 0]
 						},
-						"0.25": {
+						"0.125": {
 							"vector": [0, 0, 60],
 							"easing": "easeInSine"
 						},
-						"0.8333": {
+						"0.875": {
 							"vector": [0, 0, 60]
 						},
-						"1.0": {
+						"1.0417": {
 							"vector": [0, 0, 0]
 						}
 					},
@@ -317,24 +337,21 @@
 							"vector": [0, 0, 0]
 						},
 						"0.125": {
-							"vector": [0, 0, 0]
-						},
-						"0.25": {
 							"vector": [0, 0, 0.4]
 						},
-						"0.4167": {
+						"0.5833": {
 							"vector": [0, 0, 3],
 							"easing": "easeInQuad"
 						},
-						"0.625": {
+						"0.7917": {
 							"vector": [0, 0, 3],
 							"easing": "linear"
 						},
-						"0.8333": {
+						"0.875": {
 							"vector": [0, 0, 0.4],
 							"easing": "easeInSine"
 						},
-						"1.0": {
+						"1.0417": {
 							"vector": [0, 0, 0]
 						}
 					}
@@ -383,6 +400,14 @@
 							"vector": [0, 0.9, -2.9]
 						}
 					}
+				}
+			},
+			"sound_effects": {
+				"0.0833": {
+					"effect": "rifle_bolt_pull"
+				},
+				"0.875": {
+					"effect": "rifle_bolt_release_short"
 				}
 			}
 		}
