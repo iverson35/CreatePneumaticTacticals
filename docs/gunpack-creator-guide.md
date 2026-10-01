@@ -461,7 +461,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 3. **导出动画**（有动画时）：`Export GeckoLib Animations` → `assets/<ns>/animations/gun/<模块id>.animation.json`。
 4. **贴图**：PNG 放 `assets/<ns>/textures/gun/<模块id>.png`，需要发光/染色再加 `_glowmask.png` / `_dye.png`（同尺寸）。
 5. **模块定义**：`modules/<模块id>.json`，`name` 写完整 id（建议文件名与 id 的 path 一致，方便对照）。
-6. 没有离线构建脚本：**导出物手工拷进枪包**即可（仓库里的 `gecko/` 只是作者的工作区）。
+6. 没有离线构建脚本：**导出物手工拷进枪包**即可（仓库里的 `gecko/` 只是作者的工作区）。走 §2.8.1 的统合建模路线时，第 2、3 步可以由脚本用 `--geo` / `--anim`（或 `--gecko`）一并完成，贴图也是脚本直接写出的。
 
 ### 2.8.1 可选：统合建模 + 脚本拆分（推荐）
 
@@ -469,7 +469,10 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 
 ```
 python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel
+python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 ```
+
+`--geo` / `--anim`（`--gecko` = 两个都要）让脚本拆分完顺手把枪包要的 `<模块id>.geo.json` / `<模块id>.animation.json` 也导出，省掉「逐个 bbmodel 打开 Blockbench 再点导出」。导出规则与 Blockbench 的 GeckoLib 插件等价——X 轴镜像、时间保留 4 位小数、只有一个关键帧的通道写不带时间的裸 `{"vector": ...}`、`loop=once` 不写 `loop` 字段等；这些规则是用仓库里 26 份 `.geo.json`、9 份 `.animation.json` 与各自的 `.bbmodel` 逐字段比对反推并验证过的（不是照抄插件代码，产物也逐字段一致）。导出物会连同 bbmodel 一起校验：骨骼/立方体/关键帧数量、UV 越界、动画引用的骨骼是否存在、音效帧与命名空间。
 
 统合模型的约定：
 
@@ -478,7 +481,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel
 3. 全部零件共用一张贴图；脚本会把每个模块用到的 UV 区域裁出、去重、重排成一张紧凑的新贴图（≤64×64 优先），内嵌回拆出的 bbmodel 并同时写出 `<模块id>.png`。若统合 bbmodel 旁放有同尺寸的 `<名>_glowmask.png` / `<名>_dye.png`，会按同一映射拆出每模块的掩码贴图。
 4. 动画照常做在统合模型里；脚本按骨骼归属把动画分给各模块（例如弹匣模块得到驱动自己 `magazine` 骨的 `reload`）。**音效关键帧**默认分给机匣；effect 没写命名空间时自动补 `createpneumatictacticals:`。若某帧音效属于某个模块（如弹匣的 mag_out），在**同一帧**加一条「指令（timeline）关键帧」、`script` 里写该模块 id（如 `marble_17_ammo_5`），脚本就把同帧音效分给该模块，且这条标识用指令帧不会出现在任何输出里；script 不匹配任何模块 id 的指令帧视为普通指令帧留在机匣（若它与音效同帧会打警告，提示可能是模块 id 写错）。粒子关键帧留在机匣。
 
-拆分时脚本会：把每个模块的内容重算到「以对应定位骨（`loc_feed` / `loc_barrel` / 枪管里的 `loc_muzzle_attachment` 等）pivot 为原点」的局部空间（含定位骨旋转）；根骨骼改名 `main`；重排 UV；并自动校验（几何/旋转往返、UV 边界、动画骨骼引用、贴图像素、音效帧守恒与命名空间、标识指令帧清除），全部通过才写出。产物默认在 `<bbmodel目录>/split/`，每个 `<模块id>.bbmodel` 用 Blockbench 打开后按 §2.8 导出即可。脚本不删除目录里的旧文件；本次未重新生成的 `.bbmodel` / `.png` 会在结束时列为「可能过时」提示。
+拆分时脚本会：把每个模块的内容重算到「以对应定位骨（`loc_feed` / `loc_barrel` / 枪管里的 `loc_muzzle_attachment` 等）pivot 为原点」的局部空间（含定位骨旋转）；根骨骼改名 `main`；重排 UV；并自动校验（几何/旋转往返、UV 边界、动画骨骼引用、贴图像素、音效帧守恒与命名空间、标识指令帧清除；带 `--geo`/`--anim` 时还校验导出物与 bbmodel 逐项对应），全部通过才写出。产物默认在 `<bbmodel目录>/split/`，每个 `<模块id>.bbmodel` 用 Blockbench 打开后按 §2.8 导出即可（或直接用 `--gecko` 让脚本导出）。脚本不删除目录里的旧文件；本次未重新生成的 `.bbmodel` / `.png` / `.geo.json` / `.animation.json` 会在结束时列为「可能过时」提示。
 
 限制：护木配件模块要求父护木里只有一个 `loc_handguard_*`（多个时脚本无法判断装哪个，会报错）；模块根骨骼（模块骨骼本身）若打了关键帧且定位骨带旋转，关键帧会被旋转变换并打警告——建议把动画做在模块的子骨骼上。
 

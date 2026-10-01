@@ -23,10 +23,16 @@ split_unified_bbmodel.py -- 把「统合枪模」.bbmodel 拆成每模块一个 
 用法：
     python tools/split_unified_bbmodel.py gecko/marble_17/marble_17.bbmodel
     python tools/split_unified_bbmodel.py <bbmodel> -o <输出目录>
+    python tools/split_unified_bbmodel.py <bbmodel> --gecko
+      # 除 .bbmodel/.png 外，顺带导出枪包要的 <id>.geo.json 与
+      # <id>.animation.json（等价于在 Blockbench 里逐个导出，
+      # 规则由仓库内 26 份 geo / 9 份动画语料反推并验证过）
 
 依赖：Pillow。拆分后每个 <id>.bbmodel 用 Blockbench 打开，
-按指南 2.8 节导出 geo / 动画即可。脚本不会删除输出目录里的旧文件；
-本次未重新生成的 .bbmodel / .png 会在结束时列为「可能过时」提示。
+按指南 2.8 节导出 geo / 动画即可（或直接用 --geo / --anim 让脚本导出）。
+脚本不会删除输出目录里的旧文件；本次未重新生成的
+.bbmodel / .png / .geo.json / .animation.json 会在结束时列为
+「可能过时」提示。
 """
 
 import argparse
@@ -337,7 +343,9 @@ def _rebase_cube(el, t, rt):
     el["from"] = _r5v([el["from"][i] + delta[i] for i in range(3)])
     el["to"] = _r5v([el["to"][i] + delta[i] for i in range(3)])
     rc = el.get("rotation")
-    if rc or not _rot_is_identity(rt):
+    # rt 为单位阵时父空间没变，保持原旋转三元组（矩阵等价重写会改变写法，
+    # 例如 [0,90,90] 会被写成等价的 [-90,90,0]）
+    if not _rot_is_identity(rt):
         r = _mat3_mul(rt, _deg_mat3(rc or [0, 0, 0]))
         euler = _r5v(_mat3_to_euler(r))
         if any(abs(v) > 1e-7 for v in euler):
@@ -349,7 +357,7 @@ def _rebase_cube(el, t, rt):
 def _rebase_bone_node(node, t, rt):
     node["origin"] = _r5v(_mat4_apply(t, list(node.get("origin", [0, 0, 0]))))
     rot = node.get("rotation")
-    if rot or not _rot_is_identity(rt):
+    if not _rot_is_identity(rt):
         r = _mat3_mul(rt, _deg_mat3(rot or [0, 0, 0]))
         euler = _r5v(_mat3_to_euler(r))
         if any(abs(v) > 1e-7 for v in euler):
@@ -643,6 +651,331 @@ def _split_animations(model, mod, anim_routes, warn):
     return out
 
 
+# ------------------------------------------------------- GeckoLib 导出（可选）
+# --geo / --anim 直接把每模块导出成枪包需要的 .geo.json / .animation.json，
+# 省掉「逐个 bbmodel 在 Blockbench 里手点导出」。规则不是猜的：仓库里 26 份
+# .geo.json、9 份 .animation.json 与各自的 .bbmodel 逐字段比对反推出下面这套
+# 规则，并对全部语料验证通过（剩余差异已逐条确认是语料自身过时或手改，
+# 见导出后校验一节）。Blockbench 用插件导出、脚本用这里导出，产物等价。
+#
+# 几何 —— Blockbench 的 GeckoLib 导出对 X 轴做了镜像：
+#   骨骼 pivot = [-origin.x, origin.y, origin.z]
+#   骨骼 rotation = [-rx, -ry, rz]（源没有旋转就不写）
+#   立方体 origin = [-to.x, from.y, from.z]，size = to - from（恒正）
+#   带旋转的立方体另写 rotation（同上取反）与 pivot（= -origin.x）
+#   uv：box_uv 元素写 [u, v]；否则按面写 {uv: [...], uv_size: [...]}，
+#   其中 up/down 面的原点是 (u2, v2)、尺寸取负（和 Blockbench 一致）
+#   visible_bounds_* 取 bbmodel 的 visible_box；identifier 取 model_identifier
+#   （空则 geometry.unknown，和 Blockbench 一致；本 mod 不校验该字段）
+#   export=false 的骨骼/立方体与 Blockbench 一样跳过
+#
+# 动画 —— 与贴图无关，关键帧数值原样透传，不做镜像：
+#   时间是 round(...,4) 后的字符串键、按时间升序；某通道只有 1 个关键帧时
+#   写成不带时间的裸 {"vector": [...]}（语料可证 Blockbench 就是这样写的）；
+#   loop=once 不写 loop 字段（GeckoLib 缺省即 play_once），loop -> true，
+#   hold_on_last_frame -> "hold_on_last_frame"；
+#   sound_effects / timeline 按 GeckoLib 的 {时间: {...}} 结构写。
+#   start_delay / blend_weight / anim_time_update / override_previous_animation
+#   GeckoLib 运行时不读，空值一律不写。
+
+def _geo_num(v):
+    f = round(float(v), 5)
+    return int(f) if f == int(f) else f
+
+
+def _geo_rot(rot):
+    return [_geo_num(-rot[0]), _geo_num(-rot[1]), _geo_num(rot[2])]
+
+
+def _geo_face_uv(face_name, uv):
+    u1, v1, u2, v2 = uv
+    if face_name in ("up", "down"):
+        return [u2, v2], [u1 - u2, v1 - v2]
+    return [u1, v1], [u2 - u1, v2 - v1]
+
+
+def export_geo(data):
+    """按 Blockbench 的 GeckoLib 导出规则，把（拆分后的）bbmodel 转成 geo。"""
+    res = data.get("resolution") or {"width": 16, "height": 16}
+    vbox = data.get("visible_box") or [2, 1.5, 0.25]
+    elements = {e["uuid"]: e for e in data.get("elements", [])}
+    bones = []
+
+    def walk(items, parent):
+        for it in items:
+            if not isinstance(it, dict) or it.get("export") is False:
+                continue
+            bone = {"name": it["name"]}
+            if parent:
+                bone["parent"] = parent
+            origin = it.get("origin") or [0, 0, 0]
+            bone["pivot"] = [_geo_num(-origin[0]), _geo_num(origin[1]),
+                             _geo_num(origin[2])]
+            if it.get("rotation"):
+                bone["rotation"] = _geo_rot(it["rotation"])
+            cubes = []
+            for child in it.get("children", []):
+                if isinstance(child, dict):
+                    continue
+                el = elements[child]
+                if el.get("export") is False:
+                    continue
+                f, t = el["from"], el["to"]
+                cube = {"origin": [_geo_num(-t[0]), _geo_num(f[1]),
+                                   _geo_num(f[2])],
+                        "size": [_geo_num(t[0] - f[0]), _geo_num(t[1] - f[1]),
+                                 _geo_num(t[2] - f[2])]}
+                if el.get("rotation"):
+                    pivot = el.get("origin") or [0, 0, 0]
+                    cube["rotation"] = _geo_rot(el["rotation"])
+                    cube["pivot"] = [_geo_num(-pivot[0]), _geo_num(pivot[1]),
+                                     _geo_num(pivot[2])]
+                if el.get("inflate"):
+                    cube["inflate"] = _geo_num(el["inflate"])
+                if el.get("mirror_uv"):
+                    cube["mirror"] = True
+                if el.get("box_uv"):
+                    cube["uv"] = [_geo_num(el.get("uv", [0, 0])[0]),
+                                  _geo_num(el.get("uv", [0, 0])[1])]
+                else:
+                    uv = {}
+                    for face_name, face in el.get("faces", {}).items():
+                        if face.get("texture") is None:
+                            continue
+                        u, size = _geo_face_uv(face_name, face["uv"])
+                        uv[face_name] = {
+                            "uv": [_geo_num(u[0]), _geo_num(u[1])],
+                            "uv_size": [_geo_num(size[0]), _geo_num(size[1])]}
+                    cube["uv"] = uv
+                cubes.append(cube)
+            if cubes:
+                bone["cubes"] = cubes
+            bones.append(bone)
+            walk(it.get("children", []), it["name"])
+
+    walk(data.get("outliner", []), None)
+    return {
+        "format_version": "1.12.0",
+        "minecraft:geometry": [{
+            "description": {
+                "identifier": "geometry." + (data.get("model_identifier")
+                                             or "unknown"),
+                "texture_width": res["width"],
+                "texture_height": res["height"],
+                "visible_bounds_width": _geo_num(vbox[0]),
+                "visible_bounds_height": _geo_num(vbox[1]),
+                "visible_bounds_offset": [0, _geo_num(vbox[2]), 0],
+            },
+            "bones": bones,
+        }],
+    }
+
+
+# bbmodel 的 loop -> GeckoLib 的 loop 字段（缺省/once 不写：GeckoLib 默认
+# play_once，语料里 19 个动画全是 once，导出的文件里也确实没有 loop 键）
+LOOP_FIELD = {"once": None, "loop": True,
+              "hold_on_last_frame": "hold_on_last_frame"}
+
+
+def export_animation(data, warn=None):
+    """按 Blockbench 的 GeckoLib 导出规则，把（拆分后的）bbmodel 动画转成
+    .animation.json。没有动画时返回 None。"""
+    if not data.get("animations"):
+        return None
+    anims = {}
+    for anim in data["animations"]:
+        for key in ("start_delay", "loop_delay", "anim_time_update",
+                    "blend_weight"):
+            if str(anim.get(key) or "").strip() and warn:
+                warn(f"动画 {anim.get('name')} 的 {key}="
+                     f"{anim[key]!r} 未导出（GeckoLib 不使用该字段）")
+        bones = {}
+        markers = {}
+        for animator in anim.get("animators", {}).values():
+            if animator.get("type", "bone") != "bone":
+                for kf in animator.get("keyframes", []):
+                    t = str(round(float(kf["time"]), 4))
+                    dp = (kf.get("data_points") or [{}])[0]
+                    if kf.get("channel") == "sound":
+                        markers.setdefault("sound_effects", {})[t] = {
+                            "effect": dp.get("effect", "")}
+                    elif kf.get("channel") == "timeline":
+                        markers.setdefault("timeline", {})[t] = \
+                            f"{dp.get('script', '')};"
+                    elif kf.get("channel") == "particle":
+                        markers.setdefault("particle_effects", {})[t] = \
+                            {"effect": dp.get("effect", "")}
+                continue
+            channels = {}
+            for kf in animator.get("keyframes", []):
+                dp = (kf.get("data_points") or [{}])[0]
+                entry = {"vector": [_geo_num(dp.get("x", 0) or 0),
+                                    _geo_num(dp.get("y", 0) or 0),
+                                    _geo_num(dp.get("z", 0) or 0)]}
+                if kf.get("easing"):
+                    entry["easing"] = kf["easing"]
+                channels.setdefault(kf["channel"], []).append(
+                    (round(float(kf["time"]), 4), entry))
+            if not channels:
+                continue
+            out = {}
+            for channel, kfs in channels.items():
+                kfs.sort(key=lambda kv: kv[0])
+                if len(kfs) == 1:
+                    out[channel] = kfs[0][1]
+                else:
+                    out[channel] = {str(t): e for t, e in kfs}
+            bones[animator["name"]] = out
+        entry = {"animation_length": _geo_num(anim.get("length", 0))}
+        loop = LOOP_FIELD.get(anim.get("loop") or "once")
+        if loop is not None:
+            entry["loop"] = loop
+        if bones:
+            entry["bones"] = bones
+        entry.update(markers)
+        anims[anim["name"]] = entry
+    return {"format_version": "1.8.0", "animations": anims,
+            "geckolib_format_version": 2}
+
+
+def _verify_exports(modules, reloaded, exported):
+    """导出物与写出的 bbmodel 必须严格对应（丢骨骼/丢立方体/丢关键帧、
+    UV 越界、引用不存在的骨骼都算错）。"""
+    errors = []
+    for mod in modules:
+        out = reloaded[mod.id]
+        # 输出 bbmodel 里应当被导出的骨骼/立方体（export=false 的除外）
+        want_bones, want_cubes = {}, {}
+        out_elements = {e["uuid"]: e for e in out.get("elements", [])}
+
+        def collect(items, parent):
+            for it in items:
+                if not isinstance(it, dict) or it.get("export") is False:
+                    continue
+                want_bones[it["name"]] = (parent, it.get("origin"),
+                                          it.get("rotation"))
+                for child in it.get("children", []):
+                    if isinstance(child, dict):
+                        continue
+                    el = out_elements[child]
+                    if el.get("export") is False:
+                        continue
+                    want_cubes.setdefault(it["name"], []).append(el)
+                collect(it.get("children", []), it["name"])
+
+        collect(out["outliner"], None)
+
+        geo = exported.get((mod.id, "geo"))
+        if geo is not None:
+            desc = geo["minecraft:geometry"][0]["description"]
+            res = out["resolution"]
+            if (desc["texture_width"], desc["texture_height"]) != \
+                    (res["width"], res["height"]):
+                errors.append(f"{mod.id}: geo 贴图尺寸与 resolution 不一致")
+            got_bones = {}
+            got_cubes = 0
+            for bone in geo["minecraft:geometry"][0]["bones"]:
+                got_bones[bone["name"]] = bone
+                got_cubes += len(bone.get("cubes", []))
+            if set(got_bones) != set(want_bones):
+                errors.append(f"{mod.id}: geo 骨骼集合不一致 "
+                              f"缺={set(want_bones)-set(got_bones)} "
+                              f"多={set(got_bones)-set(want_bones)}")
+            if got_cubes != sum(len(v) for v in want_cubes.values()):
+                errors.append(f"{mod.id}: geo 立方体数量不一致 "
+                              f"{got_cubes} != "
+                              f"{sum(len(v) for v in want_cubes.values())}")
+            for name, bone in got_bones.items():
+                if name not in want_bones:
+                    continue
+                parent, origin, rotation = want_bones[name]
+                origin = origin or [0, 0, 0]
+                if bone.get("parent") != (parent or None) and parent:
+                    errors.append(f"{mod.id}: geo {name} 的 parent 不对")
+                if bone.get("pivot") != [-origin[0], origin[1], origin[2]]:
+                    errors.append(f"{mod.id}: geo {name} 的 pivot 不对")
+                if rotation:
+                    if bone.get("rotation") != [-rotation[0], -rotation[1],
+                                                rotation[2]]:
+                        errors.append(f"{mod.id}: geo {name} 的 rotation 不对")
+                elif bone.get("rotation"):
+                    errors.append(f"{mod.id}: geo {name} 多了 rotation")
+                for cube in bone.get("cubes", []):
+                    uv = cube.get("uv")
+                    if isinstance(uv, dict):
+                        for face in uv.values():
+                            u, size = face["uv"], face["uv_size"]
+                            for dx in (0, size[0]):
+                                for dy in (0, size[1]):
+                                    if not (-1e-6 <= u[0] + dx
+                                            <= res["width"] + 1e-6) or \
+                                            not (-1e-6 <= u[1] + dy
+                                                 <= res["height"] + 1e-6):
+                                        errors.append(
+                                            f"{mod.id}: geo {name} 的 UV 越界")
+                    elif isinstance(uv, list):
+                        if min(uv) < -1e-6:
+                            errors.append(f"{mod.id}: geo {name} 的 UV 越界")
+                    size = cube["size"]
+                    if min(size) < -1e-6:
+                        errors.append(f"{mod.id}: geo {name} 的 size 为负")
+
+        anim = exported.get((mod.id, "anim"))
+        if anim is not None:
+            want_anims = {a["name"] for a in out.get("animations", [])}
+            if set(anim["animations"]) != want_anims:
+                errors.append(f"{mod.id}: animation 名字不一致 "
+                              f"缺={want_anims-set(anim['animations'])} "
+                              f"多={set(anim['animations'])-want_anims}")
+            for name, exp in anim["animations"].items():
+                src = next((a for a in out.get("animations", [])
+                            if a["name"] == name), None)
+                if src is None:
+                    continue
+                if exp.get("animation_length") != \
+                        _geo_num(src.get("length", 0)):
+                    errors.append(f"{mod.id}: {name} 的 animation_length 不一致")
+                want_n = sum(len(a.get("keyframes", []))
+                             for a in src.get("animators", {}).values()
+                             if a.get("type", "bone") == "bone")
+                got_n = sum(
+                    sum(len(v) if isinstance(v, dict) and "vector" not in v
+                        else 1 for v in ch.values())
+                    for bone in exp.get("bones", {}).values()
+                    for ch in bone.values())
+                if want_n != got_n:
+                    errors.append(f"{mod.id}: {name} 关键帧数不一致 "
+                                  f"{got_n} != {want_n}")
+                for bone_name in exp.get("bones", {}):
+                    if bone_name not in want_bones:
+                        errors.append(f"{mod.id}: {name} 引用了模型里不存在"
+                                      f"的骨骼 {bone_name}")
+                want_sounds = sorted(
+                    round(float(kf["time"]), 4)
+                    for a in src.get("animators", {}).values()
+                    if a.get("type", "bone") != "bone"
+                    for kf in a.get("keyframes", [])
+                    if kf.get("channel") == "sound")
+                got_sounds = sorted(float(t) for t in
+                                    exp.get("sound_effects", {}))
+                if want_sounds != got_sounds:
+                    errors.append(f"{mod.id}: {name} 音效帧不一致 "
+                                  f"{got_sounds} != {want_sounds}")
+                for kf in [k for a in src.get("animators", {}).values()
+                           if a.get("type", "bone") != "bone"
+                           for k in a.get("keyframes", [])
+                           if k.get("channel") == "sound"]:
+                    t = str(round(float(kf["time"]), 4))
+                    dp = (kf.get("data_points") or [{}])[0]
+                    got = exp.get("sound_effects", {}).get(t, {}).get("effect")
+                    if got != dp.get("effect", ""):
+                        errors.append(f"{mod.id}: {name} {t}s 音效不一致 "
+                                      f"{got!r} != {dp.get('effect')!r}")
+                    if ":" not in str(dp.get("effect", "")):
+                        errors.append(f"{mod.id}: {name} 音效缺命名空间")
+    return errors
+
+
 # ---------------------------------------------------------------- 校验
 
 
@@ -826,7 +1159,7 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
 # ---------------------------------------------------------------- 主流程
 
 
-def split(bbmodel_path, out_dir):
+def split(bbmodel_path, out_dir, geo=False, anim=False):
     src_path = Path(bbmodel_path)
     data = json.loads(src_path.read_text(encoding="utf-8"))
     model = Model(data)
@@ -857,19 +1190,22 @@ def split(bbmodel_path, out_dir):
     # 不删除旧文件：记录拆分前已存在的文件，结束后提示可能过时的残留
     preexisting = {p.name for p in out_dir.glob("*.bbmodel")}
     preexisting |= {p.name for p in out_dir.glob("*.png")}
+    preexisting |= {p.name for p in out_dir.glob("*.geo.json")}
+    preexisting |= {p.name for p in out_dir.glob("*.animation.json")}
 
     all_bone_uuids = set(model.bones)
     receiver = next(m for m in modules_order if m.type == "receiver")
     module_ids = set(modules)
     # 音效/指令关键帧路由：每个动画只算一次
     anim_routes = {}
-    for anim in data.get("animations", []):
-        for auuid, animator in anim.get("animators", {}).items():
+    for src_anim in data.get("animations", []):
+        for auuid, animator in src_anim.get("animators", {}).items():
             if animator.get("type", "bone") == "bone":
                 continue
-            anim_routes[(anim.get("uuid"), auuid)] = _route_effect_animator(
-                animator, module_ids, receiver.id, anim["name"], warn)
+            anim_routes[(src_anim.get("uuid"), auuid)] = _route_effect_animator(
+                animator, module_ids, receiver.id, src_anim["name"], warn)
     outputs = {}
+    exported = {}
     pixel_checks = []
     summary = []
 
@@ -942,17 +1278,37 @@ def split(bbmodel_path, out_dir):
         (out_dir / f"{mod.id}.bbmodel").write_text(
             json.dumps(out, ensure_ascii=False, separators=(",", ":")),
             encoding="utf-8")
+
+        # --- 可选：直接导出枪包要的 geo / animation（等价于 Blockbench 导出）
+        exported_files = []
+        if geo:
+            doc = export_geo(out)
+            (out_dir / f"{mod.id}.geo.json").write_text(
+                json.dumps(doc, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8")
+            exported[(mod.id, "geo")] = doc
+            exported_files.append("geo")
+        if anim:
+            doc = export_animation(out, warn)
+            if doc is not None:
+                (out_dir / f"{mod.id}.animation.json").write_text(
+                    json.dumps(doc, ensure_ascii=False,
+                               separators=(",", ":")), encoding="utf-8")
+                exported[(mod.id, "anim")] = doc
+                exported_files.append("anim")
         summary.append((mod.id, mod.type,
                         model.bones[mod.loc_uuid]["name"]
                         if mod.loc_uuid else "-",
                         len(cube_set), len(mod.bone_uuids), f"{w}x{h}",
-                        len(anims), ", ".join(mask_files)))
+                        len(anims), ", ".join(mask_files),
+                        ",".join(exported_files) or "-"))
 
     # --- 校验（重新读盘，确保写出的文件自洽）
     reloaded = {mod.id: json.loads(
         (out_dir / f"{mod.id}.bbmodel").read_text(encoding="utf-8"))
         for mod in modules_order}
     errors = _verify(model, modules_order, reloaded, pixel_checks)
+    errors += _verify_exports(modules_order, reloaded, exported)
 
     written = set()
     for mod in modules_order:
@@ -960,14 +1316,18 @@ def split(bbmodel_path, out_dir):
         written.add(f"{mod.id}.png")
         for suffix in mask_inputs:
             written.add(f"{mod.id}{suffix}.png")
+        for tag, suffix in (("geo", ".geo.json"),
+                            ("anim", ".animation.json")):
+            if (mod.id, tag) in exported:
+                written.add(f"{mod.id}{suffix}")
     stale = sorted(preexisting - written)
 
     print(f"\n拆分完成 -> {out_dir}")
     print(f"{'模块 id':<34} {'类型':<10} {'定位骨':<22} {'cube':>4} "
-          f"{'bone':>4} {'贴图':>7} {'动画':>3}  掩码")
+          f"{'bone':>4} {'贴图':>7} {'动画':>3}  {'导出':<9} 掩码")
     for row in summary:
         print(f"{row[0]:<34} {row[1]:<10} {row[2]:<22} {row[3]:>4} "
-              f"{row[4]:>4} {row[5]:>7} {row[6]:>3}  {row[7]}")
+              f"{row[4]:>4} {row[5]:>7} {row[6]:>3}  {row[8]:<9} {row[7]}")
     if stale:
         print("\n以下文件本次未生成，可能已过时（未自动删除，请人工确认）：")
         for name in stale:
@@ -979,6 +1339,12 @@ def split(bbmodel_path, out_dir):
         raise SystemExit(1)
     print("\n校验通过：几何/旋转往返、UV 边界、动画骨骼引用、"
           "贴图像素 全部一致")
+    if exported:
+        kinds = sorted({tag for _, tag in exported})
+        target = " + ".join({"geo": "geo/gun", "anim": "animations/gun"}[k]
+                            for k in kinds)
+        print(f"已同时导出 {'/'.join(kinds)}：共 {len(exported)} 个文件"
+              f"（拷进枪包的 {target} 即可）")
     return 0
 
 
@@ -987,10 +1353,17 @@ def main():
     ap.add_argument("bbmodel", help="统合 .bbmodel 路径")
     ap.add_argument("-o", "--out", default=None,
                     help="输出目录（默认 <bbmodel目录>/split/）")
+    ap.add_argument("--geo", action="store_true",
+                    help="同时导出每模块 <id>.geo.json（等价 Blockbench 导出）")
+    ap.add_argument("--anim", action="store_true",
+                    help="同时导出每模块 <id>.animation.json（有动画时）")
+    ap.add_argument("--gecko", action="store_true",
+                    help="等于 --geo --anim")
     args = ap.parse_args()
     src = Path(args.bbmodel)
     out_dir = Path(args.out) if args.out else src.parent / "split"
-    raise SystemExit(split(src, out_dir))
+    raise SystemExit(split(src, out_dir, geo=args.geo or args.gecko,
+                           anim=args.anim or args.gecko))
 
 
 if __name__ == "__main__":
