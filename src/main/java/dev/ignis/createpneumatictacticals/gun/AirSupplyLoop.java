@@ -61,7 +61,10 @@ public final class AirSupplyLoop {
             if (airCurrent == null || airCurrent.maxDistance <= 0) continue;
             if (!airCurrent.bounds.inflate(0.25f).contains(center)) continue;
             float distance = alignedDistance(fan, pos);
-            if (airCurrent.getTypeAt(distance) == null) return true;
+            // Create 6 reports null for a plain-air segment; this mod's own
+            // pressurizing type marks the stretch at/after a depot or belt and
+            // leaves the air itself plain
+            if (PressurizingFanType.isPlainAir(airCurrent.getTypeAt(distance))) return true;
         }
         return false;
     }
@@ -80,7 +83,7 @@ public final class AirSupplyLoop {
      * to {@link #FAN_PROBE_RANGE} blocks along each of the 6 axis directions
      * (fan range is config-capped at 20) for an IAirCurrentSource.
      */
-    private static List<IAirCurrentSource> findFansAround(Level level, BlockPos pos) {
+    static List<IAirCurrentSource> findFansAround(Level level, BlockPos pos) {
         List<IAirCurrentSource> out = new ArrayList<>();
         for (Direction dir : Direction.values()) {
             BlockPos cursor = pos;
@@ -120,9 +123,9 @@ public final class AirSupplyLoop {
             }
         }
 
-        // --- ground air vials in the same flow pressurize too ---
+        // --- loose items in the same flow: vials pressurize, guns trickle-charge ---
         if (inFlow) {
-            pressurizeNearbyItemEntities(level, player.blockPosition());
+            pressurizeNearbyItems(level, player.blockPosition());
         }
     }
 
@@ -130,24 +133,42 @@ public final class AirSupplyLoop {
         ModuleDefinition supply = GunNbt.readModules(gun).get(ModuleType.SUPPLY);
         if (supply == null || supply.supplyType != SupplyType.INTERNAL_TANK) return;
         if (!inFlow) return;
-        int full = supply.airCapacity > 0 ? supply.airCapacity : gun.getMaxDamage();
-        int air = gun.getDamageValue();
-        if (air >= full) return;
-        gun.setDamageValue(Math.min(full, air + AIR_RECHARGE_PER_TICK));
+        // the gauge counts USED air (see AirTank): recharge winds it back
+        AirTank.recharge(gun, AIR_RECHARGE_PER_TICK);
     }
 
-    /** Advances pressurization progress on ground air vials inside the flow. */
-    private static void pressurizeNearbyItemEntities(Level level, BlockPos pos) {
+    /**
+     * Advances loose items sitting in the flow. Drops keep the held-item
+     * behavior (vial progress + gun trickle charge); items on depots/belts ride
+     * Create's own fan pipeline instead ({@link PressurizingFanType}).
+     */
+    private static void pressurizeNearbyItems(Level level, BlockPos pos) {
         AABB flowArea = new AABB(pos).inflate(1.5);
         List<ItemEntity> items = level.getEntitiesOfClass(ItemEntity.class, flowArea);
         for (ItemEntity item : items) {
             ItemStack stack = item.getItem();
-            if (!stack.is(ModItems.AIR_VIAL.get())) continue;
             if (!inPlainAirFlow(level, item.blockPosition())) continue;
-            if (tickPressurize(stack, 1)) {
-                item.setItem(new ItemStack(ModItems.PRESSURIZED_AIR_VIAL.get(), stack.getCount()));
+            if (stack.is(ModItems.AIR_VIAL.get())) {
+                if (tickPressurize(stack, 1)) {
+                    item.setItem(new ItemStack(ModItems.PRESSURIZED_AIR_VIAL.get(), stack.getCount()));
+                }
+            } else if (stack.getItem() instanceof GunItem) {
+                rechargeDroppedGun(item, stack);
             }
         }
+    }
+
+    /**
+     * Trickle-charges a dropped internal-tank gun. Item entities re-sync only
+     * when {@code setItem} is called, so the stack is replaced, not mutated.
+     */
+    private static void rechargeDroppedGun(ItemEntity entity, ItemStack gun) {
+        ModuleDefinition supply = GunNbt.readModules(gun).get(ModuleType.SUPPLY);
+        if (supply == null || supply.supplyType != SupplyType.INTERNAL_TANK) return;
+        if (AirTank.stored(gun) >= AirTank.capacity(gun)) return;
+        ItemStack charged = gun.copy();
+        AirTank.recharge(charged, AIR_RECHARGE_PER_TICK);
+        entity.setItem(charged);
     }
 
     /**

@@ -197,8 +197,8 @@ public final class GunHudOverlay implements IGuiOverlay {
         // changed width
         int reserveW = mc.font.width(reserveText);
         int glyphX = numbersRight - 8;
-        FireMode mode = GunNbt.getFireMode(gun);
-        ResourceLocation glyph = switch (mode == null ? FireMode.SEMI : mode) {
+        FireMode mode = GunNbt.getFireModeOrDefault(gun, stats);
+        ResourceLocation glyph = switch (mode) {
             case SEMI -> FIRE_SEMI;
             case AUTO -> FIRE_AUTO;
             case BURST -> FIRE_BURST;
@@ -222,9 +222,9 @@ public final class GunHudOverlay implements IGuiOverlay {
 
         // air pressure above the block (internal-tank guns only)
         if (stats.supply != null && stats.supply.supplyType == SupplyType.INTERNAL_TANK) {
-            int max = gun.getMaxDamage();
-            int air = max > 0 ? max - gun.getDamageValue() : 0;
-            int pct = max > 0 ? Math.round(100f * air / max) : 0;
+            int capacity = dev.ignis.createpneumatictacticals.gun.AirTank.capacity(gun);
+            int air = dev.ignis.createpneumatictacticals.gun.AirTank.stored(gun);
+            int pct = Math.round(100f * air / capacity);
             int color = pct <= 20 ? WARN_COLOR : TEXT_COLOR;
             drawRightAligned(g, mc, Component.translatable(
                     "gui." + CreatePneumaticTacticals.MODID + ".hud.air", pct).getString(),

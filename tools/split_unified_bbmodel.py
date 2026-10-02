@@ -10,7 +10,9 @@ split_unified_bbmodel.py -- 把「统合枪模」.bbmodel 拆成每模块一个 
 - 每个模块按「装配完成」的状态摆放。脚本找到对应的 loc 定位骨
   （feed->loc_feed、muzzle->父枪管里的 loc_muzzle_attachment、
     handguard_attachment->父护木里唯一的 loc_handguard_* 等），
-  把模块内容重算到以 loc pivot 为原点、loc 旋转为单位阵的局部空间；
+  把整棵模块子树（含模块根骨与所有深度的骨骼/立方体、动画关键帧）
+  按同一个刚体变换 K = inv(宿主里 root->loc 的链) 共轭到以 loc pivot
+  为原点、loc 旋转为单位阵的局部空间；
 - UV 从统合贴图裁出、去重、重排成每模块一张紧凑贴图（<=64x64 优先，
   内嵌回 bbmodel 并同时写出 <id>.png）；若统合 bbmodel 旁存在同尺寸的
   <名>_glowmask.png / <名>_dye.png，按同一映射拆出每模块的掩码；
@@ -19,6 +21,10 @@ split_unified_bbmodel.py -- 把「统合枪模」.bbmodel 拆成每模块一个 
   effect 无命名空间时补 createpneumatictacticals:；同帧指令关键帧
   （timeline）的 script 若是模块 id，则该帧音效分给对应模块，
   且标识用指令帧不写入任何输出。
+- 拆分前会自校验：骨骼 pivot/旋转共轭、立方体几何（在模块自身坐标系
+  与「按模组挂载语义摆回宿主后」两处逐点核对）、UV 边界、动画骨骼引用、
+  贴图像素、音效帧守恒与命名空间、标识指令帧清除；--geo/--anim 时
+  再校验导出物与 bbmodel 逐项对应。全部通过才写出。
 
 用法：
     python tools/split_unified_bbmodel.py gecko/marble_17/marble_17.bbmodel
@@ -92,6 +98,10 @@ def _mat3_mul(a, b):
                        for j in range(3)) for i in range(3))
 
 
+def _mat3_transpose(m):
+    return tuple(tuple(m[j][i] for j in range(3)) for i in range(3))
+
+
 def _mat3_apply(m, v):
     return [sum(m[i][k] * v[k] for k in range(3)) for i in range(3)]
 
@@ -121,9 +131,30 @@ def _mat4_trs(origin, rot):
              [0.0, 0.0, 0.0, 1.0]])
 
 
+_IDENT4 = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0],
+           [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+
+
 def _mat4_mul(a, b):
     return [[sum(a[i][k] * b[k][j] for k in range(4)) for j in range(4)]
             for i in range(4)]
+
+
+def _prep_mat(origin, rot):
+    """GeckoLib 静止姿态矩阵 prep = T(pivot) · R · T(-pivot)。
+
+    pivot 只是旋转中心，不平移子节点：骨骼的 pivot 与立方体的坐标
+    都在同一个扁平坐标系里（见 RenderUtils.prepMatrixForBone /
+    renderRecursively）。静止时 prep = I。
+    """
+    p = list(origin or [0, 0, 0])
+    return _mat4_mul(_mat4_trs(p, rot),
+                     _mat4_trs([-p[0], -p[1], -p[2]], None))
+
+
+def _mat4_is_identity(m):
+    return all(abs(m[i][j] - _IDENT4[i][j]) < 1e-9
+               for i in range(4) for j in range(4))
 
 
 def _mat4_invert_rigid(m):
@@ -179,17 +210,23 @@ class Model:
             else:
                 self.cube_parent[item] = parent_uuid
 
-    def world_mat(self, bone_uuid):
+    def bone_chain(self, bone_uuid, from_uuid=None):
+        """from_uuid（含）-> bone_uuid（含）的骨骼 uuid 列表；默认从根骨起。"""
         chain = []
         cur = bone_uuid
         while cur is not None:
             chain.append(cur)
+            if cur == from_uuid:
+                break
             cur = self.parent[cur]
-        m = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-        for cur in reversed(chain):
+        return list(reversed(chain))
+
+    def chain_mat(self, bone_uuid, from_uuid=None):
+        """from_uuid -> bone_uuid（含自身）的 prep 连乘。"""
+        m = [row[:] for row in _IDENT4]
+        for cur in self.bone_chain(bone_uuid, from_uuid):
             b = self.bones[cur]
-            m = _mat4_mul(m, _mat4_trs(b.get("origin", [0, 0, 0]),
-                                       b.get("rotation")))
+            m = _mat4_mul(m, _prep_mat(b.get("origin"), b.get("rotation")))
         return m
 
 
@@ -276,15 +313,21 @@ def _subtree_bones(model, root_uuid):
 
 
 def _resolve_locators(model, modules):
-    """为每个模块找到定位骨，并计算 rebase = inv(A_loc) @ A_modroot。"""
+    """为每个模块找到定位骨，并计算 rebase = inv(place(mod))。
+
+    place(mod) 是模组把该模块摆到统合坐标系里的变换：
+    place(mod) = place(host) · [宿主坐标系里 root->定位骨 的链]，
+    其中定位骨在宿主坐标系里（宿主自身已被重算过）。rebase 取逆后，
+    拆分出的模块被模组摆回原位时与统合模型逐点重合。
+    """
     receiver = next(m for m in modules.values() if m.type == "receiver")
     receiver_bones = [b for b in _subtree_bones(model, receiver.root_uuid)
                       if b["uuid"] in receiver.bone_uuids]
 
     for mod in modules.values():
         if mod.type == "receiver":
-            # 机匣内容保持在机匣根骨空间；根骨自身变换归零
-            mod.rebase = model.world_mat(mod.root_uuid)
+            # 机匣模型本身就是统合坐标系：内容原样保留（只去掉模块子树）
+            mod.rebase = [row[:] for row in _IDENT4]
             continue
 
         if mod.type in LOC_FOR_TYPE:
@@ -323,18 +366,34 @@ def _resolve_locators(model, modules):
                 f"错误：模块 {mod.id}（{mod.type}）在{scope}里找不到"
                 f"对应定位骨")
         mod.loc_uuid = cands[0]["uuid"]
-        mod.rebase = _mat4_mul(_mat4_invert_rigid(
-            model.world_mat(mod.loc_uuid)), model.world_mat(mod.root_uuid))
+        # 模块自身坐标系在统合坐标系里的位置（模组的挂载语义）：
+        #   place(mod) = place(host) · [宿主坐标系里的挂点链]
+        # 宿主坐标系里的挂点链 = [K_host·(Π prep)·K_host⁻¹] · T(K_host·p_loc)
+        # （K_host = inv(place(host))，机匣挂载时 K_host = I、链从机匣根骨起）
+        # 于是 rebase = inv(place(mod)) = inv(m) · K_host。
+        host = _parent_module(model, modules, mod)
+        k_host = host.rebase if host else _IDENT4
+        base = host.root_uuid if host else receiver.root_uuid
+        m = model.chain_mat(mod.loc_uuid, base)
+        if not _mat4_is_identity(k_host):
+            # 宿主坐标系里的链要按 K_host 共轭：连平移也必须做
+            # （K = T(t) 时共轭会把 pivot 一并搬到宿主坐标系里）
+            m = _mat4_mul(_mat4_mul(k_host, m),
+                          _mat4_invert_rigid(k_host))
+        p_loc = model.bones[mod.loc_uuid].get("origin", [0, 0, 0])
+        m = _mat4_mul(m, _mat4_trs(_mat4_apply(k_host, p_loc), None))
+        mod.rebase = _mat4_mul(_mat4_invert_rigid(m), k_host)
 
 
 # ---------------------------------------------------------------- 重定位
 
 
 def _rebase_cube(el, t, rt):
-    """把立方体从模块根空间变换到新父空间（T = inv(A_loc) @ A_modroot）。
+    """把立方体按刚体变换 K = (rt, t) 搬到模块坐标系。
 
-    不变式：origin' = T@origin；from/to 平移 origin'-origin（保持轴对齐）；
-    rotation' = Rt @ rotation。渲染结果与原模型世界坐标完全一致。
+    渲染不变式：新表示的渲染点集 == K · 原渲染点集。
+    origin' = K@origin；from/to 平移 origin'-origin（盒保持轴对齐）；
+    rotation' = Rt @ rotation（旋转中心跟着 origin 走，故是左乘而非共轭）。
     """
     o = list(el.get("origin", [0, 0, 0]))
     o2 = _mat4_apply(t, o)
@@ -355,10 +414,16 @@ def _rebase_cube(el, t, rt):
 
 
 def _rebase_bone_node(node, t, rt):
+    """把骨骼的 prep 共轭到模块坐标系：K·T(p)R T(-p)·K⁻¹。
+
+    骨骼的 pivot 是子树的旋转中心（不平移子节点），因此 origin' = K@origin、
+    rotation' = Rt @ R @ Rt⁻¹；只有这样才能整棵子树一致地共轭。
+    """
     node["origin"] = _r5v(_mat4_apply(t, list(node.get("origin", [0, 0, 0]))))
     rot = node.get("rotation")
     if not _rot_is_identity(rt):
-        r = _mat3_mul(rt, _deg_mat3(rot or [0, 0, 0]))
+        r = _mat3_mul(_mat3_mul(rt, _deg_mat3(rot or [0, 0, 0])),
+                      _mat3_transpose(rt))
         euler = _r5v(_mat3_to_euler(r))
         if any(abs(v) > 1e-7 for v in euler):
             node["rotation"] = euler
@@ -369,53 +434,34 @@ def _rebase_bone_node(node, t, rt):
 def _rebase_module_tree(model, mod):
     """返回 (main 根骨, {cube_uuid: rebased_element})。
 
-    只有模块根的直接子节点需要变换坐标；更深层级的相对坐标不变。
-    任意深度的嵌套模块子树都会被剔除（它们拆成自己的文件）。
+    整棵模块子树（含模块根骨自身）按同一个刚体变换 K 共轭：模块内部任意
+    深度的骨骼/立方体坐标都在统合模型的扁平坐标系里，只变换根骨的直接
+    子节点会让内容留在原处。任意深度的嵌套模块子树会被剔除（另拆文件）。
     """
     t = mod.rebase
     rt = _mat4_rot3(t)
     rebased_cubes = {}
 
-    def copy_bone(node, rebase_self):
-        # rebase_self 只作用于本骨骼自己的 origin/rotation；
-        # 子节点生活在本骨骼空间内，坐标保持不变。
+    def copy_bone(node):
         new_node = {k: copy.deepcopy(v) for k, v in node.items()
                     if k != "children"}
-        if rebase_self:
-            _rebase_bone_node(new_node, t, rt)
+        _rebase_bone_node(new_node, t, rt)
         children = []
         for child in node.get("children", []):
             if isinstance(child, dict):
-                mtype, _ = _classify_bone(child["name"])
-                if mtype:
+                if _classify_bone(child["name"])[0]:
                     continue  # 嵌套模块另拆
-                children.append(copy_bone(child, False))
+                children.append(copy_bone(child))
             else:
+                el = copy.deepcopy(model.elements[child])
+                _rebase_cube(el, t, rt)
+                rebased_cubes[child] = el
                 children.append(child)
         new_node["children"] = children
         return new_node
 
-    root = model.bones[mod.root_uuid]
-    new_root = {k: copy.deepcopy(v) for k, v in root.items()
-                if k != "children"}
+    new_root = copy_bone(model.bones[mod.root_uuid])
     new_root["name"] = "main"
-    new_root["origin"] = [0, 0, 0]
-    new_root.pop("rotation", None)
-
-    children = []
-    for child in root.get("children", []):
-        if isinstance(child, dict):
-            mtype, _ = _classify_bone(child["name"])
-            if mtype:
-                continue
-            node = copy_bone(child, True)
-            children.append(node)
-        else:
-            el = copy.deepcopy(model.elements[child])
-            _rebase_cube(el, t, rt)
-            rebased_cubes[child] = el
-            children.append(child)
-    new_root["children"] = children
     return new_root, rebased_cubes
 
 
@@ -603,10 +649,45 @@ def _route_effect_animator(animator, module_ids, receiver_id, anim_name,
     return routed
 
 
+def _transform_animator(animator, rt, warn, ctx):
+    """把 animator 的关键帧从统合坐标系共轭到模块坐标系。
+
+    GeckoLib 的骨骼关键帧是绝对值：position 是扁平坐标系里的平移
+    （prep = T(pos)·T(p)·R·S·T(-p)），rotation 是绕 pivot 的旋转，scale
+    在旋转之后相乘。共轭后 position' = Rt·pos、rotation' = Rt·R·Rt⁻¹、
+    scale' = Rt·S·Rt⁻¹（仅等比/轴对齐缩放仍是对角阵）。
+    """
+    for kf in animator.get("keyframes", []):
+        for dp in kf.get("data_points", []):
+            vec = [float(dp.get("x", 0) or 0), float(dp.get("y", 0) or 0),
+                   float(dp.get("z", 0) or 0)]
+            if kf["channel"] == "position":
+                nv = _mat3_apply(rt, vec)
+            elif kf["channel"] == "rotation":
+                nv = _mat3_to_euler(
+                    _mat3_mul(_mat3_mul(rt, _deg_mat3(vec)),
+                              _mat3_transpose(rt)))
+            elif kf["channel"] == "scale":
+                s = ((vec[0], 0.0, 0.0), (0.0, vec[1], 0.0),
+                     (0.0, 0.0, vec[2]))
+                s = _mat3_mul(_mat3_mul(rt, s), _mat3_transpose(rt))
+                if any(abs(s[i][j]) > 1e-6 for i in range(3)
+                       for j in range(3) if i != j):
+                    warn(f"{ctx}: 缩放关键帧 {vec} 在定位骨旋转下无法表示"
+                         f"为轴对齐缩放，已保持原值")
+                    continue
+                nv = [s[0][0], s[1][1], s[2][2]]
+            else:
+                continue
+            dp["x"], dp["y"], dp["z"] = (repr(_r5(nv[0])), repr(_r5(nv[1])),
+                                         repr(_r5(nv[2])))
+
+
 def _split_animations(model, mod, anim_routes, warn):
     """动画按骨骼归属拆分；音效/指令关键帧按 anim_routes 路由结果分配。"""
     out = []
     rt = _mat4_rot3(mod.rebase)
+    rot_changed = not _rot_is_identity(rt)
     for anim in model.data.get("animations", []):
         sub = {}
         for auuid, animator in anim.get("animators", {}).items():
@@ -622,27 +703,17 @@ def _split_animations(model, mod, anim_routes, warn):
                     sub[auuid] = eff
         if not sub:
             continue
+        # 模块坐标系的旋转与统合坐标系不同：模块内每个被驱动骨骼的
+        # 关键帧都要跟着共轭（否则动画姿态与静止姿态不一致）
+        if rot_changed:
+            for animator in sub.values():
+                if animator.get("type", "bone") == "bone":
+                    _transform_animator(animator, rt, warn,
+                                        f"{mod.id} 动画 {anim['name']}")
+            warn(f"{mod.id}: 动画 {anim['name']} 的骨骼关键帧已按定位骨"
+                 f"旋转变换")
         if mod.root_uuid in sub:
             sub[mod.root_uuid]["name"] = "main"
-            # 根骨关键帧的父空间变了：rebase 带旋转时位置/旋转关键帧要跟随
-            if not _rot_is_identity(rt):
-                for kf in sub[mod.root_uuid].get("keyframes", []):
-                    for dp in kf.get("data_points", []):
-                        vec = [float(dp.get("x", 0) or 0),
-                               float(dp.get("y", 0) or 0),
-                               float(dp.get("z", 0) or 0)]
-                        if kf["channel"] == "position":
-                            nv = _mat3_apply(rt, vec)
-                        elif kf["channel"] == "rotation":
-                            nv = _mat3_to_euler(
-                                _mat3_mul(rt, _deg_mat3(vec)))
-                        else:
-                            continue
-                        dp["x"], dp["y"], dp["z"] = (
-                            repr(_r5(nv[0])), repr(_r5(nv[1])),
-                            repr(_r5(nv[2])))
-                warn(f"{mod.id}: 动画 {anim['name']} 的根骨关键帧已按"
-                     f"定位骨旋转变换")
         new_anim = copy.deepcopy(anim)
         event = anim["name"].split(".")[-1]
         new_anim["name"] = f"animation.{mod.id}.{event}"
@@ -979,47 +1050,81 @@ def _verify_exports(modules, reloaded, exported):
 # ---------------------------------------------------------------- 校验
 
 
-def _walk_transforms(data):
-    """遍历整个 outliner，产出 {uuid: (world_mat, parent_rot3)}。
+def _chains(data):
+    """{uuid: 骨骼链矩阵}：root->骨骼（含自身 prep）连乘；立方体取父骨骼的。
 
-    骨骼：world_mat 含自身 origin/rotation；立方体：world_mat =
-    父骨骼的世界矩阵（立方体自身没有节点级变换）。
+    这就是 GeckoLib 的静止姿态渲染链：立方体的世界点 = 链矩阵 · 渲染角点。
     """
-    model = Model(data)
     result = {}
-    ident = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
 
     def walk(items, m):
         for it in items:
             if isinstance(it, dict):
-                m2 = _mat4_mul(m, _mat4_trs(it.get("origin", [0, 0, 0]),
+                m2 = _mat4_mul(m, _prep_mat(it.get("origin"),
                                             it.get("rotation")))
-                result[it["uuid"]] = (m2, _mat4_rot3(m))
+                result[it["uuid"]] = m2
                 walk(it.get("children", []), m2)
             else:
-                result[it] = (m, _mat4_rot3(m))
+                result[it] = m
 
-    walk(data.get("outliner", []), ident)
-    return model, result
+    walk(data.get("outliner", []), [row[:] for row in _IDENT4])
+    return result
+
+
+def _cube_corners(el):
+    """立方体在自身骨骼坐标系里的 8 个渲染角点（含绕 origin 的旋转）。"""
+    o = list(el.get("origin", [0, 0, 0]))
+    r = _deg_mat3(el.get("rotation", [0, 0, 0]))
+    f, t = el["from"], el["to"]
+    pts = []
+    for cx in (f[0], t[0]):
+        for cy in (f[1], t[1]):
+            for cz in (f[2], t[2]):
+                rel = _mat3_apply(r, [cx - o[0], cy - o[1], cz - o[2]])
+                pts.append([o[0] + rel[0], o[1] + rel[1], o[2] + rel[2]])
+    return pts
 
 
 def _verify(src_model, src_modules, outputs, pixel_checks):
     errors = []
-    _, src_tr = _walk_transforms(src_model.data)
+    by_id = {m.id: m for m in src_modules}
+    receiver = next(m for m in src_modules if m.type == "receiver")
+    src_chain = _chains(src_model.data)
+    out_chain = {m.id: _chains(outputs[m.id]) for m in src_modules}
+    out_model = {m.id: Model(outputs[m.id]) for m in src_modules}
+
+    def host_placement(mod):
+        """模组渲染该模块时施加在「模块自身坐标系」上的变换（统合坐标系）。
+
+        即 host_applyBoneChain(loc) 再映射回统合坐标系：宿主输出模型里
+        root->定位骨 的链 + 平移到 pivot，最后左乘 inv(K_host)。
+        """
+        if mod.type == "receiver":
+            return [row[:] for row in _IDENT4]
+        host = _parent_module(src_model, by_id, mod) or receiver
+        hmodel = out_model[host.id]
+        loc_name = src_model.bones[mod.loc_uuid]["name"]
+        lu = next((u for u, b in hmodel.bones.items()
+                   if b["name"] == loc_name), None)
+        if lu is None:
+            errors.append(f"{mod.id}: 宿主 {host.id} 缺少定位骨 {loc_name}")
+            return None
+        l_host = _mat4_mul(out_chain[host.id][lu],
+                           _mat4_trs(hmodel.bones[lu].get("origin",
+                                                          [0, 0, 0]), None))
+        return _mat4_mul(_mat4_invert_rigid(host.rebase), l_host)
 
     for mod in src_modules:
         out = outputs[mod.id]
-        out_model, out_tr = _walk_transforms(out)
-        a_loc = (src_model.world_mat(mod.loc_uuid) if mod.loc_uuid
-                 else [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0],
-                       [0, 0, 0, 1]])
-        r_loc = _mat4_rot3(a_loc)
+        omodel = out_model[mod.id]
+        k = mod.rebase
+        kr = _mat4_rot3(k)
 
-        # 1. 集合一致：模块的骨骼（除根）与立方体
-        want_bones = mod.bone_uuids - {mod.root_uuid}
+        # 1. 集合一致：模块的骨骼（含根）与立方体
+        want_bones = set(mod.bone_uuids)
         want_cubes = set(mod.cube_uuids)
-        got_bones = set(out_model.bones) - {mod.root_uuid}
-        got_cubes = set(out_model.cube_parent)
+        got_bones = set(omodel.bones)
+        got_cubes = set(omodel.cube_parent)
         if want_bones != got_bones:
             errors.append(f"{mod.id}: 骨骼集合不一致 "
                           f"缺={want_bones-got_bones} 多={got_bones-want_bones}")
@@ -1027,63 +1132,49 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
             errors.append(f"{mod.id}: 立方体集合不一致 "
                           f"缺={want_cubes-got_cubes} 多={got_cubes-want_cubes}")
 
-        # 2. 几何往返 + 旋转复合
+        # 2. 骨骼：pivot/rotation 必须等于 K 共轭后的值
         worst = 0.0
         for uuid in sorted(want_bones & got_bones):
-
-            s_m, s_pr = src_tr[uuid]
-            o_m, o_pr = out_tr[uuid]
-            # 骨骼 origin 在其父空间：世界点 = parent_world @ origin
-            # src_tr[uuid] 已是 bone 自身世界矩阵（含自身 origin/rot），
-            # 其平移列即世界坐标。
-            pe = _mat4_apply(a_loc, [o_m[0][3], o_m[1][3], o_m[2][3]])
-            for i in range(3):
-                worst = max(worst, abs(s_m[i][3] - pe[i]))
-            # 世界旋转：R_src == R_loc @ R_out
-            rs = _mat4_rot3(s_m)
-            ro = _mat3_mul(r_loc, _mat4_rot3(o_m))
-            worst = max(worst, max(abs(rs[i][j] - ro[i][j])
-                                   for i in range(3) for j in range(3)))
-        for uuid in sorted(want_cubes & got_cubes):
-            s_el = src_model.elements[uuid]
-            o_el = out_model.elements[uuid]
-            s_pm, s_pr = src_tr[uuid]
-            o_pm, o_pr = out_tr[uuid]
-            # 旋转立方体的 from/to 是「旋转前盒空间」坐标，两侧表示法
-            # 可以不同；正确不变量是渲染后角点集合一致。
-            def rendered_corners(el):
-                o = list(el.get("origin", [0, 0, 0]))
-                r = _deg_mat3(el.get("rotation", [0, 0, 0]))
-                f, tt = el["from"], el["to"]
-                out = []
-                for cx in (f[0], tt[0]):
-                    for cy in (f[1], tt[1]):
-                        for cz in (f[2], tt[2]):
-                            rel = _mat3_apply(r, [cx - o[0], cy - o[1],
-                                                  cz - o[2]])
-                            out.append([o[0] + rel[0], o[1] + rel[1],
-                                        o[2] + rel[2]])
-                return out
-
-            pw = _mat4_apply(s_pm, list(s_el.get("origin", [0, 0, 0])))
-            pe = _mat4_apply(a_loc, _mat4_apply(
-                o_pm, list(o_el.get("origin", [0, 0, 0]))))
-            worst = max(worst, max(abs(pw[i] - pe[i]) for i in range(3)))
-            src_corners = [_mat4_apply(s_pm, p)
-                           for p in rendered_corners(s_el)]
-            out_corners = [_mat4_apply(a_loc, _mat4_apply(o_pm, p))
-                           for p in rendered_corners(o_el)]
-            for a in src_corners:
-                d = min(max(abs(a[i] - b[i]) for i in range(3))
-                        for b in out_corners)
-                worst = max(worst, d)
-            rs = _mat3_mul(s_pr, _deg_mat3(s_el.get("rotation", [0, 0, 0])))
-            ro = _mat3_mul(r_loc, _mat3_mul(
-                o_pr, _deg_mat3(o_el.get("rotation", [0, 0, 0]))))
-            worst = max(worst, max(abs(rs[i][j] - ro[i][j])
+            sb = src_model.bones[uuid]
+            ob = omodel.bones[uuid]
+            want_p = _mat4_apply(k, list(sb.get("origin", [0, 0, 0])))
+            got_p = list(ob.get("origin", [0, 0, 0]))
+            worst = max(worst, max(abs(want_p[i] - got_p[i])
+                                   for i in range(3)))
+            rs = _deg_mat3(sb.get("rotation") or [0, 0, 0])
+            want_r = _mat3_mul(_mat3_mul(kr, rs), _mat3_transpose(kr))
+            got_r = _deg_mat3(ob.get("rotation") or [0, 0, 0])
+            worst = max(worst, max(abs(want_r[i][j] - got_r[i][j])
                                    for i in range(3) for j in range(3)))
         if worst > 1e-4:
-            errors.append(f"{mod.id}: 几何/旋转往返误差 {worst}")
+            errors.append(f"{mod.id}: 骨骼 pivot/rotation 共轭误差 {worst}")
+
+        # 3. 立方体：模块坐标系里的渲染 == K · 统合渲染；
+        #    再按模组的挂载语义摆回宿主，必须与统合渲染重合
+        placement = host_placement(mod)
+        worst_local = worst_world = 0.0
+        for uuid in sorted(want_cubes & got_cubes):
+            s_el = src_model.elements[uuid]
+            o_el = omodel.elements[uuid]
+            s_pts = [_mat4_apply(src_chain[uuid], p)
+                     for p in _cube_corners(s_el)]
+            o_pts = [_mat4_apply(out_chain[mod.id][uuid], p)
+                     for p in _cube_corners(o_el)]
+            for a in s_pts:
+                ka = _mat4_apply(k, a)
+                worst_local = max(worst_local, min(
+                    max(abs(ka[i] - b[i]) for i in range(3)) for b in o_pts))
+            if placement is None:
+                continue
+            for b in o_pts:
+                pb = _mat4_apply(placement, b)
+                worst_world = max(worst_world, min(
+                    max(abs(pb[i] - a[i]) for i in range(3)) for a in s_pts))
+        if worst_local > 1e-4:
+            errors.append(f"{mod.id}: 立方体几何共轭误差 {worst_local}")
+        if worst_world > 1e-4:
+            errors.append(f"{mod.id}: 摆回宿主后与统合模型几何误差 "
+                          f"{worst_world}")
 
         # 3. UV 边界
         res = out["resolution"]
@@ -1099,7 +1190,7 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
 
         # 4. 动画完整性
         module_ids = {m.id for m in src_modules}
-        out_bones = set(out_model.bones)
+        out_bones = set(omodel.bones)
         for anim in out.get("animations", []):
             for auuid, animator in anim.get("animators", {}).items():
                 if animator.get("type", "bone") == "bone":
@@ -1337,8 +1428,8 @@ def split(bbmodel_path, out_dir, geo=False, anim=False):
         for e in errors:
             print(f"  [ERROR] {e}")
         raise SystemExit(1)
-    print("\n校验通过：几何/旋转往返、UV 边界、动画骨骼引用、"
-          "贴图像素 全部一致")
+    print("\n校验通过：骨骼 pivot/旋转共轭、立方体几何（含按模组语义摆回"
+          "宿主）、UV 边界、动画骨骼引用、贴图像素 全部一致")
     if exported:
         kinds = sorted({tag for _, tag in exported})
         target = " + ".join({"geo": "geo/gun", "anim": "animations/gun"}[k]

@@ -35,13 +35,13 @@ public final class GunActionHandler {
         switch (action) {
             case NEXT_FIRE_MODE -> {
                 List<FireMode> modes = stats.receiver.fireModes;
-                FireMode current = GunNbt.getFireMode(gun);
-                if (current == null) {
-                    GunNbt.setFireMode(gun, modes.get(0));
-                } else {
-                    int idx = modes.indexOf(current);
-                    GunNbt.setFireMode(gun, modes.get((idx + 1) % modes.size()));
-                }
+                if (modes == null || modes.isEmpty()) return;
+                // start from the EFFECTIVE mode: a gun whose tag is missing or
+                // stale currently behaves as the receiver's first mode (see
+                // GunNbt.getFireModeOrDefault), so that is what gets advanced
+                FireMode current = GunNbt.getFireModeOrDefault(gun, stats);
+                int idx = modes.indexOf(current);
+                GunNbt.setFireMode(gun, modes.get((idx + 1) % modes.size()));
             }
             case CYCLE_AIM_STANCE -> {
                 String current = GunNbt.getAimStance(gun);

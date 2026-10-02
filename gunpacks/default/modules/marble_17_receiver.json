@@ -1,0 +1,32 @@
+{
+  "name": "createpneumatictacticals:marble_17_receiver",
+  "module_type": "receiver",
+  "gun_properties": {
+    "reload_speed": 0.0,
+    "fire_rate_multiplier": -0.8,
+    "damage_multiplier": 5,
+    "bullet_speed": 1,
+    "gravity_multiplier": -0.9,
+    "drag_multiplier": -0.2,
+    "ergonomics": 0.1,
+    "recoil_recovery": -0.8,
+    "hipfire_accuracy_multiplier": -0.5
+  },
+  "gun_type": "medium",
+  "fire_modes": [
+    "semi"
+  ],
+  "fire_sound": "createpneumatictacticals:gun.gbb.shoot",
+  "base_recoil_pitch": 7.2,
+  "base_recoil_yaw": 4.8,
+  "ignore_ammo_pitch": false,
+  "gun_name": "gun.createpneumatictacticals.marble_17",
+  "module_affected": [
+    { "module_type": "sight",  "mode": "include", "value": ["REGEX=pica_sight_small.+"] },
+    { "module_type": "barrel", "mode": "include", "value": ["REGEX=marble_17.+"] },
+    { "module_type": "stock",  "mode": "include", "value": ["REGEX=marble_17.+"] },
+    { "module_type": "feed",   "mode": "include", "value": ["REGEX=marble_17.+"] },
+    { "module_type": "supply", "mode": "include", "value": ["REGEX=marble_17_gas_tank"] },
+    { "module_type": "charm",  "mode": "include", "value": ["REGEX=charm.+"] }
+  ]
+}

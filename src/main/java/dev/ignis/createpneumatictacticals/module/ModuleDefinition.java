@@ -117,7 +117,11 @@ public final class ModuleDefinition {
     public final int loadAmount, clipSize;
     /** supply-only fields */
     @Nullable public final SupplyType supplyType;
-    public final int airCapacity, airPerShot;
+    /**
+     * supply-only: durability drained from the weapon per shot — the tank is
+     * the weapon's own durability range, so this alone sets the round count.
+     */
+    public final int airPerShot;
     /** sight-only fields */
     public final double aimZoom, tacticalAimZoom;
 
@@ -210,7 +214,6 @@ public final class ModuleDefinition {
         this.loadAmount = b.loadAmount;
         this.clipSize = b.clipSize;
         this.supplyType = b.supplyType;
-        this.airCapacity = b.airCapacity;
         this.airPerShot = b.airPerShot;
         this.aimZoom = b.aimZoom;
         this.tacticalAimZoom = b.tacticalAimZoom;
@@ -357,7 +360,8 @@ public final class ModuleDefinition {
         if (type == ModuleType.SUPPLY) {
             b.supplyType = SupplyType.byName(GsonHelper.getAsString(json, "supply_type"), null);
             if (b.supplyType == null) throw new IllegalArgumentException("bad supply_type in " + id);
-            b.airCapacity = GsonHelper.getAsInt(json, "air_capacity", 0);
+            // durability drained per shot; an unknown key (e.g. the retired
+            // "air_capacity") is ignored, so old packs keep loading
             b.airPerShot = GsonHelper.getAsInt(json, "air_per_shot", 0);
         }
         // sights
@@ -445,7 +449,7 @@ public final class ModuleDefinition {
         @Nullable private FeedType feedType;
         private int loadAmount, clipSize;
         @Nullable private SupplyType supplyType;
-        private int airCapacity, airPerShot;
+        private int airPerShot;
         private double aimZoom = 1.25, tacticalAimZoom = 1.0;
         private CharmSpec charm = CharmSpec.DEFAULT;
 

@@ -146,10 +146,10 @@
 			},
 			"sound_effects": {
 				"0.2292": {
-					"effect": "rifle_bolt_pull"
+					"effect": "gun.rifle.bolt_pull"
 				},
 				"0.9792": {
-					"effect": "rifle_bolt_release_short"
+					"effect": "gun.rifle.bolt_release_short"
 				}
 			}
 		},
@@ -272,10 +272,10 @@
 			},
 			"sound_effects": {
 				"0.3333": {
-					"effect": "rifle_mag_out"
+					"effect": "gun.rifle.mag_out"
 				},
 				"1.5": {
-					"effect": "rifle_mag_in"
+					"effect": "gun.rifle.mag_in"
 				}
 			},
 			"timeline": {
@@ -404,10 +404,10 @@
 			},
 			"sound_effects": {
 				"0.0833": {
-					"effect": "rifle_bolt_pull"
+					"effect": "gun.rifle.bolt_pull"
 				},
 				"0.875": {
-					"effect": "rifle_bolt_release_short"
+					"effect": "gun.rifle.bolt_release_short"
 				}
 			}
 		}

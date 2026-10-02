@@ -1,0 +1,14 @@
+{
+  "name": "createpneumatictacticals:marble_17_hunter_handguard",
+  "module_type": "handguard",
+  "gun_properties": {
+    "ergonomics": -0.05,
+    "hipfire_accuracy_multiplier": 0.1
+  },
+  "attachment_points": [
+    "bottom"
+  ],
+  "module_affected": [
+    { "module_type": "handguard_attachment", "mode": "include", "value": ["REGEX=pica.+"] }
+  ]
+}

@@ -182,7 +182,7 @@ public final class ClientGunInput {
         if (mc.screen != null) return;
 
         // --- fire ---
-        if (GunNbt.getFireMode(gun) == FireMode.AUTO) attackPressCredits = 0;
+        if (GunNbt.getFireModeOrDefault(gun, stats) == FireMode.AUTO) attackPressCredits = 0;
         boolean queued = attackPressCredits > 0;
         if (queued && clientTicks - attackPressTick > PRESS_CREDIT_TICKS) {
             attackPressCredits = 0; // stale pull: forget it rather than fire late
@@ -351,8 +351,9 @@ public final class ClientGunInput {
         if (mc.screen != null || mc.player == null) return;
         ItemStack gun = mc.player.getMainHandItem();
         if (!(gun.getItem() instanceof GeoGunItem)) return;
-        if (GunNbt.getFireMode(gun) == FireMode.AUTO) return;
-        long intervalTicks = resolveIntervalTicks(mc.player, gun, GunStats.ofGun(gun));
+        GunStats stats = GunStats.ofGun(gun);
+        if (GunNbt.getFireModeOrDefault(gun, stats) == FireMode.AUTO) return;
+        long intervalTicks = resolveIntervalTicks(mc.player, gun, stats);
         if (intervalTicks < 0 || intervalTicks > BUFFERED_MAX_INTERVAL_TICKS) return;
         long now = System.currentTimeMillis();
         if (now - lastAttackPressMs < PRESS_DEBOUNCE_MS) return;
@@ -382,7 +383,7 @@ public final class ClientGunInput {
         }
         if (!ReadyModel.canFire()) return; // ready pose: gun not yet back in the firing stance
         if (MuzzleClearance.isBlocked()) return; // muzzle pressed into geometry
-        FireMode mode = GunNbt.getFireMode(gun);
+        FireMode mode = GunNbt.getFireModeOrDefault(gun, stats);
         long now = System.currentTimeMillis();
 
         boolean semi = mode == FireMode.SEMI;
@@ -399,6 +400,21 @@ public final class ClientGunInput {
             // magazine would otherwise click every tick)
             if (!wasFiring) playAmmoEmpty(player);
             return; // empty magazine (the HUD clip counter + auto reload say it)
+        }
+        // air mirror: an internal-tank gun that cannot pay for the shot must
+        // not send the request. The server rejected it anyway (same feedback
+        // key), but every rejected packet still spent its predicted round:
+        // the HUD dropped to 0 while the magazine was full, which then made
+        // the auto/manual reload refuse as a full-magazine no-op. Refusing
+        // here keeps the client's count honest (the server keeps the
+        // authoritative gate). One message per trigger pull, like the empty
+        // click above.
+        if (stats.supply != null && stats.supply.supplyType
+                == dev.ignis.createpneumatictacticals.module.SupplyType.INTERNAL_TANK
+                && !dev.ignis.createpneumatictacticals.gun.AirTank.canFire(gun, stats.supply)) {
+            if (!wasFiring) feedback(player, "no_air");
+            wasFiring = true; // semis take one attempt per pull
+            return;
         }
         AmmoExtension ext = AmmoExtension.get(ammoId);
         // Mirror of the server gate: ammo reload_ticks / multiplier, counted in
@@ -496,7 +512,7 @@ public final class ClientGunInput {
             }
             lastSeenAmmo = synced;
         }
-        return synced - pendingShots;
+        return Math.max(0, synced - pendingShots);
     }
 
     /** nothing loaded: non-backpack feeds with an empty magazine (a gun fed
@@ -566,8 +582,12 @@ public final class ClientGunInput {
         reloadSwapAmmo = null;
         if (reloading || !stats.isComplete() || stats.feed == null
                 || stats.feed.feedType == dev.ignis.createpneumatictacticals.module.FeedType.BACKPACK) return;
-        // a swap empties the magazine first, so it starts even from a full one
-        if (swapAmmo == null && GunNbt.getAmmoCount(gun) >= stats.feed.clipSize) return;
+        // a swap empties the magazine first, so it starts even from a full one.
+        // The count is the PREDICTED one — the same quantity the trigger's
+        // emptiness test reads; testing the raw synced count here instead let
+        // the two disagree, and a reload refused as "full" while the trigger
+        // treated the magazine as empty left the gun dead until an ammo swap
+        if (swapAmmo == null && predictedAmmo(gun) >= stats.feed.clipSize) return;
         // an ammo swap defers the new type to this reload — check pods for
         // THAT type, or the reload would be rejected as "no_pod" even though
         // new-type pods exist. The server sync (same values) is a tick away,

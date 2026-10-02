@@ -1,12 +1,14 @@
 package dev.ignis.createpneumatictacticals.item;
 
 import dev.ignis.createpneumatictacticals.ammo.AmmoExtension;
+import dev.ignis.createpneumatictacticals.gun.AirTank;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
 import dev.ignis.createpneumatictacticals.gun.GunStats;
 import dev.ignis.createpneumatictacticals.gun.InteractPass;
 import dev.ignis.createpneumatictacticals.module.GunType;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
+import dev.ignis.createpneumatictacticals.module.SupplyType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.ChatFormatting;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
@@ -161,6 +163,42 @@ public class GunItem extends Item {
     @Override
     public boolean isFoil(ItemStack stack) {
         return false;
+    }
+
+    // --- durability bar = the air gauge (internal-tank guns) ---
+    //
+    // The tank IS the item's durability range (see AirTank): a shot drains
+    // air_per_shot points, fan flow winds it back. Drawn even at a full tank
+    // so pressure is always readable, and colored like Create's potato cannon
+    // / backtank bar (flat 0xEFEFEF) instead of the vanilla red-yellow-green
+    // damage ramp — a nearly empty tank must not read as "broken tool".
+
+    /** Create's BacktankItem.getBarColor constant (potato cannon air bar). */
+    private static final int AIR_BAR_COLOR = 0xEFEFEF;
+
+    @Override
+    public boolean isBarVisible(ItemStack stack) {
+        return isTankGun(stack) || super.isBarVisible(stack);
+    }
+
+    @Override
+    public int getBarWidth(ItemStack stack) {
+        if (!isTankGun(stack)) return super.getBarWidth(stack);
+        return Math.round(13f * AirTank.stored(stack) / (float) AirTank.capacity(stack));
+    }
+
+    @Override
+    public int getBarColor(ItemStack stack) {
+        return isTankGun(stack) ? AIR_BAR_COLOR : super.getBarColor(stack);
+    }
+
+    /** True when the gun carries an internal tank that the bar mirrors. */
+    private static boolean isTankGun(ItemStack stack) {
+        // this runs for every stack the GUI draws (hotbar, every open
+        // container), so keep non-guns off the stats lookup entirely
+        if (!(stack.getItem() instanceof GunItem)) return false;
+        GunStats stats = GunStats.ofGun(stack);
+        return stats.supply != null && stats.supply.supplyType == SupplyType.INTERNAL_TANK;
     }
 
     /**

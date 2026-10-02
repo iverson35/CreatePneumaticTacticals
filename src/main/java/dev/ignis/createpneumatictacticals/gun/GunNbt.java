@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -197,6 +198,26 @@ public final class GunNbt {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /**
+     * The gun's effective fire mode: the tag when it is present AND still in
+     * the receiver's list, otherwise the receiver's first declared mode
+     * (SEMI for a receiver that declares none).
+     *
+     * <p>A missing tag is not "no mode": treating null as non-semi made every
+     * gun that never wrote one — the creative tab's sample guns did not —
+     * behave full-auto while its HUD still drew the semi glyph, until the
+     * player pressed the fire-mode key once (which writes the tag). Same for
+     * a tag left over from a receiver swap that the new receiver no longer
+     * offers.
+     */
+    public static FireMode getFireModeOrDefault(ItemStack stack, GunStats stats) {
+        FireMode mode = getFireMode(stack);
+        List<FireMode> modes = stats.receiver == null ? null : stats.receiver.fireModes;
+        if (modes == null || modes.isEmpty()) return mode == null ? FireMode.SEMI : mode;
+        if (mode != null && modes.contains(mode)) return mode;
+        return modes.get(0);
     }
 
     // --- aim stance memory ---

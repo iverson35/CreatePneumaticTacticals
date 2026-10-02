@@ -204,9 +204,8 @@ public final class GunFireHandler {
 
         // --- air ---
         if (supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.INTERNAL_TANK) {
-            int air = gun.getDamageValue();
-            if (air >= supply.airPerShot) {
-                gun.setDamageValue(air - supply.airPerShot);
+            if (dev.ignis.createpneumatictacticals.gun.AirTank.canFire(gun, supply)) {
+                dev.ignis.createpneumatictacticals.gun.AirTank.consume(gun, supply);
             } else {
                 if (shooter instanceof ServerPlayer player) feedback(player, "no_air");
                 return;

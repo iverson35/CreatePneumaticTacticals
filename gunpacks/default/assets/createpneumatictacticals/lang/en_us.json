@@ -30,5 +30,12 @@
   "module.createpneumatictacticals.14dvo_silencer_a": "14DVO Standard Silencer",
   "module.createpneumatictacticals.mak_1_ammo_50": "MAK-1 50-Round Drum Magazine",
   "paint.createpneumatictacticals.desert": "Desert",
-  "paint.createpneumatictacticals.arctic": "Arctic"
+  "paint.createpneumatictacticals.arctic": "Arctic",
+  "module.createpneumatictacticals.marble_17_receiver": "Marble-17 Receiver",
+  "module.createpneumatictacticals.marble_17_gas_tank": "Marble-17 Gas Tank",
+  "module.createpneumatictacticals.marble_17_ammo_5": "Marble-17 5-Round Magazine",
+  "module.createpneumatictacticals.marble_17_standard_barrel": "Marble-17 Standard Barrel",
+  "module.createpneumatictacticals.marble_17_hunter_stock": "Marble-17 Hunter Stock",
+  "module.createpneumatictacticals.marble_17_hunter_handguard": "Marble-17 Hunter Handguard",
+  "gun.createpneumatictacticals.marble_17": "Marble-17 Bolt-Action Sniper Rifle"
 }

@@ -1,0 +1,10 @@
+{
+  "name": "createpneumatictacticals:marble_17_ammo_5",
+  "module_type": "feed",
+  "gun_type": "medium",
+  "gun_properties": {
+    "reload_speed": -0.1
+  },
+  "load_type": "magazine",
+  "clip_size": 5
+}

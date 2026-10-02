@@ -153,6 +153,14 @@ public final class ModCreativeTabs {
         }
         ItemStack gun = new ItemStack(ModItems.GUN.get());
         GunNbt.writeModules(gun, installed, Map.of());
+        // the sample mirrors a bench-assembled gun, fire mode included: a gun
+        // without the tag used to behave full-auto while its HUD drew the
+        // semi glyph (the client read null as "not semi"), until the player
+        // pressed the fire-mode key once
+        ModuleDefinition receiverDef = installed.get(ModuleType.RECEIVER);
+        if (receiverDef != null && receiverDef.fireModes != null && !receiverDef.fireModes.isEmpty()) {
+            GunNbt.setFireMode(gun, receiverDef.fireModes.get(0));
+        }
         // first compatible ammo + a full magazine so the sample really
         // fires out of the box (survival fire gate requires ammoCount > 0)
         if (!compatible.isEmpty()) {

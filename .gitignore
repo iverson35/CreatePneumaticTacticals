@@ -125,3 +125,7 @@ run-data/
 build_err.txt
 client_log*.txt
 /run2/
+
+# Python bytecode cache
+__pycache__/
+/.ref/

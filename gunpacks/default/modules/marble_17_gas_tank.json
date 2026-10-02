@@ -1,10 +1,10 @@
 {
-  "name": "createpneumatictacticals:mak_standard_supply",
+  "name": "createpneumatictacticals:marble_17_gas_tank",
   "module_type": "supply",
   "gun_properties": {
     "fire_rate_multiplier": -0.1,
     "reload_speed": -0.1
   },
-  "supply_type": "cartridge",
-  "air_per_shot": 0
+  "supply_type": "internal_tank",
+  "air_per_shot": 20
 }

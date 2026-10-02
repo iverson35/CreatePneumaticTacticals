@@ -82,7 +82,7 @@ public class GunAttackGoal extends Goal {
         GunStats stats = GunStats.ofGun(gun);
         if (stats.supply == null) return false;
         return stats.supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.INTERNAL_TANK
-                && gun.getDamageValue() < stats.supply.airPerShot;
+                && !dev.ignis.createpneumatictacticals.gun.AirTank.canFire(gun, stats.supply);
     }
 
     private boolean isHoldingGun() {
@@ -173,9 +173,8 @@ public class GunAttackGoal extends Goal {
                         GunNbt.setAmmo(gun, ammo);
                         GunNbt.setAmmoCount(gun, stats.feed.clipSize);
                         if (stats.supply.supplyType == dev.ignis.createpneumatictacticals.module.SupplyType.INTERNAL_TANK) {
-                            int full = stats.supply.airCapacity > 0
-                                    ? stats.supply.airCapacity : gun.getMaxDamage();
-                            gun.setDamageValue(full);
+                            // AI refill: a full tank (gauge reset to 0 used)
+                            dev.ignis.createpneumatictacticals.gun.AirTank.refill(gun);
                         }
                     }
                 }

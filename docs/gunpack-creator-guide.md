@@ -177,7 +177,6 @@ gunpacks/<枪包目录名>/
   "name": "example:example_supply",
   "module_type": "supply",
   "supply_type": "cartridge",
-  "air_capacity": 0,
   "air_per_shot": 0
 }
 ```
@@ -477,13 +476,13 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 统合模型的约定：
 
 1. 顶层有且仅有一个根骨骼 `receiver_<模块id>`（机匣本体），内含机匣自己的立方体、功能骨骼（bolt 等）、全部 `loc_*` 定位骨与相机骨。
-2. 根骨下任意深度、形如 `<模块类型>_<模块id>` 的骨骼都是要拆出的模块（类型见 §3.2，如 `barrel_marble_17_standard_barrel`）；模块骨骼的内容按**装配完成**的位置摆放，与机匣共用一个坐标系。枪口装置模块可以放在枪管模块骨骼内，护木配件放在护木模块骨骼内（也可以全部平铺在机匣根骨下）。
+2. 根骨下任意深度、形如 `<模块类型>_<模块id>` 的骨骼都是要拆出的模块（类型见 §3.2，如 `barrel_marble_17_standard_barrel`）；模块骨骼的内容按**装配完成**的位置摆放，与机匣共用一个坐标系。枪口装置模块可以放在枪管模块骨骼内，护木配件放在护木模块骨骼内（也可以全部平铺在机匣根骨下）。注意统合模型里**所有骨骼的 pivot 与立方体坐标共处同一个坐标系**（Blockbench 的语义：`pivot` 只是旋转中心，并不平移子节点），模块子树里更深层的骨骼/立方体也直接按装配位置摆放，不要相对模块根骨再叠加偏移。
 3. 全部零件共用一张贴图；脚本会把每个模块用到的 UV 区域裁出、去重、重排成一张紧凑的新贴图（≤64×64 优先），内嵌回拆出的 bbmodel 并同时写出 `<模块id>.png`。若统合 bbmodel 旁放有同尺寸的 `<名>_glowmask.png` / `<名>_dye.png`，会按同一映射拆出每模块的掩码贴图。
 4. 动画照常做在统合模型里；脚本按骨骼归属把动画分给各模块（例如弹匣模块得到驱动自己 `magazine` 骨的 `reload`）。**音效关键帧**默认分给机匣；effect 没写命名空间时自动补 `createpneumatictacticals:`。若某帧音效属于某个模块（如弹匣的 mag_out），在**同一帧**加一条「指令（timeline）关键帧」、`script` 里写该模块 id（如 `marble_17_ammo_5`），脚本就把同帧音效分给该模块，且这条标识用指令帧不会出现在任何输出里；script 不匹配任何模块 id 的指令帧视为普通指令帧留在机匣（若它与音效同帧会打警告，提示可能是模块 id 写错）。粒子关键帧留在机匣。
 
-拆分时脚本会：把每个模块的内容重算到「以对应定位骨（`loc_feed` / `loc_barrel` / 枪管里的 `loc_muzzle_attachment` 等）pivot 为原点」的局部空间（含定位骨旋转）；根骨骼改名 `main`；重排 UV；并自动校验（几何/旋转往返、UV 边界、动画骨骼引用、贴图像素、音效帧守恒与命名空间、标识指令帧清除；带 `--geo`/`--anim` 时还校验导出物与 bbmodel 逐项对应），全部通过才写出。产物默认在 `<bbmodel目录>/split/`，每个 `<模块id>.bbmodel` 用 Blockbench 打开后按 §2.8 导出即可（或直接用 `--gecko` 让脚本导出）。脚本不删除目录里的旧文件；本次未重新生成的 `.bbmodel` / `.png` / `.geo.json` / `.animation.json` 会在结束时列为「可能过时」提示。
+拆分时脚本会：把**整棵模块子树**（含模块根骨、任意深度的骨骼与立方体、以及模块内所有骨骼的动画关键帧）按同一个刚体变换共轭到「以对应定位骨（`loc_feed` / `loc_barrel` / 枪管里的 `loc_muzzle_attachment` 等）pivot 为原点、定位骨旋转为单位阵」的局部空间——即把「模组把模块摆回宿主」的那套变换取逆，所以拆分后的模块被模组渲染出来与统合模型**逐点重合**；模块根骨骼改名 `main`（它的 pivot 是宿主坐标系里对应的旋转中心，不是简单归零，这样 `main` 上的后坐/歪斜动画转轴与统合模型一致）；重排 UV；并自动校验（骨骼 pivot/旋转共轭、立方体几何在模块坐标系与「摆回宿主后」两处都逐点核对、UV 边界、动画骨骼引用、贴图像素、音效帧守恒与命名空间、标识指令帧清除；带 `--geo`/`--anim` 时还校验导出物与 bbmodel 逐项对应），全部通过才写出。产物默认在 `<bbmodel目录>/split/`，每个 `<模块id>.bbmodel` 用 Blockbench 打开后按 §2.8 导出即可（或直接用 `--gecko` 让脚本导出）。脚本不删除目录里的旧文件；本次未重新生成的 `.bbmodel` / `.png` / `.geo.json` / `.animation.json` 会在结束时列为「可能过时」提示。
 
-限制：护木配件模块要求父护木里只有一个 `loc_handguard_*`（多个时脚本无法判断装哪个，会报错）；模块根骨骼（模块骨骼本身）若打了关键帧且定位骨带旋转，关键帧会被旋转变换并打警告——建议把动画做在模块的子骨骼上。
+限制：护木配件模块要求父护木里只有一个 `loc_handguard_*`（多个时脚本无法判断装哪个，会报错）；定位骨带旋转时，模块内所有被驱动骨骼的关键帧都会跟着共轭（position 旋转、rotation 共轭、scale 共轭）并打警告；等比/轴对齐缩放才仍能表示为轴对齐缩放，否则该项保持原值并再打一条警告——建议把动画做在模块自己的子骨骼上，并避免在带旋转的定位骨下用非轴对齐缩放。
 
 **可复现性（对涂装重要）**：只要某模块自身没变（自己的立方体、面 UV、共用贴图内容、骨骼层级与遍历顺序），重新拆分——包括新增/删除其它模块——得到的该模块 `<id>.bbmodel` 与 `<id>.png` 与上次**逐字节一致**（脚本已保证贴图重排是确定性的）。所以照着现有贴图做好的 `<id>_<涂装>.png` 不会因为重新拆分而错位。会让某模块 UV 重排的只有：改这个模块自己的几何/UV、把它的立方体在 outliner 里换位置或换父骨、改统合贴图的分辨率（uv 缩放）、或改它用到的贴图区域内容。
 
@@ -528,7 +527,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 |---|---|---|---|
 | `receiver` 机匣 | ✅ | （宿主本体） | `gun_type`\*、`fire_modes`\*、`fire_sound`（可被枪口装置覆盖）、`gun_name`、`base_recoil_pitch`、`base_recoil_yaw`、`ignore_ammo_pitch` |
 | `feed` 供弹 | ✅ | `loc_feed` | `gun_type`\*、`load_type`\*、`load_amount`、`clip_size` |
-| `supply` 供气 | ✅ | `loc_supply` | `supply_type`\*、`air_capacity`、`air_per_shot` |
+| `supply` 供气 | ✅ | `loc_supply` | `supply_type`\*、`air_per_shot` |
 | `barrel` 枪管 | ✅ | `loc_barrel` | `gun_type`\* |
 | `muzzle` 枪口 | ❌ | 枪管上的 `loc_muzzle_attachment` | `gun_type`\*、`fire_sound`（**覆盖机匣枪声**，消音器）、`gas_pass_through`、`gas_guides`（**根级**）+ `gas_suppression`（`gun_properties`） |
 | `handguard` 护木 | ❌ | `loc_handguard` | `attachment_points` |
@@ -702,8 +701,20 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `supply_type` | 字符串 | **必需** | `cartridge` 整装气瓶 / `internal_tank` 内置气罐 / `backpack_tank` 背包气罐 |
-| `air_capacity` | 整数 | 0 | 内置气罐容量；0 = 用物品自身的耐久上限 |
-| `air_per_shot` | 整数 | 0 | 每发消耗的气量（内置气罐） |
+| `air_per_shot` | 整数 | 0 | 每发消耗的耐久点数（内置气罐）；0 = 不耗气。罐子 = 武器自身的耐久范围，故本字段同时决定可发射数（1000 耐久 / 20 = 50 发） |
+
+内置气罐（`internal_tank`）：气量记在物品的耐久（`Damage`）上，0 = **满罐**——刚组装/拿到的枪就是满的，每发按 `air_per_shot` 消耗（HUD 显示剩余百分比，耐久条同步变短）。耐久条本身就是气量表：满罐也显示，配色用与机械动力土豆加农炮/气罐背带相同的 `0xEFEFEF`（不是原版红黄绿耐久条）。存量不足 `air_per_shot` 时开火会被拒绝并提示「气压不足」（客户端本地就拦下，不空耗弹药显示）。
+
+补充（**气压回充 = 动力风扇的干净气流**，无催化剂，被催化剂（洗涤/烟熏/熔炼/缠魂）污染的气流不生效）：
+
+| 位置 | 行为 |
+|---|---|
+| 手持枪 | 每 tick 回 5 点，回满为止（`AirSupplyLoop`） |
+| 丢在气流里的枪 | 同上（每 tick 回 5 点） |
+| 丢在气流里的**气瓶** | 在气流里待满 150 tick（`PRESSURIZE_TICKS`）→ 变成加压气瓶 |
+| **置物台 / 传送带**上的枪 | 走机械动力自己的风扇处理管线（`PressurizingFanType`，优先级低于全部催化剂）：停留机械动力服务端配置 `kinetics.fanProcessingTime`（默认 150 tick）后**直接回满** |
+| **置物台 / 传送带**上的气瓶 | 同上：处理一次 → 加压气瓶 |
+| 溜槽里的物品 | 溜槽本身不带风扇处理行为（机械动力原版也是如此）：物品在溜槽里不会被处理，落到下方传送带后照常处理 |
 
 #### muzzle（枪口）
 
@@ -1101,7 +1112,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | 该弹种与机匣类型不兼容 | 封装弹内容物的弹药口径与机匣不同 |
 | 背包中没有匹配的封装弹 | 生存模式下没有该口径的封装弹 |
 | 整装气瓶需要加压封装弹（加压气瓶+物品合成） | `supply_type: "cartridge"` 的枪必须用加压封装弹 |
-| 气压不足 | 内置气罐没气 |
+| 气压不足 | 内置气罐存量小于 `air_per_shot`：手持或丢在干净风扇气流里回气（每 tick +5），也可以放在**置物台/传送带**上过一遍气流直接回满（HUD 上方的百分比 + 耐久条就是气量表） |
 | 背包已满，%d 发弹药掉在地上 | 换弹种时退弹溢出 |
 
 **配件调整台**
