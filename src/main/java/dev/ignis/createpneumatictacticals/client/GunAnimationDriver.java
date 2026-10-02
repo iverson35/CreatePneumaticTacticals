@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.client;
 
 import dev.ignis.createpneumatictacticals.client.render.GunAnimations;
+import dev.ignis.createpneumatictacticals.client.render.GunAnimTiming;
 import dev.ignis.createpneumatictacticals.compat.aw.AwCompat;
 import dev.ignis.createpneumatictacticals.client.render.ModuleAnimatable;
 import dev.ignis.createpneumatictacticals.gun.GunNbt;
@@ -124,9 +125,15 @@ public final class GunAnimationDriver {
      * and the poll in processCurrentAnimation is then skipped because
      * adjustTick already consumed shouldResetTick — a retrigger replays the
      * previous animation instead of the new one.
+     *
+     * <p>speed comes from {@link GunAnimTiming#fireSpeed} — the receiver's
+     * authored fire length over the current gun+ammo shot interval — so one
+     * cycle is never cut off by the next shot. The receiver is the anchor;
+     * modules and AW skins (AW's play tag carries the same {@code speed})
+     * ride the same number.
      */
-    public static void onFire(ItemStack gun) {
-        broadcast(gun, GunAnimations.FIRE, 1.0, 1);
+    public static void onFire(ItemStack gun, double speed) {
+        broadcast(gun, GunAnimations.FIRE, speed, 1);
     }
 
     /**

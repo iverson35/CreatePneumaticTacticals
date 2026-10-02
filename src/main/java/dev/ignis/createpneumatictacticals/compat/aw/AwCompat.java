@@ -99,10 +99,12 @@ public final class AwCompat {
     }
 
     /** Broadcasts a gun state animation ("fire" / "reload" / "reload_round" /
-     *  "bolt") to the AW skins of every module on the given gun stack. Skins
-     *  that don't define the animation stay silent (same semantics as
-     *  GeckoLib's filterExisting). Speed mirrors the GeckoLib playback rate
-     *  (reload/bolt run at reloadSpeed; fire at 1). Client thread only. */
+     *  "pre_bolt" / "bolt") to the AW skins of every module on the given gun
+     *  stack. Skins that don't define the animation stay silent (same
+     *  semantics as GeckoLib's filterExisting). Speed mirrors the GeckoLib
+     *  playback rate exactly (reload/bolt at reloadSpeed, fire at
+     *  GunAnimTiming.fireSpeed) — AW's play tag carries it as its "speed"
+     *  property. Client thread only. */
     public static void onGunAnimation(long gunId, String name, double speed) {
         if (!loaded()) return;
         try {

@@ -37,14 +37,20 @@ public final class ClientGunInput {
     private static boolean wasFiring = false;
     /** controller busy with the fire animation (fire length + transition); reloads wait it out */
     private static long fireAnimBusyUntilMs = 0;
-    /** fire animation length + margin, in ms (from the receiver animation file) */
-    private static long fireAnimMs(ItemStack gun) {
+    /** fire animation length + margin, in ms (from the receiver animation file,
+     *  animated ticks divided by the fire-rate playback speed) */
+    private static long fireAnimMs(ItemStack gun, double speed) {
         double fireTicks = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
                 .animLengthTicks(gun, "fire", 2.5);
+        // the animated part plays faster/slower; the transition + margin do not
         // +2: the fire's own single-tick transition plus a tick of margin, so
         // the reload's 2-tick blend starts from the fire's settled end pose
         // instead of a mid-fire one (see GunAnimationDriver.onFire)
-        return (long) ((fireTicks + 2) * 50.0) + 50;
+        // (floor at the fire-speed rail, not at 0.1: a slowed fire animation
+        //  must still own the whole window it plays in)
+        return (long) ((fireTicks / Math.max(
+                dev.ignis.createpneumatictacticals.client.render.GunAnimTiming.FIRE_SPEED_MIN, speed)
+                + 2) * 50.0) + 50;
     }
     /** manual R pressed during the fire-animation window; retried next tick */
     private static boolean reloadPending = false;
@@ -473,10 +479,15 @@ public final class ClientGunInput {
         lastFireTick = clientTicks;
         pendingShots++;
         wasFiring = true;
+        // fire animation speed from the real cadence: the receiver's authored
+        // fire length over this gun+ammo's shot interval (see
+        // GunAnimTiming.fireSpeed), so one fire cycle spans exactly one shot
+        double fireSpeed = dev.ignis.createpneumatictacticals.client.render.GunAnimTiming
+                .fireSpeed(gun, intervalTicks);
         // fire animation occupancy (fire length + the reload's blend margin):
         // startReload must wait this out or it snapshots the pose mid-fire and
         // the reload's transition then blends from that stale pose.
-        fireAnimBusyUntilMs = now + fireAnimMs(gun);
+        fireAnimBusyUntilMs = now + fireAnimMs(gun, fireSpeed);
         // local feel: recoil + bloom + fire animation
         boolean aiming = ModKeybinds.isAiming();
         RecoilModel.onShot(stats.receiver.baseRecoilPitch, stats.receiver.baseRecoilYaw,
@@ -486,7 +497,7 @@ public final class ClientGunInput {
         // muzzle smoke: puffed here, and relayed to nearby clients by the
         // server (MuzzleSmokePacket) so they puff it from their own gunpack
         MuzzleSmoke.onFire(player, smokeFrame);
-        GunAnimationDriver.onFire(gun);
+        GunAnimationDriver.onFire(gun, fireSpeed);
     }
 
     /**

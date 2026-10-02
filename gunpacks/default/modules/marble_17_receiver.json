@@ -3,8 +3,8 @@
   "module_type": "receiver",
   "gun_properties": {
     "reload_speed": 0.0,
-    "fire_rate_multiplier": -0.8,
-    "damage_multiplier": 5,
+    "fire_rate_multiplier": -0.3,
+    "damage_multiplier": 3,
     "bullet_speed": 1,
     "gravity_multiplier": -0.9,
     "drag_multiplier": -0.2,

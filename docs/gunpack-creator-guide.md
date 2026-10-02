@@ -390,7 +390,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | 动画名 | 触发时机 | 播放方式 | 速度 |
 |---|---|---|---|
 | `idle` | 手持时常驻 | 强制循环 | 1× |
-| `fire` | 每次击发 | 单次 | 1× |
+| `fire` | 每次击发 | 单次 | = 机匣 `fire` 长度 ÷ 实际射击间隔，钳制在 0.05×–16×（见下） |
 | `reload` | 弹匣式换弹开始（`load_type` 非 `round`） | 单次 | = 1/D（见 §3.3） |
 | `reload_round` | 逐发装填（`load_type: "round"`），每批一次 | 单次 | = 1/D（见 §3.3） |
 | `pre_bolt` | 空仓换弹的**前置段**，在 `reload` 之前（例如把拉机柄先挂到后半程） | 单次 | = 1/D（见 §3.3） |
@@ -400,6 +400,7 @@ charm_crystal       main → support, chain_0 → chain_1 → chain_2 → { pend
 | `aim_end` | 结束瞄准（主瞄具） | 单次 | 1× |
 | `tactical_aim_start` / `tactical_aim` / `tactical_aim_end` | 同上三条，但用**副瞄（侧瞄）**姿态 | 同上 | 1× |
 
+- **开火动画按实际射速缩放**：播放速度 = **机匣 `fire` 动画长度（tick）÷ 当前枪+弹药的射击间隔（tick）**，钳制在 **0.05×–16×**（只是防呆上下限，正常枪+弹药组合都在区间内，取的就是精确比值）；一个开火动画正好铺满一个射击循环，下一发不会再从动画中途把它掐断。射击间隔就是开火本身用的那个数（弹药 `reload_ticks` ÷ 枪的 `fire_rate_multiplier`，向下取整、最小 1 tick，见 §4.2/§3.3），所以动画节奏与手感永远同步：慢枪（60–120 RPM）把短动画放慢铺满间隔，快枪（300+ RPM）把它压紧。**机匣是锚点**——模块与时装皮肤用同一个速度播放（时装侧走 AW 的 `play` 标签 `speed` 属性，无需额外配置）。**机匣没写 `fire` 动画**（或弹药类型未知）时不缩放，模块/皮肤仍按 1× 播。换弹等待窗口（开火后按 R 的延迟）用的也是这条换算后的时长。注意动画里的 `sound_effects` 关键帧时间**随之同步缩放**（关键帧按动画时间轴触发）：把 `fire` 做长再靠慢枪拉伸时，关键帧音效也会一起变慢。
 - **瞄准动画独立成链**：瞄准类动画走的是独立的 `aim` 控制器（注册在 `anim` 之后，同骨骼冲突时**瞄准姿态覆盖开火/换弹**），所以瞄准循环可以和连发、换弹同时播放——开火的后坐不会打断瞄准动画，反之亦然。没写任何瞄准动画的枪完全静默，不会有任何报错。
 - **瞄准边沿触发**：`aim_start` 在右键按下、枪口无遮挡且不在工作台交互的那一 tick 触发；`aim_end` 在松开右键（或枪口被挡/切出工作台交互）那一 tick 触发。**瞄准中按 X 切主/副瞄** = 旧姿态的 `*_aim_end` + 新姿态的 `*_aim_start` 同 tick 成对触发，循环也跟着切换。只写 `aim` 循环不写 `aim_start` 时，循环立即开始；只写 `aim_start` 不写 `aim` 时，保持段停在 `aim_start` 的最后一帧。
 - **空仓换弹完整流程 = `pre_bolt` → `reload` → `bolt`**，每一段独立触发（不做链式 stage，避免 GeckoLib 混合过渡起点的抖动）。**三段都只在机匣动画文件里定义了对应名字时才存在**：没写 `pre_bolt` 的枪总流程就是现在的 `reload` → `bolt`，时长一分不加；写了 `pre_bolt` 的枪总时长 = 三段动画长度之和（+ 每段 2 tick 过渡）再乘以时长倍率 D（见 §3.3）。**换弹锁定的窗口就是这条总时长**——想让空仓换弹更慢，把 `pre_bolt` 做长即可。
@@ -823,7 +824,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 |---|---|
 | 皮肤类型 | `armourers:item`（物品皮肤，在 AW 皮肤台中可对任意物品应用） |
 | 坐标空间 | 1 单位 = 1/16 方块；渲染时会自动对齐到模块挂点骨骼，+Y 向下（AW 物品皮肤惯例） |
-| 动画名称 | `fire` / `reload` / `reload_round` / `pre_bolt` / `bolt` / `aim_start` / `aim` / `aim_end` / `tactical_aim_start` / `tactical_aim` / `tactical_aim_end`——与 GeckoLib 模块动画同名触发；**同名重复触发会从头重启**（长 `fire` 不会吞掉下一次击发）；`parallel1` 等 `parallel<N>` 动画在待机时自动循环 |
+| 动画名称 | `fire` / `reload` / `reload_round` / `pre_bolt` / `bolt` / `aim_start` / `aim` / `aim_end` / `tactical_aim_start` / `tactical_aim` / `tactical_aim_end`——与 GeckoLib 模块动画同名触发；**同名重复触发会从头重启**（长 `fire` 不会吞掉下一次击发）；`fire` 按**实际射速缩放**、换弹/拉栓按 `1/D` 缩放（与时装侧的 AW 播放 `speed` 属性同源，数值与机匣完全一致）；`parallel1` 等 `parallel<N>` 动画在待机时自动循环 |
 | 纹理 | 64×64 皮肤纹理（AW 标准皮肤尺寸） |
 | 注意 | 皮肤是纯外观：不改变命中体积、属性、枪口位置 |
 

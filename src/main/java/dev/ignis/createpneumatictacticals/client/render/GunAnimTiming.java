@@ -18,7 +18,35 @@ public final class GunAnimTiming {
     private static final double FALLBACK_ROUND_TICKS = 16;    // 0.8s per round batch
     private static final double FALLBACK_BOLT_TICKS = 10;     // 0.5s bolt cycle
 
+    /** fire playback speed clamp — only a sanity rail against degenerate
+     *  values: wide enough that every realistic gun+ammo pair lands on the
+     *  exact "one shot interval per animation" ratio (1200 RPM + a 1.25s fire
+     *  cycle still fits), narrow enough that a broken asset can't produce a
+     *  frozen pose or a single-frame blur */
+    public static final double FIRE_SPEED_MIN = 0.05;
+    public static final double FIRE_SPEED_MAX = 16.0;
+
     private GunAnimTiming() {}
+
+    /**
+     * Playback speed for the fire animation: the receiver's authored fire
+     * length (the anchor — modules and AW skins ride the same number) is
+     * stretched or squeezed over the current shot interval, so one fire
+     * animation spans exactly one gun+ammo cycle and the cycle is never cut
+     * off mid-swap by the next shot. intervalTicks is
+     * {@code AmmoExtension.fireIntervalTicks} — the same number that gates the
+     * shot itself, so animation and cadence can't drift apart.
+     *
+     * <p>No receiver fire animation (or an unknown interval) means nothing to
+     * anchor: 1×. Clamped to [{@link #FIRE_SPEED_MIN}, {@link #FIRE_SPEED_MAX}]
+     * — a sanity rail only, so every realistic cadence (1200 RPM ammo with a
+     * 1.25s fire cycle included) gets the exact ratio.
+     */
+    public static double fireSpeed(ItemStack gun, long intervalTicks) {
+        double fireTicks = animLengthTicks(gun, "fire", 0);
+        if (fireTicks <= 0 || intervalTicks <= 0) return 1.0;
+        return Math.max(FIRE_SPEED_MIN, Math.min(FIRE_SPEED_MAX, fireTicks / intervalTicks));
+    }
 
     /** reload PHASE only (no pre-bolt, no bolt, no transitions) — when the
      *  third-person choreography should start its up-swing, aligned with
