@@ -77,6 +77,17 @@ LOC_FOR_TYPE = {
 
 MASK_SUFFIXES = ("_glowmask", "_dye")
 
+# Blockbench 里骨骼名全局唯一，重名的第二根会被去重成 name.1、name.2……
+# 模块之间本来互不相干（拆出去后各自是独立模型的独立命名空间），所以工具
+# 把末尾的「.数字」当成不存在：模块识别、定位骨匹配、输出的骨骼名
+# （bbmodel / geo / animation 三处）一律按去掉后缀的名字处理。
+DEDUP_SUFFIX_RE = re.compile(r"\.\d+$")
+
+
+def _dedup_base(name):
+    """去掉 Blockbench 的重名去重后缀：loc_muzzle_attachment.1 -> loc_muzzle_attachment。"""
+    return DEDUP_SUFFIX_RE.sub("", name)
+
 # ---------------------------------------------------------------- 数学
 # Blockbench / GeckoLib 骨骼旋转顺序：ZYX，即 R = Rz @ Ry @ Rx（角度制）。
 # 该约定已用 mak_1_receiver 的 loc_charm [0,90,90]（左侧挂点，
@@ -231,7 +242,7 @@ class Model:
 
 
 def _classify_bone(name):
-    m = MODULE_RE.match(name)
+    m = MODULE_RE.match(_dedup_base(name))
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
@@ -258,7 +269,10 @@ def _collect_modules(model):
                 if mtype:
                     if mid in modules:
                         raise SystemExit(
-                            f"错误：模块 id 重复：{mid}（骨骼 {item['name']}）")
+                            f"错误：模块 id 重复：{mid}（骨骼 "
+                            f"{model.bones[modules[mid].root_uuid]['name']} "
+                            f"与 {item['name']}；骨骼名末尾的 .数字 会被"
+                            f"忽略，模块 id 必须唯一）")
                     mod = Module(item["uuid"], mtype, mid)
                     mod.bone_uuids.add(item["uuid"])  # 根骨也算本模块骨骼
                     modules[mid] = mod
@@ -350,11 +364,17 @@ def _resolve_locators(model, modules):
             raise SystemExit(f"错误：未知模块类型 {mod.type}")
 
         if loc_names is not None:
-            cands = [b for b in scope_bones if b["name"] in loc_names]
+            cands = [b for b in scope_bones
+                     if _dedup_base(b["name"]) in loc_names]
+            if len(cands) > 1:
+                names = [c["name"] for c in cands]
+                raise SystemExit(
+                    f"错误：{scope}里有多个同名定位骨 {names}（末尾的 "
+                    f".数字 会被忽略），无法判断模块 {mod.id} 装在哪一个")
         else:
             cands = [b for b in scope_bones
                      if re.fullmatch(r"loc_handguard_(top|bottom|left|right)",
-                                     b["name"])]
+                                     _dedup_base(b["name"]))]
             if len(cands) > 1:
                 names = [c["name"] for c in cands]
                 raise SystemExit(
@@ -446,6 +466,8 @@ def _rebase_module_tree(model, mod):
         new_node = {k: copy.deepcopy(v) for k, v in node.items()
                     if k != "children"}
         _rebase_bone_node(new_node, t, rt)
+        # 输出模型里名字空间独立，去掉 Blockbench 的重名后缀
+        new_node["name"] = _dedup_base(node["name"])
         children = []
         for child in node.get("children", []):
             if isinstance(child, dict):
@@ -693,7 +715,12 @@ def _split_animations(model, mod, anim_routes, warn):
         for auuid, animator in anim.get("animators", {}).items():
             if animator.get("type", "bone") == "bone":
                 if auuid in mod.bone_uuids:
-                    sub[auuid] = copy.deepcopy(animator)
+                    bone_anim = copy.deepcopy(animator)
+                    # 与输出模型的骨骼名保持一致（去重名后缀；根骨叫 main）
+                    bone_anim["name"] = (
+                        "main" if auuid == mod.root_uuid
+                        else _dedup_base(animator["name"]))
+                    sub[auuid] = bone_anim
             else:
                 kflist = anim_routes.get((anim.get("uuid"), auuid), {}
                                          ).get(mod.id)
@@ -712,8 +739,6 @@ def _split_animations(model, mod, anim_routes, warn):
                                         f"{mod.id} 动画 {anim['name']}")
             warn(f"{mod.id}: 动画 {anim['name']} 的骨骼关键帧已按定位骨"
                  f"旋转变换")
-        if mod.root_uuid in sub:
-            sub[mod.root_uuid]["name"] = "main"
         new_anim = copy.deepcopy(anim)
         event = anim["name"].split(".")[-1]
         new_anim["name"] = f"animation.{mod.id}.{event}"
@@ -1103,7 +1128,7 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
             return [row[:] for row in _IDENT4]
         host = _parent_module(src_model, by_id, mod) or receiver
         hmodel = out_model[host.id]
-        loc_name = src_model.bones[mod.loc_uuid]["name"]
+        loc_name = _dedup_base(src_model.bones[mod.loc_uuid]["name"])
         lu = next((u for u, b in hmodel.bones.items()
                    if b["name"] == loc_name), None)
         if lu is None:
@@ -1131,6 +1156,22 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
         if want_cubes != got_cubes:
             errors.append(f"{mod.id}: 立方体集合不一致 "
                           f"缺={want_cubes-got_cubes} 多={got_cubes-want_cubes}")
+
+        # 1b. 骨骼名：输出名 = 源名去掉重名后缀（根骨改叫 main）；
+        #     模组按精确名字找定位骨，模块内也不许重名
+        for uuid in sorted(want_bones & got_bones):
+            want_name = ("main" if uuid == mod.root_uuid
+                         else _dedup_base(src_model.bones[uuid]["name"]))
+            if omodel.bones[uuid]["name"] != want_name:
+                errors.append(
+                    f"{mod.id}: 骨骼 {src_model.bones[uuid]['name']!r} 的"
+                    f"输出名 {omodel.bones[uuid]['name']!r} 应为 {want_name!r}")
+        out_names = [b["name"] for b in omodel.bones.values()]
+        dup = sorted({n for n in out_names if out_names.count(n) > 1})
+        if dup:
+            errors.append(
+                f"{mod.id}: 输出骨骼重名 {dup}（源模型里靠 .数字 后缀区分"
+                f"的骨骼拆到同一个模块后必须改名）")
 
         # 2. 骨骼：pivot/rotation 必须等于 K 共轭后的值
         worst = 0.0
@@ -1197,8 +1238,11 @@ def _verify(src_model, src_modules, outputs, pixel_checks):
                     if auuid not in out_bones:
                         errors.append(f"{mod.id}: 动画 {anim['name']} 引用了"
                                       f"不存在的骨骼 {auuid}")
-                    if auuid == mod.root_uuid and animator["name"] != "main":
-                        errors.append(f"{mod.id}: 根骨 animator 未改名 main")
+                    elif animator["name"] != omodel.bones[auuid]["name"]:
+                        errors.append(
+                            f"{mod.id}: 动画 {anim['name']} 的骨骼名 "
+                            f"{animator['name']!r} 与模型里的 "
+                            f"{omodel.bones[auuid]['name']!r} 不一致")
                 else:
                     for kf in animator.get("keyframes", []):
                         ch = kf.get("channel")
@@ -1388,7 +1432,7 @@ def split(bbmodel_path, out_dir, geo=False, anim=False):
                 exported[(mod.id, "anim")] = doc
                 exported_files.append("anim")
         summary.append((mod.id, mod.type,
-                        model.bones[mod.loc_uuid]["name"]
+                        _dedup_base(model.bones[mod.loc_uuid]["name"])
                         if mod.loc_uuid else "-",
                         len(cube_set), len(mod.bone_uuids), f"{w}x{h}",
                         len(anims), ", ".join(mask_files),
