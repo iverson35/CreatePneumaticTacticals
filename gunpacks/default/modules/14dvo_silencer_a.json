@@ -8,6 +8,7 @@
     "recoil_horizontal_multiplier": -0.1,
     "ergonomics": -0.2,
     "gas_suppression": 0.8,
-    "bullet_speed": 0.2
+    "bullet_speed": 0.2,
+    "range_multiplier": 0.3
   }
 }

@@ -49,8 +49,8 @@ public class GunItem extends Item {
             tooltip.add(Component.translatable("tooltip.createpneumatictacticals.loaded_ammo",
                     ammoDisplayName(stack, level, ammoId), GunNbt.getAmmoCount(stack)));
         }
-        // hold Shift: the gun workbench's default stats (caliber + the four
-        // core multipliers). The workbench stats panel is the authority for
+        // hold Shift: the gun workbench's default (page-1) stats — caliber plus
+        // the core multipliers. The workbench stats panel is the authority for
         // which stats are "default-visible"; keep the two in sync.
         if (net.minecraft.client.gui.screens.Screen.hasShiftDown() && stats.isComplete()) {
             if (stats.receiver != null && stats.receiver.gunType != null) {
@@ -73,10 +73,10 @@ public class GunItem extends Item {
                 tooltip.add(stat(stats.rangeMultiplier, "range_multiplier"));
             }
             tooltip.add(stat(stats.ergonomics, "ergonomics"));
+            tooltip.add(stat(stats.bulletSpeed, "bullet_speed"));
             tooltip.add(stat(stats.recoilVerticalMultiplier, "recoil_vertical_multiplier"));
             tooltip.add(stat(stats.recoilHorizontalMultiplier, "recoil_horizontal_multiplier"));
             tooltip.add(stat(stats.gravityMultiplier, "gravity_multiplier"));
-            tooltip.add(stat(stats.dragMultiplier, "drag_multiplier"));
         } else {
             tooltip.add(Component.translatable("tooltip." + CreatePneumaticTacticals.MODID + ".stats_hint")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));

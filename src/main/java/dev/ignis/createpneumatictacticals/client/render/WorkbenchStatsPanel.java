@@ -210,10 +210,12 @@ final class WorkbenchStatsPanel {
             body.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
             body.add(fmt("range_multiplier", stats.rangeMultiplier));
             body.add(fmt("ergonomics", stats.ergonomics));
+            body.add(fmt("bullet_speed", stats.bulletSpeed));
             body.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
             body.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));
+            // air drag is a page-2 (full spec) row only: page 1 carries the
+            // core set the item tooltip mirrors
             body.add(fmt("gravity_multiplier", stats.gravityMultiplier));
-            body.add(fmt("drag_multiplier", stats.dragMultiplier));
         }
 
         if (full) {

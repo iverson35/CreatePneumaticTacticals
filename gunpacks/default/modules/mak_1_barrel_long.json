@@ -4,7 +4,8 @@
   "gun_type": "medium",
   "gun_properties": {
     "ergonomics": -0.1,
-    "bullet_speed": 0.2
+    "bullet_speed": 0.2,
+    "range_multiplier": 0.5
   },
   "module_affected": [
     { "module_type": "muzzle", "mode": "include", "value": ["REGEX=1vo.+"] }
