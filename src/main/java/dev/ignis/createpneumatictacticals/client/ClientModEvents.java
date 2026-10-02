@@ -58,8 +58,13 @@ public final class ClientModEvents {
 
     @SubscribeEvent
     public static void onRegisterParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
-        net.minecraft.core.particles.ParticleType<?> type = dev.ignis.createpneumatictacticals.client.particle.ModParticles.MUZZLE_SMOKE.get();
-        event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType) type,
+        // both types are registered as plain SimpleParticleType (see ModParticles),
+        // which is what the sprite-set overload needs
+        event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType)
+                        dev.ignis.createpneumatictacticals.client.particle.ModParticles.MUZZLE_SMOKE.get(),
                 dev.ignis.createpneumatictacticals.client.particle.MuzzleSmokeParticle.Provider::new);
+        event.registerSpriteSet((net.minecraft.core.particles.SimpleParticleType)
+                        dev.ignis.createpneumatictacticals.client.particle.ModParticles.TRAIL_SMOKE.get(),
+                dev.ignis.createpneumatictacticals.client.particle.TrailSmokeParticle.Provider::new);
     }
 }

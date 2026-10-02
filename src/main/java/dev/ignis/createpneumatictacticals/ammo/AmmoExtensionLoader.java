@@ -83,7 +83,11 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         ext.damageFalloffRate = optDouble(json, "damage_falloff_rate", ext.damageFalloffRate);
         if (json.has("trail_particle")) {
             String trail = json.get("trail_particle").getAsString();
-            if (!trail.isEmpty()) {
+            if (trail.isEmpty()) {
+                // explicit empty string = no trail, even when the built-in
+                // preset (applied above) set one
+                ext.trailParticle = null;
+            } else {
                 ext.trailParticle = trail;
                 ext.trailInterval = Math.max(0.1, optDouble(json, "trail_interval", ext.trailInterval));
                 // name-only particles: a type that needs options (dust, block,

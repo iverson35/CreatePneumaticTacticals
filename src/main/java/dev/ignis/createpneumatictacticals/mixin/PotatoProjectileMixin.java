@@ -167,10 +167,15 @@ public abstract class PotatoProjectileMixin {
      * <p>Points are placed by walking the segment between the last tick's
      * position and this one, so the spacing is true distance at any speed - a
      * round crossing 6 blocks in a tick with a 2-block interval gets three
-     * points, not one. Only option-less particles can be named by id alone
-     * (SimpleParticleType: flame, end_rod, crit, electric_spark, ...); a type
-     * that needs options resolves to nothing and drops the trail once instead
-     * of retrying every tick.
+     * points, not one. The lattice phase is randomized per projectile (see the
+     * first-tick branch) so repeated shots from one spot do not all stack
+     * their dots on the same positions. Only option-less particles can be
+     * named by id alone (SimpleParticleType: flame, end_rod, crit, ...); a
+     * type that needs options resolves to nothing and drops the trail once
+     * instead of retrying every tick. (Create's own AirParticleData is one of
+     * those, and it would not work here anyway: it removes itself when spawned
+     * with a zero velocity vector, which is exactly how a trail point is
+     * spawned.)
      */
     @Inject(method = "tick", at = @At("HEAD"))
     private void createpneumatictacticals$trail(CallbackInfo ci) {
@@ -196,6 +201,12 @@ public abstract class PotatoProjectileMixin {
         if (gap < 0.1) gap = 0.1;
         Vec3 pos = self.position();
         if (cpt$trailLast == null) {
+            // Random lattice phase: trail points sit on a lattice measured from
+            // the spawn point, so firing twice from the same spot would stack
+            // both shots' dots on exactly the same positions. Starting the
+            // accumulator at a random fraction of the gap shifts the whole
+            // pattern per shot.
+            cpt$trailAccum = level.getRandom().nextDouble() * gap;
             cpt$trailLast = pos;
             return;
         }

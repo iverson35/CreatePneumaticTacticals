@@ -337,10 +337,14 @@ public final class GunFireHandler {
             projectile.getPersistentData().putDouble("cpt_range", stats.rangeMultiplier);
             // tracer trail: the client replica has no ammo table (a dedicated
             // server's client never runs the datapack listener), so the particle
-            // id and its spacing ride the payload like the bounce parameters do
+            // id and its spacing ride the payload like the bounce parameters do.
+            // The spacing is scaled to THIS shot's power (see trailIntervalFor):
+            // a 4x-rate SMG spreads the same ammo out instead of smoking up the
+            // screen, a high-damage sniper packs it tight
             if (ext.trailParticle != null && !ext.trailParticle.isEmpty()) {
                 projectile.getPersistentData().putString("cpt_trail", ext.trailParticle);
-                projectile.getPersistentData().putDouble("cpt_trail_interval", ext.trailInterval);
+                projectile.getPersistentData().putDouble("cpt_trail_interval",
+                        AmmoExtension.trailIntervalFor(ext, stats.damageMultiplier, stats.fireRateMultiplier));
             }
             projectile.setOwner(shooter);
             shooter.level().addFreshEntity(projectile);

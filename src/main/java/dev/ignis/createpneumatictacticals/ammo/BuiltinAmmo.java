@@ -122,6 +122,8 @@ public final class BuiltinAmmo {
         @Nullable private Double explosionKnockback;
         @Nullable private Double explosionDamage;
         @Nullable private Double penetrateRatio;
+        @Nullable private String trailParticle;
+        @Nullable private Double trailInterval;
 
         /** receiver caliber this ammo can be fired from */
         public Builder caliber(GunType v) {
@@ -180,6 +182,13 @@ public final class BuiltinAmmo {
             return this;
         }
 
+        /** tracer trail: option-less particle id + block spacing */
+        public Builder trail(String particle, double interval) {
+            this.trailParticle = particle;
+            this.trailInterval = interval;
+            return this;
+        }
+
         /** true when this preset carries a damage override */
         boolean hasDamage() {
             return damage != null;
@@ -199,6 +208,28 @@ public final class BuiltinAmmo {
             if (explosionKnockback != null) ext.explosionKnockback = explosionKnockback;
             if (explosionDamage != null) ext.explosionDamage = explosionDamage;
             if (penetrateRatio != null) ext.penetrateRatio = penetrateRatio;
+            // tracer trail: light/shotgun get NONE by default (their rounds are
+            // the close-range ones; a trail there just clutters the muzzle
+            // line), medium/heavy the mod's own trail_smoke - a poof that is
+            // half the size, dissolves in 8 ticks instead of 18-82, and has no
+            // gravity and no self-drift, so its dots hang exactly where they
+            // were spawned instead of wandering upward. The damage still sets
+            // the spacing: the base ladder (2.5 - damage / 10 blocks) x10, so
+            // a 15-dmg blaze_cake dots every 10 blocks and a 3-dmg beetroot
+            // every 22. The two effect rounds carry no damage override and get
+            // the same x10 default. A pack's own trail_particle (or "") still
+            // overrides all of this - see AmmoExtensionLoader.
+            if (trailParticle != null) {
+                ext.trailParticle = trailParticle;
+                if (trailInterval != null) ext.trailInterval = trailInterval;
+            } else if (caliber != null && caliber != GunType.LIGHT && caliber != GunType.SHOTGUN) {
+                ext.trailParticle = "createpneumatictacticals:trail_smoke";
+                if (trailInterval != null) {
+                    ext.trailInterval = trailInterval;
+                } else {
+                    ext.trailInterval = damage != null ? 3.0 * (2.5 - damage / 10.0) : 10.0;
+                }
+            }
         }
     }
 }

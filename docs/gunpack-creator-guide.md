@@ -943,8 +943,8 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | `effective_range` | 数字 | 256 | 方块 | 满伤距离（**弹药基准**）；超过后线性衰减。**与枪的初速无关**；实际满伤距离 = 本值 × 枪的 `range_multiplier` |
 | `damage_falloff_rate` | 数字 | 0（= 自动 `基础伤害 ÷ 射程`） | 生命值/方块 | 衰减斜率；用默认值时**两倍射程处伤害归零**，归零即弹丸自毁。枪的 `range_multiplier` 会把**整条衰减曲线等比拉伸**（实际斜率 = 本值 ÷ 倍率），所以默认的"两倍射程归零"在任何倍率下都成立 |
 | `headshot_multiplier` | 数字 | 1.5 | × | 命中头部区域的倍率（头部带深度 = 2×(身高−眼高)，超过半身则不算爆头） |
-| `trail_particle` | 字符串 | 空（关闭） | — | **弹道拖尾粒子 id**（如 `minecraft:end_rod`、`minecraft:flame`、`minecraft:crit`）：沿弹道每隔 `trail_interval` 格生成一个，**每个客户端各自生成**（服务器零开销，专门用来对付远距离狙击——能看见弹道来向）。只支持**无参数粒子**；`dust`/`block`/`item` 这类需要参数的会被忽略并在日志里警告一次 |
-| `trail_interval` | 数字 | 1.0 | 方块 | 拖尾粒子间距（下限 0.1）；按**实际飞行轨迹长度**累计，速度再快也不会漏点、也不会变密（一 tick 飞 6 格、间距 2 格 = 该 tick 补 3 个点）。只有写了 `trail_particle` 才解析 |
+| `trail_particle` | 字符串 | 空（关闭） | — | **弹道拖尾粒子 id**（如 `minecraft:end_rod`、`minecraft:flame`、`minecraft:crit`）：沿弹道每隔 `trail_interval` 格生成一个，**每个客户端各自生成**（服务器零开销，专门用来对付远距离狙击——能看见弹道来向）。只支持**无参数粒子**（`minecraft:smoke`、`large_smoke`、`poof`、`end_rod`、`flame`…，以及本模组自带的 `createpneumatictacticals:trail_smoke`——专门为拖尾做的 poof：半尺寸、无重力、无自身漂移、8 tick 消散）；`dust`/`block`/`item` 这类需要参数的会被忽略并在日志里警告一次。**土豆炮那颗粒子（Create 的 `AirParticleData`）不能用作拖尾**：它带参数没法用 id 写，而且零速度生成时会自己 `remove()`，拖尾点正好是零速度。写**空串** = 强制关闭（连内置预设给的拖尾也关掉）。每个弹丸的落点**相位随机**（从生成点起算的起始距离是随机的），所以同一地点连射不会把两组烟叠在同一组位置上 |
+| `trail_interval` | 数字 | 1.0 | 方块 | 拖尾粒子间距（下限 0.1）；按**实际飞行轨迹长度**累计，速度再快也不会漏点、也不会变密（一 tick 飞 6 格、间距 2 格 = 该 tick 补 3 个点）。只有写了 `trail_particle` 才解析。这是**基准值**（1× 伤害、1× 射速的枪）：实际间距 = 本值 `× 枪的 fire_rate_multiplier ÷ 枪的 damage_multiplier`（夹在 0.5–4 倍）——打得狠的枪烟更密、射得快的枪烟更稀，**每秒**烟量只跟枪的伤害倍率走、与射速无关（所以 4× 射速的 mak1 不会变成烟雾发生器） |
 | `spread` | 数字 | 1.0 | 度 | 腰射锥角基准；实际散布 = `(spread × 姿态惩罚 + 连发膨胀) ÷ 腰射精度 × (1 − 举枪进度)`；**只有枪真正举到瞄准位才归零**——举枪过程中按开火包里的进度插值（与准星缺口同一条曲线，中段为 smoothstep）；每发膨胀 `+0.15×spread`，上限 `2.5×spread`，8 tick 内衰减 |
 | `max_reflect` | 数字（取整） | 0（关闭）；**写了 `max_reflect` 或 `speed_decay` 中任意一个 → 默认 10** | 次 | 撞方块反弹次数，按面法线反射 |
 | `speed_decay` | 数字 | 0.5 | 每次反弹保留的速度比例 | 与 `max_reflect` 配对；只有写了这两个键之一才会解析 |
@@ -1028,6 +1028,8 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | `create:enchanted_golden_apple` | medium | 16.0 | （用 Create 原值） | 效果型弹药 |
 
 （预设伤害的公式：`类型伤害 × (1 + 0.5 × (48 − 射程) / 32)`，短射程用伤害找补。）
+
+**弹道拖尾也由预设自动给**（不用你写）：**light/shotgun 默认没有拖尾**（近距离弹，烟只会糊住枪口视线；想要就自己写 `trail_particle`），medium/heavy 用 `createpneumatictacticals:trail_smoke`（小号 poof：0.2 格、无重力、无自身漂移、8 tick 消散——点悬在原地不飘不升）；伤害定密度——`trail_interval = 10 × (2.5 − 伤害 ÷ 10)` 方块，所以 3 伤害的 beetroot 每 22 格一个、15 伤害的 blaze_cake 每 10 格一个（伤害越高烟越密）。两个效果型弹药没有伤害覆盖，取同样的 10 格。这些是**弹药基准**，实际每发的间距还会按**枪**缩放：`× 枪的 fire_rate_multiplier ÷ 枪的 damage_multiplier`（夹 0.5–4 倍）——4× 射速的 mak1 打中型弹是每 72 格一个（48 格的一发大约只留 1 个点），而 4× 伤害的狙击枪（marble_17）是每 9–11 格一个。想改单个弹药就写 `trail_particle` / `trail_interval`（§4.3，JSON 照常优先；写 `trail_particle: ""` 可整个关掉）。
 
 **优先级：默认值 → 内置预设 → 你的 datapack JSON（逐字段覆盖）。**
 

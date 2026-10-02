@@ -20,6 +20,14 @@ public final class ModParticles {
     public static final RegistryObject<ParticleType<?>> MUZZLE_SMOKE =
             PARTICLES.register("muzzle_smoke", () -> new SimpleParticleType(false));
 
+    /**
+     * Tracer-trail dot: a poof that is smaller than vanilla's, has no gravity
+     * and no self-drift, and dissolves in {@code TrailSmokeParticle.LIFETIME}
+     * ticks. Used by the built-in ammo presets for medium/heavy rounds.
+     */
+    public static final RegistryObject<ParticleType<?>> TRAIL_SMOKE =
+            PARTICLES.register("trail_smoke", () -> new SimpleParticleType(false));
+
     private ModParticles() {}
 
     public static void register(IEventBus modBus) {

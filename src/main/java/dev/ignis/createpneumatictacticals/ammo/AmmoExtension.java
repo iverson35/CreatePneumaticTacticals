@@ -95,6 +95,25 @@ public final class AmmoExtension {
         return ext.damage > 0 ? ext.damage : type.damage();
     }
 
+    /**
+     * Trail spacing for THIS shot: the ammo's authored interval scaled to the
+     * gun's real power. A gun that hits harder than the ammo's baseline packs
+     * the puffs closer ({@code ÷ damage_multiplier}), one that shoots faster
+     * spreads them out ({@code × fire_rate_multiplier}) - so a 4x-rate SMG no
+     * longer smears a wall of smoke and a 2x-damage sniper leaves a thick
+     * trail, and the smoke per SECOND ends up tracking the gun's damage
+     * multiplier alone (fire rate cancels out). A 1x/1x gun gets the authored
+     * value untouched. The factor is clamped to 0.5..4: a 0.1x-rate,
+     * 3x-damage build would otherwise dot every 0.06 blocks (and a 4x-rate one
+     * would go nearly invisible), while 0.5 still lets the hardest-hitting
+     * build leave twice the base density.
+     */
+    public static double trailIntervalFor(AmmoExtension ext, double damageMultiplier, double fireRateMultiplier) {
+        double factor = net.minecraft.util.Mth.clamp(
+                fireRateMultiplier / Math.max(0.1, damageMultiplier), 0.5, 4.0);
+        return ext.trailInterval * factor;
+    }
+
     public static void clear() {
         TABLE.clear();
     }
