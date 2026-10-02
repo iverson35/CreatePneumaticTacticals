@@ -93,9 +93,10 @@ public abstract class PotatoProjectileMixin {
     /** resolved trail particle; null = none (never set, or unknown id) */
     @Unique private net.minecraft.core.particles.ParticleOptions cpt$trailOptions;
     @Unique private boolean cpt$trailResolved;
-    /** last client tick position, and distance travelled since the last spawn */
+    /** last client tick position, the origin of the current path segment */
     @Unique private Vec3 cpt$trailLast;
-    @Unique private double cpt$trailAccum;
+    /** blocks of path still to travel before the next puff (random countdown) */
+    @Unique private double cpt$trailNext;
     /** hard cap on particles per tick: a fast round with a tiny interval must
      *  not flood the particle engine (the trail skips points instead) */
     private static final int cpt$TRAIL_MAX_PER_TICK = 32;
@@ -165,17 +166,22 @@ public abstract class PotatoProjectileMixin {
      * the save hooks) because a dedicated server's client has no ammo table.
      *
      * <p>Points are placed by walking the segment between the last tick's
-     * position and this one, so the spacing is true distance at any speed - a
-     * round crossing 6 blocks in a tick with a 2-block interval gets three
-     * points, not one. The lattice phase is randomized per projectile (see the
-     * first-tick branch) so repeated shots from one spot do not all stack
-     * their dots on the same positions. Only option-less particles can be
-     * named by id alone (SimpleParticleType: flame, end_rod, crit, ...); a
-     * type that needs options resolves to nothing and drops the trail once
-     * instead of retrying every tick. (Create's own AirParticleData is one of
-     * those, and it would not work here anyway: it removes itself when spawned
-     * with a zero velocity vector, which is exactly how a trail point is
-     * spawned.)
+     * position and this one, so the walk is over real path length at any
+     * speed - a round crossing 6 blocks in a tick cannot skip a point. Each
+     * interval is drawn random in [0.4, 1.6] x the configured gap, so the
+     * puffs clump and thin out like real smoke, while the count over any long
+     * stretch of path still averages one puff per gap (the expectation is
+     * exactly the number the pack wrote). The first interval starts at a
+     * random fraction of the gap, so repeated shots from one spot do not all
+     * begin their patterns at the same distance. Puffs are nudged across the
+     * path and given a little velocity, because a row of identical motionless
+     * dots reads as a dotted line, not as smoke. Only option-less particles
+     * can be named by id alone (SimpleParticleType: flame, end_rod, crit,
+     * ...); a type that needs options resolves to nothing and drops the trail
+     * once instead of retrying every tick. (Create's own AirParticleData is
+     * one of those, and it would not work here anyway: it removes itself when
+     * spawned with a zero velocity vector, which is exactly how a trail point
+     * is spawned.)
      */
     @Inject(method = "tick", at = @At("HEAD"))
     private void createpneumatictacticals$trail(CallbackInfo ci) {
@@ -201,38 +207,62 @@ public abstract class PotatoProjectileMixin {
         if (gap < 0.1) gap = 0.1;
         Vec3 pos = self.position();
         if (cpt$trailLast == null) {
-            // Random lattice phase: trail points sit on a lattice measured from
-            // the spawn point, so firing twice from the same spot would stack
-            // both shots' dots on exactly the same positions. Starting the
-            // accumulator at a random fraction of the gap shifts the whole
-            // pattern per shot.
-            cpt$trailAccum = level.getRandom().nextDouble() * gap;
+            // Random start: firing twice from the same spot would otherwise
+            // begin both patterns at the same distance, so the first interval
+            // starts at a random fraction of the gap.
+            cpt$trailNext = level.getRandom().nextDouble() * gap;
             cpt$trailLast = pos;
             return;
         }
         double seg = pos.distanceTo(cpt$trailLast);
         if (seg > 0) {
             Vec3 dir = pos.subtract(cpt$trailLast).scale(1.0 / seg);
-            // distance since the last point, in blocks: n full gaps fit, and the
-            // remainder carries into the next tick, so the spacing is exactly
-            // `gap` no matter how the per-tick steps fall
-            double since = cpt$trailAccum + seg;
-            int n = (int) Math.floor(since / gap + 1e-9);
-            double spacing = gap;
-            if (n > cpt$TRAIL_MAX_PER_TICK) {
-                // absurd gap for this speed (a 20-block tick with a 0.1 gap):
-                // spread the cap evenly over the segment instead of dropping
-                // its tail, which would leave a hole in the line
-                n = cpt$TRAIL_MAX_PER_TICK;
-                spacing = since / n;
+            // basis across the path, for the wobble
+            Vec3 axis = Math.abs(dir.y) < 0.9 ? new Vec3(0, 1, 0) : new Vec3(1, 0, 0);
+            Vec3 side = dir.cross(axis).normalize();
+            Vec3 side2 = dir.cross(side);
+            // smoke is shed by the round: each puff drifts forward with it (a
+            // touch of the round's own speed) and fans out sideways
+            double forward = (0.05 + Math.min(seg, 6.0) * 0.015)
+                    * (0.7 + level.getRandom().nextDouble() * 0.6);
+            // Walk the real path length and spawn when the countdown runs out.
+            // Each interval is drawn random in [0.4, 1.6] x gap, so the puffs
+            // clump and thin out like real smoke, but the EXPECTATION is
+            // exactly the number the pack wrote: over any long stretch of path
+            // the count averages one puff per gap. The countdown carries across
+            // ticks, so the count is right at any speed; a fast round with a
+            // tiny gap is still capped per tick.
+            double traveled = 0.0;
+            double remaining = cpt$trailNext;
+            int spawned = 0;
+            while (traveled + remaining <= seg) {
+                traveled += remaining;
+                Vec3 base = cpt$trailLast.add(dir.scale(traveled));
+                // wobble across the path, scaled to the interval it belongs to
+                double jitter = Math.min(0.18, 0.06 + remaining * 0.004);
+                double angle = level.getRandom().nextDouble() * (Math.PI * 2.0);
+                double radius = jitter * Math.sqrt(level.getRandom().nextDouble());
+                Vec3 off = side.scale(Math.cos(angle) * radius).add(side2.scale(Math.sin(angle) * radius));
+                Vec3 vel = dir.scale(forward)
+                        .add(side.scale((level.getRandom().nextDouble() - 0.5) * 0.08))
+                        .add(side2.scale((level.getRandom().nextDouble() - 0.5) * 0.08));
+                level.addParticle(cpt$trailOptions, base.x + off.x, base.y + off.y, base.z + off.z,
+                        vel.x, vel.y, vel.z);
+                if (++spawned >= cpt$TRAIL_MAX_PER_TICK) {
+                    remaining = cpt$trailStep(gap);
+                    break;
+                }
+                remaining = cpt$trailStep(gap);
             }
-            for (int i = 0; i < n; i++) {
-                Vec3 p = cpt$trailLast.add(dir.scale(spacing - cpt$trailAccum + i * spacing));
-                level.addParticle(cpt$trailOptions, p.x, p.y, p.z, 0, 0, 0);
-            }
-            cpt$trailAccum = since - n * spacing;
+            cpt$trailNext = remaining - (seg - traveled);
         }
         cpt$trailLast = pos;
+    }
+
+    /** One random interval: uniform in [0.4, 1.6] x gap, mean exactly gap. */
+    @Unique
+    private static double cpt$trailStep(double gap) {
+        return gap * (0.4 + Math.random() * 1.2);
     }
 
     // --- exterior ballistics (attachment gravity/drag) ------------------------

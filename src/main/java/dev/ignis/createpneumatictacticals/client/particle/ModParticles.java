@@ -22,8 +22,9 @@ public final class ModParticles {
 
     /**
      * Tracer-trail dot: a poof that is smaller than vanilla's, has no gravity
-     * and no self-drift, and dissolves in {@code TrailSmokeParticle.LIFETIME}
-     * ticks. Used by the built-in ammo presets for medium/heavy rounds.
+     * and never adds drift of its own (it uses the velocity it is spawned
+     * with), and dissolves in 7-10 ticks. Used by the built-in ammo presets
+     * for medium/heavy rounds.
      */
     public static final RegistryObject<ParticleType<?>> TRAIL_SMOKE =
             PARTICLES.register("trail_smoke", () -> new SimpleParticleType(false));

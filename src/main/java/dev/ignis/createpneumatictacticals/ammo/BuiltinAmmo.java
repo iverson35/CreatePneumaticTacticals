@@ -227,7 +227,7 @@ public final class BuiltinAmmo {
                 if (trailInterval != null) {
                     ext.trailInterval = trailInterval;
                 } else {
-                    ext.trailInterval = damage != null ? 3.0 * (2.5 - damage / 10.0) : 10.0;
+                    ext.trailInterval = damage != null ? 1.5 * (2.5 - damage / 10.0) : 10.0;
                 }
             }
         }

@@ -342,6 +342,91 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
+// Dev-run guard. Gradle's up-to-date check on :processResources can be satisfied
+// while build/resources/main is missing a file that something removed outside
+// Gradle (observed 2026-10-02: the mixin config was gone, :processResources still
+// reported UP-TO-DATE, and both dev clients died at mixin bootstrap with
+// "The specified resource 'createpneumatictacticals.mixins.json' was invalid or
+// could not be read"). Everything else missing from that tree only degrades
+// textures or lang; the mixin config kills the run, so verify just that one.
+// Costs one exists() check per run; `gradlew processResources --rerun-tasks`
+// (or a clean build) repairs a fully stale tree.
+tasks.register('verifyDevResources') {
+    description = 'Re-copies the mixin config when a stale processResources state dropped it'
+    outputs.upToDateWhen { false }
+    doLast {
+        File mixinConfig = file("build/resources/main/${mod_id}.mixins.json")
+        if (!mixinConfig.exists()) {
+            logger.warn("[cpt] {} was missing - re-copying it (stale processResources state)", mixinConfig)
+            copy {
+                from file("src/main/resources/${mod_id}.mixins.json")
+                into file('build/resources/main')
+            }
+        }
+    }
+}
+
+// ForgeGradle registers the run tasks lazily, so match them by name instead of
+// looking them up here (tasks.named would fail with "Task with name 'runClient'
+// not found" at configuration time).
+def guardedRuns = ['runClient', 'runClient2', 'runServer', 'runData', 'runGameTestServer'] as Set
+tasks.matching { it.name in guardedRuns }.configureEach {
+    dependsOn 'verifyDevResources', 'linkDevGunpacks'
+}
+
+// Dev gunpack links. The channel protocol version is GunPacks.contentHash(), so
+// both dev clients MUST hash the same gunpack content or the LAN handshake
+// rejects the join ("Channels [createpneumatictacticals:main] rejected their
+// server side version number"). The repo-root gunpacks/ is the single source of
+// truth, so link each run dir's gunpacks to it instead of letting each dir keep
+// its own extracted copy - extraction only ADDS missing files, so a rename in
+// the repo leaves the old file behind and the two sides drift apart forever.
+// Idempotent and non-destructive: an existing link to the right target is left
+// alone, a real directory with content is left alone with a warning.
+tasks.register('linkDevGunpacks') {
+    description = 'Links run/gunpacks and run2/gunpacks to the repo gunpacks/ (LAN content-hash parity)'
+    outputs.upToDateWhen { false }
+    doLast {
+        boolean windows = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
+        File source = file('gunpacks')
+        ['run', 'run2'].each { String dirName ->
+            File link = file("${dirName}/gunpacks")
+            if (link.exists()) {
+                // a Windows junction is not a "symbolic link" to Java and
+                // canonicalFile does NOT resolve it - isSameFile does
+                boolean alreadyLinked = false
+                try {
+                    alreadyLinked = java.nio.file.Files.isSameFile(link.toPath(), source.toPath())
+                } catch (Exception ignored) {
+                }
+                if (alreadyLinked) {
+                    return // already linked to the repo
+                }
+                boolean emptyDir = link.isDirectory() && ((link.listFiles() ?: []) as List).isEmpty()
+                if (!emptyDir) {
+                    logger.warn("[cpt] {} is a real directory - leaving it alone; delete it to get the repo link", link)
+                    return
+                }
+                if (!link.delete()) {
+                    logger.warn("[cpt] could not remove empty {}", link)
+                    return
+                }
+            }
+            link.parentFile.mkdirs()
+            try {
+                if (windows) {
+                    exec { commandLine 'cmd', '/c', 'mklink', '/J', link.absolutePath, source.absolutePath }
+                } else {
+                    java.nio.file.Files.createSymbolicLink(link.toPath(), source.toPath())
+                }
+                logger.lifecycle("[cpt] linked {} -> {}", link, source)
+            } catch (Exception ex) {
+                logger.warn("[cpt] could not link {} -> {}: {}", link, source, ex.message)
+            }
+        }
+    }
+}
+
 // Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
     manifest {
