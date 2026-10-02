@@ -57,6 +57,8 @@
   "stat.createpneumatictacticals.recoil_recovery": "后座回正",
   "stat.createpneumatictacticals.gravity_multiplier": "弹道下坠",
   "stat.createpneumatictacticals.drag_multiplier": "空气阻力",
+  "stat.createpneumatictacticals.range": "射程",
+  "stat.createpneumatictacticals.range_multiplier": "射程倍率",
   "stat.createpneumatictacticals.gas_suppression": "气体抑制",
   "stat.createpneumatictacticals.aim_zoom": "瞄具倍率",
   "stat.createpneumatictacticals.tactical_aim_zoom": "副瞄具倍率",

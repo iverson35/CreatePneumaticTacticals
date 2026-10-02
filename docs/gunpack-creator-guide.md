@@ -556,7 +556,8 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | `fire_rate_multiplier` | 射速 | 0 | ≥ 0.1 | 射速倍率；单发最小间隔 = 弹药 `reload_ticks` ÷ 本值（**不参与随机**） |
 | `hipfire_accuracy_multiplier` | 腰射 | 0 | ≥ 0.1 | 腰射精度（散布 = 弹药基础散布 ÷ 本值） |
 | `ergonomics` | 人机 | 0 | 0.1 – 5.0 | 瞄准速度、姿态切换、行走惩罚、持枪恢复；**≥1.2 可以边跑边射**；**<1.2 只能从 ready 姿势起跑**——跑动中按射击会先把枪抬到腰射位（与 ≥1.2 同一套 engaging 逻辑与延迟）再开火，枪未回到 ready 前无法冲刺，停火约 1 秒枪落回 ready 后才能重新跑动 |
-| `bullet_speed` | 初速 | 0 | ≥ 0.1 | 初速倍率（只影响飞行时间，射程由弹药自己决定）（**不参与随机**） |
+| `bullet_speed` | 初速 | 0 | ≥ 0.1 | 初速倍率（只影响飞行时间与弹道平直度；**打多远还保持满伤**由 `range_multiplier` 决定）（**不参与随机**） |
+| `range_multiplier` | 射程 | 0 | 0.1 – 3.0 | 射程倍率：**弹药的 `effective_range` × 本值** = 满伤距离，同时**超出后的整段衰减也等比拉伸**（倍率 ×1.5 → 满伤距离 ×1.5，且衰减到零所需的距离也 ×1.5，于是归零自毁的飞行距离同样 ×1.5）。例：`+0.5` = 满伤距离 +50%；负值 = 短管（**不参与随机**） |
 | `recoil_vertical_multiplier` | 垂直后座 | 0 | 0.1 – 3.0 | 垂直后座倍率，**负值更好** |
 | `recoil_horizontal_multiplier` | 水平后座 | 0 | 0.1 – 3.0 | 水平后座倍率，**负值更好** |
 | `recoil_recovery` | 回正 | 0 | 0.2 – 5.0 | 后座回正速度 |
@@ -565,7 +566,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | `gas_suppression` | 气体抑制 | 0 | −5 – 1 | 枪口烟雾：`−1` 烟雾翻倍，`+1` 完全无烟（**仅 `muzzle`**） |
 | `unique` | — | `false` | — | 布尔值；同名模块装多个时，属性只算一次 |
 
-**物品提示里的实际值**：枪**已装填**（弹匣有弹；背包供弹只要选了弹种）时，物品提示（Shift）里这两行不再显示倍率，而是显示**当前弹种结合本枪算出来的实际值**——`伤害 = 弹药伤害 × damage_multiplier`（近距离、不含爆头与距离衰减），`射速 = 1200 ÷ max(1, reload_ticks ÷ fire_rate_multiplier)` RPM。空仓或无弹种时回到倍率显示。两个数走的就是开火/命中同一条计算路径（`AmmoExtension.fireIntervalTicks` / `baseDamage`），不会和实际手感对不上。
+**物品提示里的实际值**：枪**已装填**（弹匣有弹；背包供弹只要选了弹种）时，物品提示（Shift）里这三行不再显示倍率，而是显示**当前弹种结合本枪算出来的实际值**——`伤害 = 弹药伤害 × damage_multiplier`（近距离、不含爆头与距离衰减）、`射速 = 1200 ÷ max(1, reload_ticks ÷ fire_rate_multiplier)` RPM、`射程 = 弹药 effective_range × range_multiplier`（格，满伤距离）。空仓或无弹种时回到倍率显示。三个数走的就是开火/命中同一条计算路径（`AmmoExtension.fireIntervalTicks` / `baseDamage` / `effectiveRange`），不会和实际手感对不上。
 
 **`muzzle` 的导气孔（写在模块根级，**不在** `gun_properties` 里）**：
 
@@ -593,7 +594,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 在**配件加工台**合成出来的模块会带一次**随机掷点**（制造品质）：
 
 - **只有 7 个属性参与掷点**：`reload_speed`、`hipfire_accuracy_multiplier`、`ergonomics`、`recoil_vertical_multiplier`、`recoil_horizontal_multiplier`、`recoil_recovery`、`gas_suppression`。
-- 其余 5 个（`damage_multiplier`、`fire_rate_multiplier`、`bullet_speed`、`gravity_multiplier`、`drag_multiplier`）**永远按你写的值生效**，不掷。
+- 其余 6 个（`damage_multiplier`、`fire_rate_multiplier`、`bullet_speed`、`range_multiplier`、`gravity_multiplier`、`drag_multiplier`）**永远按你写的值生效**，不掷。
 - **预算规则**：掷点掷的是**比例**（0–1），最终生效值 = 你在 JSON 里写的值 × 比例。
   - 好属性的比例之和 = `1 + q`；坏属性的比例之和 = `q`；其中 `q` 在 `0 ~ min(坏属性个数, 好属性个数 − 1)` 之间随机。
   - 「好」= 符号对射手有利（后座类属性是**负值**算好，其余正值算好）；你写 0 的属性不参与。
@@ -939,8 +940,8 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 |---|---|---|---|---|
 | `gun_type` | 字符串 | `light` | 口径 | `heavy`/`medium`/`light`/`shotgun`；**必须与机匣口径完全相等**才吃得进去；写错名字会被静默忽略（保留默认值） |
 | `damage` | 数字 | −1（= 用 Create 的 `damage`） | 生命值 | >0 时覆盖基础伤害；最终伤害 = 本值 × 枪的 `damage_multiplier` × 爆头倍率 × 距离衰减 |
-| `effective_range` | 数字 | 256 | 方块 | 满伤距离；超过后线性衰减。**与枪的初速无关**，是弹药自己的绝对射程 |
-| `damage_falloff_rate` | 数字 | 0（= 自动 `基础伤害 ÷ 射程`） | 生命值/方块 | 衰减斜率；用默认值时**两倍射程处伤害归零**，归零即弹丸自毁 |
+| `effective_range` | 数字 | 256 | 方块 | 满伤距离（**弹药基准**）；超过后线性衰减。**与枪的初速无关**；实际满伤距离 = 本值 × 枪的 `range_multiplier` |
+| `damage_falloff_rate` | 数字 | 0（= 自动 `基础伤害 ÷ 射程`） | 生命值/方块 | 衰减斜率；用默认值时**两倍射程处伤害归零**，归零即弹丸自毁。枪的 `range_multiplier` 会把**整条衰减曲线等比拉伸**（实际斜率 = 本值 ÷ 倍率），所以默认的"两倍射程归零"在任何倍率下都成立 |
 | `headshot_multiplier` | 数字 | 1.5 | × | 命中头部区域的倍率（头部带深度 = 2×(身高−眼高)，超过半身则不算爆头） |
 | `spread` | 数字 | 1.0 | 度 | 腰射锥角基准；实际散布 = `(spread × 姿态惩罚 + 连发膨胀) ÷ 腰射精度 × (1 − 举枪进度)`；**只有枪真正举到瞄准位才归零**——举枪过程中按开火包里的进度插值（与准星缺口同一条曲线，中段为 smoothstep）；每发膨胀 `+0.15×spread`，上限 `2.5×spread`，8 tick 内衰减 |
 | `max_reflect` | 数字（取整） | 0（关闭）；**写了 `max_reflect` 或 `speed_decay` 中任意一个 → 默认 10** | 次 | 撞方块反弹次数，按面法线反射 |
@@ -964,8 +965,10 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 开火：口径校验（严格相等）→ 间隔 = reload_ticks ÷ fire_rate_multiplier
       → 生成 split 颗弹丸，初速 = 2 × velocity_multiplier × bullet_speed
       → 散布 = (spread × 姿态 + 膨胀) ÷ 腰射精度 × (1 − 举枪进度)
+      → 射程曲线随弹丸携带：满伤距离 = effective_range × range_multiplier
    ▼
 命中：伤害 = 弹药伤害 × damage_multiplier × 爆头倍率 × 距离衰减
+      （衰减：满伤距离内 100%，之后按 damage_falloff_rate ÷ range_multiplier 递减到零）
       → 爆炸（若有）/ 反弹（若有）/ 施加 effects
    ▼
 200 tick 后到期（带爆炸则先引爆）
@@ -992,7 +995,7 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 
 模组为 **Create 自带的投射物类型**内置了一套数值（写在代码里，因为 Create 的 jar 自带同名 JSON，模组侧的资源覆盖会在加载顺序上打输）：
 
-| 弹药 id | 口径 | 射程（方块） | 伤害 | 备注 |
+| 弹药 id | 口径 | 射程（方块，弹药基准） | 伤害 | 备注 |
 |---|---|---|---|---|
 | `create:beetroot` | light | 16.0 | 3.0 | |
 | `create:glow_berry` | shotgun | 16.0 | 3.0 | 多弹丸 |

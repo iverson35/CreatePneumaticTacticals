@@ -37,5 +37,9 @@
   "module.createpneumatictacticals.marble_17_standard_barrel": "Marble-17 标准枪管",
   "module.createpneumatictacticals.marble_17_hunter_stock": "Marble-17 猎手枪托",
   "module.createpneumatictacticals.marble_17_hunter_handguard": "Marble-17 猎手护木",
-  "gun.createpneumatictacticals.marble_17": "Marble-17 栓动狙击步枪"
+  "gun.createpneumatictacticals.marble_17": "Marble-17 栓动狙击步枪",
+  "module.createpneumatictacticals.marble_17_oberz_barrel": "Marble-17 Oberz 截短枪管",
+  "module.createpneumatictacticals.marble_17_oberz_handguard": "Marble-17 截短护木",
+  "module.createpneumatictacticals.marble_17_oberz_rear_grip": "Marble-17 截短枪托",
+  "module.createpneumatictacticals.mak_3_ammo_15": "MAK-3 15发弹匣"
 }

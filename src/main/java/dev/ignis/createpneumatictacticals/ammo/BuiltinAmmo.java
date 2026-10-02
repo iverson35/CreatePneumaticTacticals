@@ -51,7 +51,9 @@ import java.util.Map;
  *
  * <p>Range is the falloff start distance in blocks: beyond it damage drops by
  * {@code damage_falloff_rate} per block, or by {@code base / range} when the
- * ammo authors no rate, so a shot is spent by twice its range. The numbers
+ * ammo authors no rate, so a shot is spent by twice its range. These are AMMO
+ * baselines - the firing gun's {@code range_multiplier} scales the start and
+ * the fade-out together (see PotatoProjectileMixin#cpt$damageAt). The numbers
  * started as 32 + (damage - 2) * 64 / 13 and were halved to 16..48.
  */
 public final class BuiltinAmmo {

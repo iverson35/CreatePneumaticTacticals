@@ -196,6 +196,7 @@ public abstract class PotatoProjectileMixin {
         CompoundTag data = cpt$self().getPersistentData();
         if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
         if (data.contains("cpt_drag")) nbt.putDouble("cpt_drag", data.getDouble("cpt_drag"));
+        if (data.contains("cpt_range")) nbt.putDouble("cpt_range", data.getDouble("cpt_range"));
         if (data.getBoolean("cpt_gunshot")) nbt.putBoolean("cpt_gunshot", true);
         if (data.contains("cpt_vel_x")) {
             nbt.putDouble("cpt_vel_x", data.getDouble("cpt_vel_x"));
@@ -218,6 +219,7 @@ public abstract class PotatoProjectileMixin {
         CompoundTag data = cpt$self().getPersistentData();
         if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));
         if (nbt.contains("cpt_drag")) data.putDouble("cpt_drag", nbt.getDouble("cpt_drag"));
+        if (nbt.contains("cpt_range")) data.putDouble("cpt_range", nbt.getDouble("cpt_range"));
         if (nbt.getBoolean("cpt_gunshot")) data.putBoolean("cpt_gunshot", true);
         if (nbt.contains("cpt_vel_x")) {
             data.putDouble("cpt_vel_x", nbt.getDouble("cpt_vel_x"));
@@ -557,20 +559,28 @@ public abstract class PotatoProjectileMixin {
     }
 
     /**
-     * Damage after range falloff. The range is absolute: effective_range is
-     * how far the ammo keeps full damage, whatever gun fired it (bullet_speed
-     * buys time-of-flight and a flatter drop, never reach - the projectile
-     * speed clamp is bypassed by EntityMotionMixin, so a fast gun really does
-     * arrive sooner). Beyond the range damage drops per block until it reaches
-     * zero: at damage_falloff_rate when the ammo authors one, else at a rate
-     * that fades the shot out by twice the falloff start.
+     * Damage after range falloff. The ammo's {@code effective_range} is how far
+     * THAT round keeps full damage, and beyond it damage drops per block until
+     * it reaches zero: at damage_falloff_rate when the ammo authors one, else
+     * at a rate that fades the shot out by twice the falloff start.
+     *
+     * <p>The firing gun's {@code range_multiplier} (cpt_range, 1.0 when the
+     * projectile wasn't fired by a gun with the stat) scales the WHOLE profile:
+     * the full-damage distance AND the fade-out are both stretched by it, so a
+     * +50% gun keeps full damage 1.5x as far out and also takes 1.5x as long to
+     * fade to zero (hence the round flies 1.5x as far before the self-destruct
+     * at zero damage). The multiplier is applied to the ammo's authored numbers,
+     * never to the already-scaled distance, so the shape is identical for every
+     * gun and bullet_speed stays time-of-flight only.
      */
     @Unique
     private double cpt$damageAt(AmmoExtension ext, double base) {
-        double range = ext.effectiveRange;
+        double mult = cpt$self().getPersistentData().getDouble("cpt_range");
+        if (mult <= 0) mult = 1.0;                      // legacy / non-gun shots
+        double range = ext.effectiveRange * mult;
         if (cpt$traveled <= range) return base;
-        double rate = ext.damageFalloffRate > 0 ? ext.damageFalloffRate : base / range;
-        return Math.max(0, base - (cpt$traveled - range) * rate);
+        double rate = ext.damageFalloffRate > 0 ? ext.damageFalloffRate : base / ext.effectiveRange;
+        return Math.max(0, base - (cpt$traveled - range) * rate / mult);
     }
 
     /** fraction of sampled body points visible from the explosion center */

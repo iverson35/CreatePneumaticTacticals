@@ -330,6 +330,11 @@ public final class GunFireHandler {
             // ticks the identical trajectory.
             projectile.getPersistentData().putDouble("cpt_gravity", stats.gravityMultiplier);
             projectile.getPersistentData().putDouble("cpt_drag", stats.dragMultiplier);
+            // range scale: PotatoProjectileMixin multiplies the ammo's absolute
+            // effective_range by it and stretches the falloff beyond it by the
+            // same factor (also carried in addAdditionalSaveData, so a chunk
+            // reload keeps the shot's profile)
+            projectile.getPersistentData().putDouble("cpt_range", stats.rangeMultiplier);
             projectile.setOwner(shooter);
             shooter.level().addFreshEntity(projectile);
         }

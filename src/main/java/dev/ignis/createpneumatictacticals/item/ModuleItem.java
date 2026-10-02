@@ -300,6 +300,7 @@ public class ModuleItem extends Item implements GeoItem {
         stats.put("recoil_recovery", ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_RECOVERY, rolls));
         stats.put("gravity_multiplier", def.gravityMultiplier);
         stats.put("drag_multiplier", def.dragMultiplier);
+        stats.put("range_multiplier", def.rangeMultiplier);
         stats.put("gas_suppression", ModuleRoll.value(def, ModuleRoll.Attr.GAS_SUPPRESSION, rolls));
         addStatLines(tooltip, stats);
     }

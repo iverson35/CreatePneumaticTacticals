@@ -193,6 +193,7 @@ final class WorkbenchStatsPanel {
             body.add(fmt("reload_speed", stats.rawReloadSpeed()));
             body.add(fmt("damage_multiplier", stats.damageMultiplier));
             body.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
+            body.add(fmt("range_multiplier", stats.rangeMultiplier));
             body.add(fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier));
             body.add(fmt("ergonomics", stats.ergonomics));
             body.add(fmt("aim_zoom", stats.aimZoom));
@@ -207,6 +208,7 @@ final class WorkbenchStatsPanel {
         } else {
             body.add(fmt("damage_multiplier", stats.damageMultiplier));
             body.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
+            body.add(fmt("range_multiplier", stats.rangeMultiplier));
             body.add(fmt("ergonomics", stats.ergonomics));
             body.add(fmt("recoil_vertical_multiplier", stats.recoilVerticalMultiplier));
             body.add(fmt("recoil_horizontal_multiplier", stats.recoilHorizontalMultiplier));

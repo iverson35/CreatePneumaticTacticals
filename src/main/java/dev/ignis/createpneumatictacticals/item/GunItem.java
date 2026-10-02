@@ -66,9 +66,11 @@ public class GunItem extends Item {
             if (loaded != null) {
                 tooltip.add(stat(String.format("%.2f", loaded.damage()), "damage"));
                 tooltip.add(stat(Math.round(loaded.rpm()) + " RPM", "fire_rate"));
+                tooltip.add(stat(String.format("%.1f", loaded.range()), "range"));
             } else {
                 tooltip.add(stat(stats.damageMultiplier, "damage_multiplier"));
                 tooltip.add(stat(stats.fireRateMultiplier, "fire_rate_multiplier"));
+                tooltip.add(stat(stats.rangeMultiplier, "range_multiplier"));
             }
             tooltip.add(stat(stats.ergonomics, "ergonomics"));
             tooltip.add(stat(stats.recoilVerticalMultiplier, "recoil_vertical_multiplier"));
@@ -94,16 +96,18 @@ public class GunItem extends Item {
                 .withStyle(ChatFormatting.GRAY);
     }
 
-    /** a round's real fire rate (RPM) and point-blank damage in this gun */
-    public record AmmoPerformance(double rpm, double damage) {}
+    /** a round's real fire rate (RPM), point-blank damage and full-damage range in this gun */
+    public record AmmoPerformance(double rpm, double damage, double range) {}
 
     /**
      * What a given ammo TYPE would do in this gun, or null when the type is
      * unknown or there is no registry to look it up in. Mirrors the firing path
-     * through the same two helpers as {@link #loadedAmmo}: the interval is
-     * {@link AmmoExtension#fireIntervalTicks} (1200 / it is the RPM) and the
+     * through the same helpers as {@link #loadedAmmo}: the interval is
+     * {@link AmmoExtension#fireIntervalTicks} (1200 / it is the RPM), the
      * damage is the ammo's base damage times the gun's damage_multiplier —
-     * point-blank, before falloff and headshots.
+     * point-blank, before falloff and headshots — and the range is the ammo's
+     * own effective_range times the gun's range_multiplier (the same two
+     * numbers PotatoProjectileMixin applies on the hit).
      */
     public static @Nullable AmmoPerformance ammoPerformance(@Nullable Level level, GunStats stats, String ammoId) {
         if (level == null || ammoId == null || ammoId.isEmpty()) return null;
@@ -111,9 +115,11 @@ public class GunItem extends Item {
                 .registryOrThrow(com.simibubi.create.api.registry.CreateRegistries.POTATO_PROJECTILE_TYPE)
                 .get(ResourceLocation.tryParse(ammoId));
         if (type == null) return null;
+        AmmoExtension ext = AmmoExtension.get(ammoId);
         return new AmmoPerformance(
                 1200.0 / AmmoExtension.fireIntervalTicks(type, stats.fireRateMultiplier),
-                AmmoExtension.baseDamage(type, AmmoExtension.get(ammoId)) * stats.damageMultiplier);
+                AmmoExtension.baseDamage(type, ext) * stats.damageMultiplier,
+                ext.effectiveRange * stats.rangeMultiplier);
     }
 
     /** the same numbers as one line: "Damage: 4.80 | Fire Rate: 171 RPM" */

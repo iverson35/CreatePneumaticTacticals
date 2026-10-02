@@ -46,8 +46,8 @@ public final class GunStats {
      * vanilla quantizes both velocity channels per axis at +-3.9, so the true
      * launch velocity is shipped in the spawn payload (cpt_vel_*) and the
      * clamped motion sync is refused by the client replica (EntityMotionMixin).
-     * It buys time-of-flight only: ammo reach is the ammo's own absolute
-     * effective_range and never scales with the gun.
+     * It buys time-of-flight only: how far a round KEEPS its damage is
+     * {@link #rangeMultiplier}.
      */
     public double bulletSpeed = 1.0;
     /**
@@ -77,6 +77,16 @@ public final class GunStats {
      * better. Same base/additive/clamp rules as {@link #gravityMultiplier}.
      */
     public double dragMultiplier = 1.0;
+    /**
+     * Range scale: the ammo's absolute {@code effective_range} is multiplied
+     * by this before the falloff is applied, and the fade-out BEYOND it is
+     * stretched by the same factor — so the whole damage-over-distance profile
+     * (full-damage distance AND the distance it takes to fade to zero, hence
+     * how far the round flies before the shot fizzles out) scales together.
+     * Base 1.0, additive over modules, clamped 0.1..3.0. Authored per module
+     * in gun_properties as {@code range_multiplier}.
+     */
+    public double rangeMultiplier = 1.0;
     /** total muzzle gas suppression, clamped -5..1; smoke = (1 - v) * base (±1 = ±100%) */
     public double gasSuppression = 0;
     public double aimZoom = 1.25;
@@ -191,6 +201,7 @@ public final class GunStats {
         s.recoilRecovery += ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_RECOVERY, rolls);
         s.gravityMultiplier += def.gravityMultiplier;            // never rolled
         s.dragMultiplier += def.dragMultiplier;                  // never rolled
+        s.rangeMultiplier += def.rangeMultiplier;                // never rolled
         s.gasSuppression += ModuleRoll.value(def, ModuleRoll.Attr.GAS_SUPPRESSION, rolls);
     }
 
@@ -239,6 +250,7 @@ public final class GunStats {
         s.recoilRecovery = Mth.clamp(s.recoilRecovery, 0.2, 5.0);
         s.gravityMultiplier = Mth.clamp(s.gravityMultiplier, 0.1, 3.0);
         s.dragMultiplier = Mth.clamp(s.dragMultiplier, 0.1, 3.0);
+        s.rangeMultiplier = Mth.clamp(s.rangeMultiplier, 0.1, 3.0);
         s.gasSuppression = Mth.clamp(s.gasSuppression, -5, 1);
     }
 
