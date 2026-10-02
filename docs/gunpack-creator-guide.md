@@ -943,6 +943,8 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 | `effective_range` | 数字 | 256 | 方块 | 满伤距离（**弹药基准**）；超过后线性衰减。**与枪的初速无关**；实际满伤距离 = 本值 × 枪的 `range_multiplier` |
 | `damage_falloff_rate` | 数字 | 0（= 自动 `基础伤害 ÷ 射程`） | 生命值/方块 | 衰减斜率；用默认值时**两倍射程处伤害归零**，归零即弹丸自毁。枪的 `range_multiplier` 会把**整条衰减曲线等比拉伸**（实际斜率 = 本值 ÷ 倍率），所以默认的"两倍射程归零"在任何倍率下都成立 |
 | `headshot_multiplier` | 数字 | 1.5 | × | 命中头部区域的倍率（头部带深度 = 2×(身高−眼高)，超过半身则不算爆头） |
+| `trail_particle` | 字符串 | 空（关闭） | — | **弹道拖尾粒子 id**（如 `minecraft:end_rod`、`minecraft:flame`、`minecraft:crit`）：沿弹道每隔 `trail_interval` 格生成一个，**每个客户端各自生成**（服务器零开销，专门用来对付远距离狙击——能看见弹道来向）。只支持**无参数粒子**；`dust`/`block`/`item` 这类需要参数的会被忽略并在日志里警告一次 |
+| `trail_interval` | 数字 | 1.0 | 方块 | 拖尾粒子间距（下限 0.1）；按**实际飞行轨迹长度**累计，速度再快也不会漏点、也不会变密（一 tick 飞 6 格、间距 2 格 = 该 tick 补 3 个点）。只有写了 `trail_particle` 才解析 |
 | `spread` | 数字 | 1.0 | 度 | 腰射锥角基准；实际散布 = `(spread × 姿态惩罚 + 连发膨胀) ÷ 腰射精度 × (1 − 举枪进度)`；**只有枪真正举到瞄准位才归零**——举枪过程中按开火包里的进度插值（与准星缺口同一条曲线，中段为 smoothstep）；每发膨胀 `+0.15×spread`，上限 `2.5×spread`，8 tick 内衰减 |
 | `max_reflect` | 数字（取整） | 0（关闭）；**写了 `max_reflect` 或 `speed_decay` 中任意一个 → 默认 10** | 次 | 撞方块反弹次数，按面法线反射 |
 | `speed_decay` | 数字 | 0.5 | 每次反弹保留的速度比例 | 与 `max_reflect` 配对；只有写了这两个键之一才会解析 |
@@ -970,6 +972,9 @@ python tools/split_unified_bbmodel.py gecko/<枪>/xxx.bbmodel --gecko
 命中：伤害 = 弹药伤害 × damage_multiplier × 爆头倍率 × 距离衰减
       （衰减：满伤距离内 100%，之后按 damage_falloff_rate ÷ range_multiplier 递减到零）
       → 爆炸（若有）/ 反弹（若有）/ 施加 effects
+   ▼
+客户端（每个客户端各自算）：沿弹道每 trail_interval 格生成一个 trail_particle
+      （粒子 id 与间距随弹丸的生成数据下发，专用服务器客户端没有弹药表也能播）
    ▼
 200 tick 后到期（带爆炸则先引爆）
 ```

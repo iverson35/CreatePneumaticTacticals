@@ -89,6 +89,17 @@ public abstract class PotatoProjectileMixin {
     @Unique
     private Vec3 cpt$bouncePos;
 
+    // --- client tracer trail (createpneumatictacticals$trail) ---
+    /** resolved trail particle; null = none (never set, or unknown id) */
+    @Unique private net.minecraft.core.particles.ParticleOptions cpt$trailOptions;
+    @Unique private boolean cpt$trailResolved;
+    /** last client tick position, and distance travelled since the last spawn */
+    @Unique private Vec3 cpt$trailLast;
+    @Unique private double cpt$trailAccum;
+    /** hard cap on particles per tick: a fast round with a tiny interval must
+     *  not flood the particle engine (the trail skips points instead) */
+    private static final int cpt$TRAIL_MAX_PER_TICK = 32;
+
     @Unique
     private PotatoProjectileEntity cpt$self() {
         return (PotatoProjectileEntity) (Object) this;
@@ -145,6 +156,74 @@ public abstract class PotatoProjectileMixin {
         self.kill();
     }
 
+    /**
+     * Client-side tracer trail: the ammo's {@code trail_particle} spawned every
+     * {@code trail_interval} blocks of real flight path, so a distant sniper's
+     * round is visible to everyone who can see it (that is the whole point -
+     * the trail is per client and costs the server nothing). The particle id
+     * and spacing ride the spawn payload (cpt_trail / cpt_trail_interval, see
+     * the save hooks) because a dedicated server's client has no ammo table.
+     *
+     * <p>Points are placed by walking the segment between the last tick's
+     * position and this one, so the spacing is true distance at any speed - a
+     * round crossing 6 blocks in a tick with a 2-block interval gets three
+     * points, not one. Only option-less particles can be named by id alone
+     * (SimpleParticleType: flame, end_rod, crit, electric_spark, ...); a type
+     * that needs options resolves to nothing and drops the trail once instead
+     * of retrying every tick.
+     */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void createpneumatictacticals$trail(CallbackInfo ci) {
+        PotatoProjectileEntity self = cpt$self();
+        Level level = self.level();
+        if (!level.isClientSide() || !cpt$isGunShot(self)) return;
+        CompoundTag data = self.getPersistentData();
+        if (!cpt$trailResolved) {
+            cpt$trailResolved = true;
+            if (data.contains("cpt_trail")) {
+                net.minecraft.resources.ResourceLocation id =
+                        net.minecraft.resources.ResourceLocation.tryParse(data.getString("cpt_trail"));
+                var type = id == null ? null : net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.get(id);
+                if (type instanceof net.minecraft.core.particles.ParticleOptions options) {
+                    cpt$trailOptions = options;
+                } else {
+                    data.remove("cpt_trail"); // unknown / needs options: never retry
+                }
+            }
+        }
+        if (cpt$trailOptions == null) return;
+        double gap = data.getDouble("cpt_trail_interval");
+        if (gap < 0.1) gap = 0.1;
+        Vec3 pos = self.position();
+        if (cpt$trailLast == null) {
+            cpt$trailLast = pos;
+            return;
+        }
+        double seg = pos.distanceTo(cpt$trailLast);
+        if (seg > 0) {
+            Vec3 dir = pos.subtract(cpt$trailLast).scale(1.0 / seg);
+            // distance since the last point, in blocks: n full gaps fit, and the
+            // remainder carries into the next tick, so the spacing is exactly
+            // `gap` no matter how the per-tick steps fall
+            double since = cpt$trailAccum + seg;
+            int n = (int) Math.floor(since / gap + 1e-9);
+            double spacing = gap;
+            if (n > cpt$TRAIL_MAX_PER_TICK) {
+                // absurd gap for this speed (a 20-block tick with a 0.1 gap):
+                // spread the cap evenly over the segment instead of dropping
+                // its tail, which would leave a hole in the line
+                n = cpt$TRAIL_MAX_PER_TICK;
+                spacing = since / n;
+            }
+            for (int i = 0; i < n; i++) {
+                Vec3 p = cpt$trailLast.add(dir.scale(spacing - cpt$trailAccum + i * spacing));
+                level.addParticle(cpt$trailOptions, p.x, p.y, p.z, 0, 0, 0);
+            }
+            cpt$trailAccum = since - n * spacing;
+        }
+        cpt$trailLast = pos;
+    }
+
     // --- exterior ballistics (attachment gravity/drag) ------------------------
 
     /**
@@ -197,6 +276,10 @@ public abstract class PotatoProjectileMixin {
         if (data.contains("cpt_gravity")) nbt.putDouble("cpt_gravity", data.getDouble("cpt_gravity"));
         if (data.contains("cpt_drag")) nbt.putDouble("cpt_drag", data.getDouble("cpt_drag"));
         if (data.contains("cpt_range")) nbt.putDouble("cpt_range", data.getDouble("cpt_range"));
+        if (data.contains("cpt_trail")) {
+            nbt.putString("cpt_trail", data.getString("cpt_trail"));
+            nbt.putDouble("cpt_trail_interval", data.getDouble("cpt_trail_interval"));
+        }
         if (data.getBoolean("cpt_gunshot")) nbt.putBoolean("cpt_gunshot", true);
         if (data.contains("cpt_vel_x")) {
             nbt.putDouble("cpt_vel_x", data.getDouble("cpt_vel_x"));
@@ -220,6 +303,10 @@ public abstract class PotatoProjectileMixin {
         if (nbt.contains("cpt_gravity")) data.putDouble("cpt_gravity", nbt.getDouble("cpt_gravity"));
         if (nbt.contains("cpt_drag")) data.putDouble("cpt_drag", nbt.getDouble("cpt_drag"));
         if (nbt.contains("cpt_range")) data.putDouble("cpt_range", nbt.getDouble("cpt_range"));
+        if (nbt.contains("cpt_trail")) {
+            data.putString("cpt_trail", nbt.getString("cpt_trail"));
+            data.putDouble("cpt_trail_interval", nbt.getDouble("cpt_trail_interval"));
+        }
         if (nbt.getBoolean("cpt_gunshot")) data.putBoolean("cpt_gunshot", true);
         if (nbt.contains("cpt_vel_x")) {
             data.putDouble("cpt_vel_x", nbt.getDouble("cpt_vel_x"));

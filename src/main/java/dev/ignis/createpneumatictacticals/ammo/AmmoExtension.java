@@ -30,6 +30,12 @@ public final class AmmoExtension {
     public double effectiveRange = 256;
     public double damageFalloffRate = 0;     // damage loss per block beyond effective range
 
+    // --- client-side tracer trail ---
+    /** particle id spawned along the flight path; null/empty = no trail */
+    public String trailParticle = null;
+    /** blocks of flight path between trail particles (floor 0.1) */
+    public double trailInterval = 1.0;
+
     // --- gunplay ---
     // fire rate deliberately has NO extension field: it is always the Create
     // type's reload_ticks (potato-cannon parity), scaled by the gun's

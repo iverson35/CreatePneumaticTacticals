@@ -1,6 +1,7 @@
 package dev.ignis.createpneumatictacticals.ammo;
 
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.GsonHelper;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -80,6 +81,23 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
         }
         ext.effectiveRange = optDouble(json, "effective_range", ext.effectiveRange);
         ext.damageFalloffRate = optDouble(json, "damage_falloff_rate", ext.damageFalloffRate);
+        if (json.has("trail_particle")) {
+            String trail = json.get("trail_particle").getAsString();
+            if (!trail.isEmpty()) {
+                ext.trailParticle = trail;
+                ext.trailInterval = Math.max(0.1, optDouble(json, "trail_interval", ext.trailInterval));
+                // name-only particles: a type that needs options (dust, block,
+                // item, ...) cannot be reconstructed from its id, and the
+                // client would silently drop it - say so once, here
+                ResourceLocation trailId = ResourceLocation.tryParse(trail);
+                var trailType = trailId == null ? null : BuiltInRegistries.PARTICLE_TYPE.get(trailId);
+                if (!(trailType instanceof net.minecraft.core.particles.ParticleOptions)) {
+                    LOGGER.warn("Ammo {} trail_particle '{}' is unknown or needs particle options "
+                            + "(only option-less types like minecraft:end_rod work); trail disabled",
+                            id, trail);
+                }
+            }
+        }
         ext.spread = optDouble(json, "spread", ext.spread);
         ext.headshotMultiplier = optDouble(json, "headshot_multiplier", ext.headshotMultiplier);
         if (json.has("gun_type")) {
