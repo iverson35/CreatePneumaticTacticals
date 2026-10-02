@@ -153,6 +153,10 @@ public final class ModCreativeTabs {
         }
         ItemStack gun = new ItemStack(ModItems.GUN.get());
         GunNbt.writeModules(gun, installed, Map.of());
+        // the receiver names the gun, exactly like a bench assembly does (the
+        // sample used to come out as the bare "Gun" while every real one
+        // carried the receiver's name)
+        GunNbt.setGunName(gun, receiver.gunName);
         // the sample mirrors a bench-assembled gun, fire mode included: a gun
         // without the tag used to behave full-auto while its HUD drew the
         // semi glyph (the client read null as "not semi"), until the player

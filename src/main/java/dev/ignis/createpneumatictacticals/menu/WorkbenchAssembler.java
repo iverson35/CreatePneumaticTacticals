@@ -96,9 +96,7 @@ public final class WorkbenchAssembler {
         // paintable too — the receiver body pass reads the gun-side copy)
         dev.ignis.createpneumatictacticals.gun.GunNbt.setPaint(newGun, receiverDef.id,
                 dev.ignis.createpneumatictacticals.item.ModuleItem.getPaint(held));
-        if (receiverDef.gunName != null) {
-            newGun.setHoverName(net.minecraft.network.chat.Component.translatable(receiverDef.gunName));
-        }
+        dev.ignis.createpneumatictacticals.gun.GunNbt.setGunName(newGun, receiverDef.gunName);
         if (receiverDef.fireModes != null && !receiverDef.fireModes.isEmpty()) {
             dev.ignis.createpneumatictacticals.gun.GunNbt.setFireMode(newGun, receiverDef.fireModes.get(0));
         }

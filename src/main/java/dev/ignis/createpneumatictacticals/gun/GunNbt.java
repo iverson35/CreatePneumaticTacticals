@@ -354,6 +354,19 @@ public final class GunNbt {
         paints.remove(moduleId.toString());
         if (paints.isEmpty()) root.remove(KEY_PAINTS);
     }
+
+    /**
+     * Applies a receiver's {@code gun_name} (a translation key) as the stack's
+     * custom name — the one naming step an assembled gun gets, so every surface
+     * that shows one (bench output, creative sample, JEI disassembly input)
+     * must call this. Null leaves the stack alone: an unnamed receiver keeps
+     * the plain item name.
+     */
+    public static void setGunName(ItemStack stack, @Nullable String gunName) {
+        if (gunName != null) {
+            stack.setHoverName(net.minecraft.network.chat.Component.translatable(gunName));
+        }
+    }
     // --- assembly validation ---
 
     /**

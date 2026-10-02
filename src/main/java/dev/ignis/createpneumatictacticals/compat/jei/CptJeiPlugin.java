@@ -58,6 +58,9 @@ public final class CptJeiPlugin implements IModPlugin {
             dev.ignis.createpneumatictacticals.gun.GunNbt.writeModules(bareGun,
                     java.util.Map.of(dev.ignis.createpneumatictacticals.module.ModuleType.RECEIVER, def),
                     java.util.Map.of());
+            // the ingredient is a receiver-only gun, so it carries the same
+            // receiver-derived name a real one gets
+            dev.ignis.createpneumatictacticals.gun.GunNbt.setGunName(bareGun, def.gunName);
             display.add(new ShapelessRecipe(
                     new ResourceLocation(CreatePneumaticTacticals.MODID,
                             "jei_receiver_disassembly/" + def.id.getNamespace() + "_" + def.id.getPath()),
