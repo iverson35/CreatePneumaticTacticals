@@ -79,21 +79,6 @@ public final class MachineLayout {
     }
 
     /**
-     * How long the drive shaft's stub is drawn, in pixels, measured inward from
-     * the cell boundary. The model leaves only a shallow recess at each end for
-     * it — 0.5 px at the extension end (the body cube's face sits at model
-     * z -23.5) and 1 px at the master end (a 1 px plate at model z 6..7 with a
-     * 1 px open gap behind it) — so the stub is cut to this allowance instead
-     * of Create's full 8 px half-shaft: anything longer would run through those
-     * plates into the machine's hollow interior, where the open working bay on
-     * top would show it. One pixel fills the master end's recess exactly — the
-     * same nub a Create drill shows behind its casing — and shows half of
-     * itself at the extension end, where it meets an attached shaft. This is
-     * also the depth the painted socket on the end faces reads as.
-     */
-    public static final float SHAFT_STUB_PX = 1f;
-
-    /**
      * Master position of whichever half {@code hitPos} is: the block entity,
      * the recipe and the door state all live on the master, so both halves'
      * right-clicks resolve to it.

@@ -1,0 +1,24 @@
+{
+	"parent": "block/block",
+	"textures": {
+		"0": "create:block/axis",
+		"1": "create:block/axis_top",
+		"particle": "create:block/axis"
+	},
+	"elements": [
+		{
+			"comment": "Create's shaft_half sliced down to its outer pixel (z 15..16 instead of 8..16); the side faces sample a 1-texel strip of the axis sprite, which is uniform along the shaft, so any strip reads identical",
+			"name": "Axis",
+			"from": [6, 6, 15],
+			"to": [10, 10, 16],
+			"faces": {
+				"north": {"uv": [6, 6, 10, 10], "rotation": 180, "texture": "#1"},
+				"east": {"uv": [6, 0, 10, 1], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [6, 6, 10, 10], "texture": "#1"},
+				"west": {"uv": [6, 0, 10, 1], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [6, 0, 10, 1], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [6, 7, 10, 8], "texture": "#0"}
+			}
+		}
+	]
+}

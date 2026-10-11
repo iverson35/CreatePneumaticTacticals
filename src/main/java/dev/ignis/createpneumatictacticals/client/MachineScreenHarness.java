@@ -87,6 +87,8 @@ public final class MachineScreenHarness {
     /** kinetic pre-check phase: 1 = motor stopped, 2 = 32 RPM, 3 = 128 RPM, 4 = drive screenshot */
     private static int drivePhase;
     private static int driveTicks;
+    /** camera the shots want; re-issued every tick so collision push-out cannot drift it */
+    private static int aimKind = -1;
     private static float driveProgress;
     private static volatile boolean setupDone;
     private static volatile BlockPos master;
@@ -283,8 +285,10 @@ public final class MachineScreenHarness {
     private static void grabNamed(Minecraft mc, WeaponModuleMachineBlockEntity be, String tag) {
         String name = "cpt-harness-" + tag + ".png";
         Screenshot.grab(mc.gameDirectory, name, mc.getMainRenderTarget(), message -> { });
-        LOGGER.info("[harness] {} tick {} crafting={} recipe={} rawFill={}", name, ticks,
-                be.isCrafting(), be.getRecipeId(), String.format("%.2f", be.materialsFraction()));
+        net.minecraft.world.phys.Vec3 eye = mc.player == null ? null : mc.player.getEyePosition();
+        LOGGER.info("[harness] {} tick {} crafting={} recipe={} rawFill={} eye={}", name, ticks,
+                be.isCrafting(), be.getRecipeId(), String.format("%.2f", be.materialsFraction()),
+                eye == null ? "?" : String.format("%.2f/%.2f/%.2f", eye.x, eye.y, eye.z));
     }
 
     private static void setUp(Minecraft mc) {
@@ -293,6 +297,8 @@ public final class MachineScreenHarness {
         ServerPlayer player = server.getPlayerList().getPlayers().stream().findFirst().orElse(null);
         if (player == null) return;
         player.setNoGravity(true);
+        // the crosshair sits exactly where these shots aim; the HUD would cover the subject
+        mc.options.hideGui = true;
         player.getAbilities().mayfly = true;
         player.getAbilities().flying = true;
         player.onUpdateAbilities();
@@ -441,13 +447,17 @@ public final class MachineScreenHarness {
             }
             default -> {
                 // the drive itself: the shaft leaving the machine's right end
+                server.execute(() -> aim(mc, aimKind));
                 if (driveTicks == 4) {
                     grabNamed(mc, be, "drive-shaft-motor");
                     server.execute(() -> aim(mc, 5));
                 } else if (driveTicks == 10) {
                     grabNamed(mc, be, "drive-shaft-other-end");
+                    server.execute(() -> aim(mc, 6));
+                } else if (driveTicks == 16) {
+                    grabNamed(mc, be, "shaft-stub-side");
                     server.execute(() -> aim(mc, 2));
-                } else if (driveTicks > 14) {
+                } else if (driveTicks > 20) {
                     drivePhase = 0;
                     driveTicks = 0;
                 }
@@ -540,11 +550,13 @@ public final class MachineScreenHarness {
         }
         if (shaftPos != null) level.setBlock(shaftPos, Blocks.AIR.defaultBlockState(), 3);
         if (motorPos != null) level.setBlock(motorPos, Blocks.AIR.defaultBlockState(), 3);
+        Minecraft.getInstance().options.hideGui = false;
         LOGGER.info("[harness] removed the harness machine at {} and its drive", pos);
     }
 
     /** camera: close-up on the monitor plate, or a three-quarter view of the machine (server thread) */
     private static void aim(Minecraft mc, int kind) {
+        aimKind = kind;
         ServerPlayer player = mc.getSingleplayerServer().getPlayerList().getPlayers().stream().findFirst().orElse(null);
         BlockPos pos = master;
         if (player == null || pos == null) return;
@@ -579,13 +591,22 @@ public final class MachineScreenHarness {
                     slave.getZ() + 0.5 + out.getStepZ() * 0.5);
             eye = target.add(out.getStepX() * 2.3, 0.55, out.getStepZ() * 2.3);
         } else if (kind == 5) {
-            // the machine's far end: the master's own stub, sitting in the 1 px gap
-            // behind the master end's back plate (model z 6..7)
+            // the machine's far end: the master's own stub, filling the 1 px
+            // recess between the back plate (model z 6..7) and the cell edge (z 8)
             Direction back = MachineLayout.shaftFace(facing).getOpposite();
             target = new Vec3(pos.getX() + 0.5 + back.getStepX() * 0.5, pos.getY() + 0.5,
                     pos.getZ() + 0.5 + back.getStepZ() * 0.5);
             eye = target.add(back.getStepX() * 1.6 + facing.getStepX() * 0.7, 0.45,
                     back.getStepZ() * 1.6 + facing.getStepZ() * 0.7);
+        } else if (kind == 6) {
+            // the master end's stub close up and steeply off axis: its 1 px of
+            // side sticks out past the end plate and is the only place the
+            // stub's own sprite is visible at all
+            Direction back = MachineLayout.shaftFace(facing).getOpposite();
+            target = new Vec3(pos.getX() + 0.5 + back.getStepX() * 0.5, pos.getY() + 0.5,
+                    pos.getZ() + 0.5 + back.getStepZ() * 0.5);
+            eye = target.add(back.getStepX() * 0.85 + facing.getStepX() * 1.4, 0.30,
+                    back.getStepZ() * 0.85 + facing.getStepZ() * 1.4);
         } else {
             eye = plate.add(facing.getStepX() * 2.6 - ccw.getStepX() * 1.7, 0.9,
                     facing.getStepZ() * 2.6 - ccw.getStepZ() * 1.7);

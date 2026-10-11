@@ -60,6 +60,18 @@ public final class ClientModEvents {
         dev.ignis.createpneumatictacticals.client.render.PodItemModel.wrap(event.getModels());
     }
 
+    /**
+     * The machine's drive-shaft stub is a Flywheel partial model
+     * ({@link dev.ignis.createpneumatictacticals.client.render.WeaponModuleMachineRenderer#SHAFT_STUB_MODEL}):
+     * {@code PartialModel.of} only looks models up in the baked registry, it
+     * never registers them for loading — an unregistered location bakes as the
+     * missing model, a full-block purple cube where the shaft should be.
+     */
+    @SubscribeEvent
+    public static void onRegisterAdditionalModels(net.minecraftforge.client.event.ModelEvent.RegisterAdditional event) {
+        event.register(dev.ignis.createpneumatictacticals.client.render.WeaponModuleMachineRenderer.SHAFT_STUB_MODEL);
+    }
+
     @SubscribeEvent
     public static void onRegisterParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
         // both types are registered as plain SimpleParticleType (see ModParticles),
