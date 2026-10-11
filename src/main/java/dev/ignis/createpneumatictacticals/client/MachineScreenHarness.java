@@ -81,6 +81,13 @@ public final class MachineScreenHarness {
     /** pre-job phase: recipe chosen, materials arriving one by one, door still open */
     private static boolean loading;
     private static int loadTicks;
+    /** the harness's drive: the shaft block and the creative motor on the machine's right end */
+    private static BlockPos shaftPos;
+    private static BlockPos motorPos;
+    /** kinetic pre-check phase: 1 = motor stopped, 2 = 32 RPM, 3 = 128 RPM, 4 = drive screenshot */
+    private static int drivePhase;
+    private static int driveTicks;
+    private static float driveProgress;
     private static volatile boolean setupDone;
     private static volatile BlockPos master;
     /** the machine this harness placed, removed again when the run ends */
@@ -134,6 +141,10 @@ public final class MachineScreenHarness {
 
         if (loading) {
             loadingTick(mc, be);
+            return;
+        }
+        if (drivePhase > 0) {
+            driveCheck(mc, server, be);
             return;
         }
 
@@ -192,6 +203,7 @@ public final class MachineScreenHarness {
             case 27 -> server.execute(() -> aim(mc, 0));
             case 29 -> grabNamed(mc, be, "load-02b-monitor-behind-wall");
             case 31 -> server.execute(MachineScreenHarness::dropWall);
+            case 32 -> server.execute(() -> setMotorSpeed(server.overworld(), 0f));
             case 33 -> server.execute(() -> fillRest(mc));
             case 37 -> server.execute(() -> aim(mc, 2));
             // still scene, door open, nothing crafting: consecutive frames for the leak check
@@ -201,7 +213,11 @@ public final class MachineScreenHarness {
             case 43 -> grabNamed(mc, be, "load-04-clamp");
             case 44 -> server.execute(() -> closeDoor(mc));
             default -> {
-                if (loadTicks > 47) loading = false;
+                if (loadTicks > 47) {
+                    loading = false;
+                    drivePhase = 1;   // kinetic pre-check, then the progress-driven shots
+                    driveTicks = 0;
+                }
             }
         }
     }
@@ -338,7 +354,119 @@ public final class MachineScreenHarness {
             LOGGER.info("[harness] machine at {} already running: progress {}", master,
                     machine.craftProgress(0f));
         }
+        // the drive: a Create shaft on the machine's right end and a creative
+        // motor behind it, stopped for now — the pre-check proves the job waits
+        Direction out = MachineLayout.shaftFace(facing);
+        shaftPos = ext.relative(out);
+        motorPos = shaftPos.relative(out);
+        level.setBlock(shaftPos, com.simibubi.create.AllBlocks.SHAFT.getDefaultState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS, out.getAxis()), 3);
+        level.setBlock(motorPos, com.simibubi.create.AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                .setValue(com.simibubi.create.content.kinetics.motor.CreativeMotorBlock.FACING, out.getOpposite()), 3);
+        LOGGER.info("[harness] drive: shaft {} axis {}, motor {} facing {}", shaftPos, out.getAxis(),
+                motorPos, out.getOpposite());
         setupDone = true;
+    }
+
+    /**
+     * Run the harness's creative motor at {@code rpm}; 0 stops it. Server thread.
+     * The machine must freeze where it is while the motor is stopped.
+     */
+    private static void setMotorSpeed(ServerLevel level, float rpm) {
+        if (motorPos == null) return;
+        if (level.getBlockEntity(motorPos)
+                instanceof com.simibubi.create.content.kinetics.motor.CreativeMotorBlockEntity motor) {
+            // the value box behaviour only exists once the entity has ticked
+            if (motor.generatedSpeed == null) return;
+            motor.generatedSpeed.setValue(Math.round(rpm));
+            LOGGER.info("[harness] motor {} -> {} RPM", motorPos, Math.round(rpm));
+        } else {
+            LOGGER.warn("[harness] no motor at {}", motorPos);
+        }
+    }
+
+    /**
+     * Kinetic pre-check, run once the door has shut and the job is live: the
+     * job must not move while the motor is stopped, then advance one work tick
+     * per tick at 32 RPM and four times that at 128. That is the speed link and
+     * the "no rotation, no progress" rule, measured on the real block entity —
+     * the rate is compared against the same law the entity computes
+     * ({@code |RPM| / 32} work ticks per tick, i.e. {@code |RPM| / 32 / total}
+     * of the bar per tick).
+     */
+    private static void driveCheck(Minecraft mc, MinecraftServer server, WeaponModuleMachineBlockEntity be) {
+        driveTicks++;
+        switch (drivePhase) {
+            case 1 -> {
+                if (driveTicks == 2) {
+                    driveProgress = be.craftProgress(0f);
+                } else if (driveTicks == 42) {
+                    float now = be.craftProgress(0f);
+                    LOGGER.info("[harness] kinetic STOPPED: speed={} rpm, progress {} -> {} — {}",
+                            be.getSpeed(), fmt(driveProgress), fmt(now),
+                            Math.abs(now - driveProgress) < 1e-4f ? "FROZEN OK" : "WRONG: job moved");
+                    drivePhase = 2;
+                    driveTicks = 0;
+                    server.execute(() -> setMotorSpeed(server.overworld(), 32f));
+                }
+            }
+            case 2 -> {
+                if (driveTicks == 12) {
+                    LOGGER.info("[harness] kinetic 32 RPM: machine speed={} rpm, rate={} work ticks/tick, "
+                                    + "stress impact={} SU per RPM ({} SU at this speed)",
+                            be.getSpeed(), fmt(be.craftRate()), be.calculateStressApplied(),
+                            fmt(be.calculateStressApplied() * Math.abs(be.getSpeed())));
+                    driveProgress = be.craftProgress(0f);
+                } else if (driveTicks == 52) {
+                    float now = be.craftProgress(0f);
+                    LOGGER.info("[harness] kinetic 32 RPM: progress {} -> {} over 40 ticks — {}",
+                            fmt(driveProgress), fmt(now), rateVerdict(now - driveProgress, 40, 32f, be));
+                    drivePhase = 3;
+                    driveTicks = 0;
+                    server.execute(() -> setMotorSpeed(server.overworld(), 128f));
+                }
+            }
+            case 3 -> {
+                if (driveTicks == 12) {
+                    driveProgress = be.craftProgress(0f);
+                } else if (driveTicks == 52) {
+                    float now = be.craftProgress(0f);
+                    LOGGER.info("[harness] kinetic 128 RPM: progress {} -> {} over 40 ticks — {}",
+                            fmt(driveProgress), fmt(now), rateVerdict(now - driveProgress, 40, 128f, be));
+                    drivePhase = 4;
+                    driveTicks = 0;
+                    server.execute(() -> setMotorSpeed(server.overworld(), 32f));
+                    server.execute(() -> aim(mc, 4));
+                }
+            }
+            default -> {
+                // the drive itself: the shaft leaving the machine's right end
+                if (driveTicks == 4) {
+                    grabNamed(mc, be, "drive-shaft-motor");
+                    server.execute(() -> aim(mc, 5));
+                } else if (driveTicks == 10) {
+                    grabNamed(mc, be, "drive-shaft-other-end");
+                    server.execute(() -> aim(mc, 2));
+                } else if (driveTicks > 14) {
+                    drivePhase = 0;
+                    driveTicks = 0;
+                }
+            }
+        }
+    }
+
+    /** did {@code delta} of the bar move as the law says it should over {@code ticks}? */
+    private static String rateVerdict(float delta, int ticks, float rpm, WeaponModuleMachineBlockEntity be) {
+        if (be.craftProgress(0f) >= 1f) return "job finished, not measurable";
+        ModuleCraftingRecipe recipe = be.currentRecipe();
+        if (recipe == null) return "no recipe";
+        float total = recipe.getIngredientList().size() * WeaponModuleMachineBlockEntity.TICKS_PER_MATERIAL;
+        float want = rpm / WeaponModuleMachineBlockEntity.BASELINE_RPM * ticks / total;
+        return Math.abs(delta - want) < 0.02f ? "RATE OK" : String.format("WRONG: wanted %.4f", want);
+    }
+
+    private static String fmt(float v) {
+        return String.format("%.4f", v);
     }
 
     /**
@@ -410,7 +538,9 @@ public final class MachineScreenHarness {
                 MachineLayout.slavePos(pos, facing).above()}) {
             level.setBlock(cell, Blocks.AIR.defaultBlockState(), 3);
         }
-        LOGGER.info("[harness] removed the harness machine at {}", pos);
+        if (shaftPos != null) level.setBlock(shaftPos, Blocks.AIR.defaultBlockState(), 3);
+        if (motorPos != null) level.setBlock(motorPos, Blocks.AIR.defaultBlockState(), 3);
+        LOGGER.info("[harness] removed the harness machine at {} and its drive", pos);
     }
 
     /** camera: close-up on the monitor plate, or a three-quarter view of the machine (server thread) */
@@ -441,6 +571,21 @@ public final class MachineScreenHarness {
                     pos.getZ() + 0.5 + facing.getStepZ() * 0.53);
             target = clamp.add(0.0, 0.16, 0.0);
             eye = target.add(facing.getStepX() * 0.95, 0.30, facing.getStepZ() * 0.95);
+        } else if (kind == 4) {
+            // the drive end: the shaft leaving the machine's right end, motor behind it
+            Direction out = MachineLayout.shaftFace(facing);
+            BlockPos slave = MachineLayout.slavePos(pos, facing);
+            target = new Vec3(slave.getX() + 0.5 + out.getStepX() * 0.5, pos.getY() + 0.5,
+                    slave.getZ() + 0.5 + out.getStepZ() * 0.5);
+            eye = target.add(out.getStepX() * 2.3, 0.55, out.getStepZ() * 2.3);
+        } else if (kind == 5) {
+            // the machine's far end: the master's own stub, sitting in the 1 px gap
+            // behind the master end's back plate (model z 6..7)
+            Direction back = MachineLayout.shaftFace(facing).getOpposite();
+            target = new Vec3(pos.getX() + 0.5 + back.getStepX() * 0.5, pos.getY() + 0.5,
+                    pos.getZ() + 0.5 + back.getStepZ() * 0.5);
+            eye = target.add(back.getStepX() * 1.6 + facing.getStepX() * 0.7, 0.45,
+                    back.getStepZ() * 1.6 + facing.getStepZ() * 0.7);
         } else {
             eye = plate.add(facing.getStepX() * 2.6 - ccw.getStepX() * 1.7, 0.9,
                     facing.getStepZ() * 2.6 - ccw.getStepZ() * 1.7);

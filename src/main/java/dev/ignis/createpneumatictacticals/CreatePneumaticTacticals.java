@@ -36,6 +36,15 @@ public class CreatePneumaticTacticals {
     }
 
     private void commonSetup(net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) {
-        event.enqueueWork(dev.ignis.createpneumatictacticals.module.ModuleManager::loadFromGunPacks);
+        event.enqueueWork(() -> {
+            dev.ignis.createpneumatictacticals.module.ModuleManager.loadFromGunPacks();
+            // Create refuses to take stress impacts for non-Create blocks through its
+            // own config, so an addon registers straight into the registry. The unit is
+            // SU per RPM: the machine is in the same class as Create's own drill / saw
+            // / millstone (4.0), and the actual draw is 4 x |RPM|, computed by the network.
+            com.simibubi.create.api.stress.BlockStressValues.IMPACTS.register(
+                    dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_MODULE_MACHINE_TOOL.get(),
+                    () -> 4.0);
+        });
     }
 }

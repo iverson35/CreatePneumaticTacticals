@@ -129,3 +129,4 @@ client_log*.txt
 # Python bytecode cache
 __pycache__/
 /.ref/
+/tmp/

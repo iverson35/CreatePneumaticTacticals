@@ -1,5 +1,6 @@
 package dev.ignis.createpneumatictacticals.block.entity;
 
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.block.ModBlocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -18,6 +19,20 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<ModuleWorkbenchBlockEntity>> MODULE_WORKBENCH =
             BLOCK_ENTITIES.register("module_workbench", () -> BlockEntityType.Builder
                     .of(ModuleWorkbenchBlockEntity::new, ModBlocks.MODULE_WORKBENCH.get())
+                    .build(null));
+
+    /**
+     * The extension half of the machine tool is a plain Create kinetic block:
+     * it carries no machine state, it only relays rotation from a shaft
+     * attached to the machine's right end through to the master's block entity
+     * one cell further in. {@link KineticBlockEntity} is concrete, so no
+     * subclass is needed.
+     */
+    public static final RegistryObject<BlockEntityType<KineticBlockEntity>> WEAPON_MODULE_MACHINE_EXTENSION =
+            BLOCK_ENTITIES.register("weapon_module_machine_extension", () -> BlockEntityType.Builder
+                    .of((pos, state) -> new KineticBlockEntity(
+                                    ModBlockEntities.WEAPON_MODULE_MACHINE_EXTENSION.get(), pos, state),
+                            ModBlocks.WEAPON_MODULE_MACHINE_TOOL_EXTENSION.get())
                     .build(null));
 
     public static final RegistryObject<BlockEntityType<ModuleTunerBlockEntity>> MODULE_TUNER =

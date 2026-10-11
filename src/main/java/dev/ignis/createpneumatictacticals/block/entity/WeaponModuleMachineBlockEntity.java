@@ -2,7 +2,6 @@ package dev.ignis.createpneumatictacticals.block.entity;
 
 import com.mojang.logging.LogUtils;
 import dev.ignis.createpneumatictacticals.block.MachineLayout;
-import dev.ignis.createpneumatictacticals.block.ModBlocks;
 import dev.ignis.createpneumatictacticals.block.WeaponModuleMachineBlock;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
@@ -14,11 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -28,8 +23,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -38,7 +31,7 @@ import java.util.List;
 
 /**
  * State of the weapon module machine tool: selected recipe, the fixed-size
- * material station, the craft timer and the produced module.
+ * material station, the job's progress and the produced module.
  *
  * <h2>Slots</h2>
  * Nine material slots (one per recipe ingredient, one item each — an
@@ -51,25 +44,40 @@ import java.util.List;
  * feeds exactly one item per slot per operation — a hopper fills every station
  * one item at a time.
  *
+ * <h2>Kinetics</h2>
+ * The machine is a Create kinetic consumer: a shaft on the machine's length
+ * axis (its right end, see {@link MachineLayout#shaftFace}) drives it. The
+ * block is an {@code IRotate} whose shaft faces are the two ends of that axis,
+ * and this entity is a {@link KineticBlockEntity} whose stress impact is
+ * registered as {@code SU per RPM} — so the SU it eats scales with the speed it
+ * runs at, exactly like Create's own machines.
+ *
  * <h2>Progress</h2>
- * Only {@code CraftStart} (a game time stamp) and {@code CraftDuration} are
- * synced; the client interpolates its own progress from the game time
- * ({@link #craftProgress}), so a 40 second job is two integers on the wire, not
- * one packet per tick. Everything else syncs on change ({@link #setChanged}).
+ * A job is a fixed budget of work ticks ({@link #TICKS_PER_MATERIAL} per
+ * ingredient, i.e. the time the machine took before it was kinetic) and each
+ * tick adds {@link #craftRate()} — {@code |RPM| / 32}, so one work tick per
+ * tick at 32 RPM. No speed, no progress: the job freezes where it is and
+ * resumes when the shaft turns again, which is also what happens when the
+ * network is overstressed ({@code getSpeed()} reports 0). The counter and the
+ * budget are synced; the client advances its own copy with the same rate from
+ * the synced RPM, so the render is frame-smooth without a packet per tick.
  */
-public class WeaponModuleMachineBlockEntity extends BlockEntity
+public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.kinetics.base.KineticBlockEntity
         implements WorldlyContainer, net.minecraft.world.MenuProvider {
 
     public static final int MATERIAL_SLOTS = 9;
     public static final int OUTPUT_SLOT = MATERIAL_SLOTS;
     public static final int SLOTS = MATERIAL_SLOTS + 1;
 
-    /** one material item = 60 ticks of machining (a 4 ingredient recipe takes 12 s) */
+    /** one material item = 60 work ticks of machining at 1x speed (a 4 ingredient recipe takes 12 s at 32 RPM) */
     public static final int TICKS_PER_MATERIAL = 60;
 
+    /** the RPM that means "1x": one work tick per tick, Create's conventional baseline speed */
+    public static final float BASELINE_RPM = 32f;
+
     private static final String TAG_RECIPE = "Recipe";
-    private static final String TAG_CRAFT_START = "CraftStart";
-    private static final String TAG_CRAFT_DURATION = "CraftDuration";
+    private static final String TAG_CRAFT_TICKS = "CraftTicks";
+    private static final String TAG_CRAFT_TOTAL = "CraftTotal";
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -84,9 +92,9 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
     private ResourceLocation recipeId;
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
 
-    /** crafting window, -1 = idle */
-    private long craftStart = -1;
-    private int craftDuration = 0;
+    /** work ticks done in the running job, and the job's total budget; {@code craftTotal == 0} = idle */
+    private float craftTicks = 0f;
+    private int craftTotal = 0;
 
     // --- client-side door interpolation (never saved, never synced: which way
     // the door slides is a render detail of the OPEN block state) ---
@@ -111,10 +119,15 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
         super(ModBlockEntities.WEAPON_MODULE_MACHINE.get(), pos, state);
     }
 
+    /** a bare kinetic block: no Create behaviours (no brackets, no cogs, no belts) */
+    @Override
+    public void addBehaviours(java.util.List<com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour> behaviours) {
+    }
+
     /** the machine's model is two cells long: draw from the neighbouring cells too */
     @Override
-    public net.minecraft.world.phys.AABB getRenderBoundingBox() {
-        return super.getRenderBoundingBox().inflate(1.0);
+    protected net.minecraft.world.phys.AABB createRenderBoundingBox() {
+        return new net.minecraft.world.phys.AABB(worldPosition).inflate(1.0);
     }
 
     // --- recipe ---
@@ -186,19 +199,28 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
     // --- material stations ---
 
     public boolean isCrafting() {
-        return craftStart >= 0;
+        return craftTotal > 0;
     }
 
-    /** start tick of the running job ({@code -1} while idle); seeds the per-job motion */
-    public long craftStart() {
-        return craftStart;
+    /**
+     * Work ticks per tick at the current speed: 1 at {@link #BASELINE_RPM}
+     * (32 RPM), 0 when the machine is not turning — which includes an
+     * overstressed network, where {@code getSpeed()} reports 0 as well.
+     */
+    public float craftRate() {
+        return Math.abs(getSpeed()) / BASELINE_RPM;
     }
 
-    /** 0..1 machining progress; 0 while idle */
+    /**
+     * 0..1 machining progress; 0 while idle. The server's counter is the
+     * authority; the client runs its own copy at the same rate (see the class
+     * comment), and {@code partialTick} of it is added so the render stays
+     * smooth between the 20 Hz ticks.
+     */
     public float craftProgress(float partialTick) {
-        if (craftStart < 0 || craftDuration <= 0 || level == null) return 0f;
-        float p = (level.getGameTime() + partialTick - craftStart) / (float) craftDuration;
-        return net.minecraft.util.Mth.clamp(p, 0f, 1f);
+        if (craftTotal <= 0) return 0f;
+        float ticks = craftTicks + partialTick * craftRate();
+        return net.minecraft.util.Mth.clamp(ticks / craftTotal, 0f, 1f);
     }
 
     public boolean doorOpen() {
@@ -271,15 +293,30 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
         if (isCrafting() || level == null) return;
         ModuleCraftingRecipe recipe = currentRecipe();
         if (recipe == null || !materialsComplete()) return;
-        craftStart = level.getGameTime();
-        craftDuration = Math.max(1, recipe.getIngredientList().size() * TICKS_PER_MATERIAL);
+        craftTicks = 0f;
+        craftTotal = Math.max(1, recipe.getIngredientList().size() * TICKS_PER_MATERIAL);
         setChanged();
     }
 
-    public static void serverTick(Level level, BlockPos pos, BlockState state,
-                                  WeaponModuleMachineBlockEntity machine) {
-        if (machine.craftStart >= 0 && level.getGameTime() - machine.craftStart >= machine.craftDuration) {
-            machine.finishCraft();
+    /**
+     * The machine's own tick: Create's kinetic plumbing (network, effects,
+     * behaviours) plus the job. A job advances only while the machine is being
+     * rotated — no speed, no progress — and the counter is never reset by a
+     * stop, so the job resumes exactly where it froze. Both sides run this:
+     * the client's counter mirrors the server's from the synced RPM.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (craftTotal <= 0) return;
+        if (craftTicks < craftTotal) {
+            float rate = craftRate();
+            if (rate <= 0f) return;
+            craftTicks = Math.min(craftTotal, craftTicks + rate);
+            if (level.isClientSide) return;
+            if (craftTicks >= craftTotal) finishCraft();
+        } else if (!level.isClientSide) {
+            finishCraft(); // held at 100% until the product is taken out
         }
     }
 
@@ -292,8 +329,8 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
     private void finishCraft() {
         ModuleCraftingRecipe recipe = currentRecipe();
         if (recipe == null) {
-            craftStart = -1;
-            craftDuration = 0;
+            craftTicks = 0f;
+            craftTotal = 0;
             setChanged();
             return;
         }
@@ -306,8 +343,8 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
         List<Ingredient> ingredients = recipe.getIngredientList();
         for (int i = 0; i < ingredients.size(); i++) items.set(i, ItemStack.EMPTY);
         items.set(OUTPUT_SLOT, result);
-        craftStart = -1;
-        craftDuration = 0;
+        craftTicks = 0f;
+        craftTotal = 0;
         setChanged();
     }
 
@@ -450,12 +487,12 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
     // --- persistence / sync ---
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void write(CompoundTag tag, boolean clientPacket) {
+        super.write(tag, clientPacket);
         if (recipeId != null) tag.putString(TAG_RECIPE, recipeId.toString());
         ContainerHelper.saveAllItems(tag, this.items);
-        tag.putLong(TAG_CRAFT_START, this.craftStart);
-        tag.putInt(TAG_CRAFT_DURATION, this.craftDuration);
+        tag.putFloat(TAG_CRAFT_TICKS, this.craftTicks);
+        tag.putInt(TAG_CRAFT_TOTAL, this.craftTotal);
     }
 
     /**
@@ -478,17 +515,16 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void read(CompoundTag tag, boolean clientPacket) {
+        super.read(tag, clientPacket);
         // a synced tag always carries the machine's full state: a missing entry
         // means "empty", never "keep what the client had"
         this.recipeId = tag.contains(TAG_RECIPE, CompoundTag.TAG_STRING)
                 ? ResourceLocation.tryParse(tag.getString(TAG_RECIPE)) : null;
         this.items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(tag, this.items);
-        this.craftStart = tag.contains(TAG_CRAFT_START, CompoundTag.TAG_LONG)
-                ? tag.getLong(TAG_CRAFT_START) : -1;
-        this.craftDuration = tag.getInt(TAG_CRAFT_DURATION);
+        this.craftTicks = tag.getFloat(TAG_CRAFT_TICKS);
+        this.craftTotal = tag.getInt(TAG_CRAFT_TOTAL);
         // the door is an interpolated render state: a fresh load jumps straight
         // to the target instead of animating from a pose the player never saw
         this.doorAnimValue = getBlockState().hasProperty(WeaponModuleMachineBlock.OPEN)
@@ -505,38 +541,16 @@ public class WeaponModuleMachineBlockEntity extends BlockEntity
         this.mechEaseStart = Double.NEGATIVE_INFINITY;
     }
 
-    @Override
-    public CompoundTag getUpdateTag() {
-        return this.saveWithoutMetadata();
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getUpdatePacket() {
-        return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    @Override
-    public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket pkt) {
-        CompoundTag tag = pkt.getTag();
-        this.load(tag != null ? tag : new CompoundTag());
-    }
-
-    @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        this.load(tag);
-    }
-
     /**
      * The machine renders in world and its recipe/progress live outside the
-     * menu, so every state change is pushed to tracking clients. Progress
-     * itself is interpolated client-side (see the class comment): this fires on
-     * insert / eject / start / finish / recipe change only.
+     * menu, so every state change is pushed to tracking clients (Create's
+     * {@code SyncedBlockEntity#sendData}). The job counter is not pushed per
+     * tick: clients advance their own copy from the synced RPM, so this fires
+     * on insert / eject / start / finish / recipe change / speed change only.
      */
     @Override
     public void setChanged() {
         super.setChanged();
-        if (this.level != null && !this.level.isClientSide) {
-            this.level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
-        }
+        sendData();
     }
 }

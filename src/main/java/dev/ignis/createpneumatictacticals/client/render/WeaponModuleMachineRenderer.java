@@ -5,16 +5,22 @@ import com.mojang.logging.LogUtils;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import com.simibubi.create.AllPartialModels;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import dev.ignis.createpneumatictacticals.block.MachineLayout;
 import dev.ignis.createpneumatictacticals.block.WeaponModuleMachineBlock;
 import dev.ignis.createpneumatictacticals.block.entity.WeaponModuleMachineBlockEntity;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
 import dev.ignis.createpneumatictacticals.recipe.ModuleCraftingRecipe;
+import net.createmod.catnip.render.CachedBuffers;
+import net.createmod.catnip.render.SuperBufferFactory;
+import net.createmod.catnip.render.SuperByteBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -28,6 +34,7 @@ import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -105,8 +112,10 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
     private static final float SWEEPS_PER_PASS = 3f;
     /** mechanism run-in / settle easing length in ticks */
     private static final float MECH_EASE_TICKS = 10f;
-    /** bit spin about its own axis, degrees per tick (converted to radians at use) */
+    /** bit spin about its own axis, degrees per tick at the 32 RPM baseline (converted to radians at use) */
     private static final float SPIN_DEG_PER_TICK = 45f;
+    /** shaft radians -> bit radians: the bit is geared up from the shaft's 9.6 deg/tick at 32 RPM */
+    private static final float SPIN_GEAR = SPIN_DEG_PER_TICK / 9.6f;
 
     /** workpiece bounding box cap in pixels: longer modules are scaled down to fit the clamp */
     private static final float WORKPIECE_MAX_Z_PX = 10f;
@@ -138,6 +147,20 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
     /** {@link #WRAP_TEXTURE}'s shorter side in texels, read once (0 until read) */
     private static float wrapTexels;
 
+    /**
+     * The drive shaft's stub buffers, one per world face the stub can point at.
+     * The stub's pose — Create's {@code rotateToFace} plus the squash that cuts
+     * the 8 px half-shaft down to {@link MachineLayout#SHAFT_STUB_PX} — is baked
+     * into the vertices, and none of it depends on the block state (a partial
+     * model carries no variants, tints or culling), so one buffer per face
+     * serves every machine and every frame. Not
+     * {@code CachedBuffers.partialDirectional}: that cache is keyed by
+     * (direction, partial) alone, so a Create machine drawing the same
+     * {@code SHAFT_HALF} toward the same face would either take this squash or
+     * hand out its own un-squashed 8 px shaft, depending on who baked first.
+     */
+    private static final Map<Direction, SuperByteBuffer> STUB_BUFFERS = new EnumMap<>(Direction.class);
+
     public WeaponModuleMachineRenderer(BlockEntityRendererProvider.Context context) {
     }
 
@@ -147,6 +170,11 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
             COLOR_CACHE.clear();
         }
         wrapTexels = 0f;
+        // the stub buffers hold sprite UVs from the old atlas
+        for (SuperByteBuffer stub : STUB_BUFFERS.values()) {
+            stub.delete();
+        }
+        STUB_BUFFERS.clear();
         // the monitor pictures were rendered from the old textures/atlas
         for (MachineScreenTexture picture : SCREEN_PICTURES.values()) {
             picture.destroy();
@@ -160,6 +188,11 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
         BakedGeoModel baked = MachineModelDraw.bakedModel();
         if (baked == null) return;
         BlockState state = machine.getBlockState();
+
+        // the drive shaft is Create's own model: it lives in block-local space,
+        // not in the machine model's mirrored one, so it is drawn before the
+        // pose is turned into model space
+        drawDriveShaft(machine, state, poseStack, buffer, packedLight);
 
         // the part being built is the recipe's RESULT (a module id), not the
         // recipe id: ModuleItem.of(recipeId) resolves no artwork at all
@@ -199,12 +232,12 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
             offsetBone(baked, "fixture", 0f, 0f, machine.mechFixZ);
             offsetBone(baked, "cutting_tool_base", machine.mechBaseX, machine.mechBaseY, 0f);
             if (machining) {
-                // the bit itself turns while it cuts; the angle is a function of
-                // the synced start tick, so it spins smoothly across partial
-                // ticks and is identical on every client (bones are radians)
-                offsetBoneRotation(baked, "cutting_tool", 0f, 0f,
-                        (float) Math.toRadians(spinSign(machine)
-                                * (now - machine.craftStart()) * SPIN_DEG_PER_TICK));
+                // the bit is on the same shaft as the machine: its angle is Create's
+                // own kinetic angle (the one the shaft stubs are drawn with), geared
+                // up — so it reverses with the drive direction and stops with it
+                float shaftAngle = KineticBlockEntityRenderer.getAngleForBe(machine, machine.getBlockPos(),
+                        MachineLayout.shaftAxis(MachineLayout.facing(state)));
+                offsetBoneRotation(baked, "cutting_tool", 0f, 0f, shaftAngle * SPIN_GEAR);
             }
 
             MachineModelDraw.INSTANCE.draw(baked, poseStack, buffer, packedLight, packedOverlay);
@@ -337,12 +370,64 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
         return t * t * (3f - 2f * t);
     }
 
-    /** which way this job's bit spins: from the job's own seed, so every client agrees */
-    private static float spinSign(WeaponModuleMachineBlockEntity machine) {
-        ResourceLocation id = machine.getRecipeId();
-        int seed = (id == null ? 0 : id.hashCode()) ^ (int) (machine.craftStart() * 0x9E3779B97F4A7C15L);
-        seed ^= seed >>> 15;
-        return (seed & 1) == 0 ? 1f : -1f;
+    // --- drive shaft ---
+
+    /**
+     * The machine's drive shaft, drawn with Create's own half-shaft model — the
+     * same one Create's machines use for a shaft leaving one face, cut down to
+     * the machine's allowance ({@link MachineLayout#SHAFT_STUB_PX}). Two stubs:
+     * the outward face of the extension cell (the machine's right end, see
+     * {@link MachineLayout#shaftFace}) and the master's other end, which is the
+     * same axle. Both turn with the machine's kinetic angle, so they line up
+     * with a Create shaft attached next door, and they freeze when the network
+     * stalls or is overstressed.
+     *
+     * <p>The two internal faces (master -> extension and back) are the relay
+     * link, not a shaft: nothing is drawn there.
+     */
+    private static void drawDriveShaft(WeaponModuleMachineBlockEntity machine, BlockState state,
+                                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+        Direction out = MachineLayout.shaftFace(MachineLayout.facing(state));
+        VertexConsumer vb = buffer.getBuffer(RenderType.solid());
+        // right end: the extension cell, stub pointing out of the machine
+        drawShaftStub(machine, state, poseStack, vb, packedLight, out, out);
+        // left end: the master cell, stub pointing the other way
+        drawShaftStub(machine, state, poseStack, vb, packedLight, null, out.getOpposite());
+    }
+
+    /**
+     * One stub. {@code cellDir} is the cell to draw it in relative to the
+     * master ({@code out} for the extension end), or null for the master's own
+     * cell.
+     *
+     * <p>Create's half-shaft is 8 px long, reaching from the cell centre out to
+     * the cell boundary; the machine only leaves a recess of about a pixel at
+     * each end, so it is squashed along its own axis to
+     * {@link MachineLayout#SHAFT_STUB_PX} about the model's outer cap plane
+     * (model z = 16 px). That squash has to be part of the pose the model is
+     * baked with: the buffer's own {@code translate}/{@code scale} run on the
+     * baked vertices, which are already in block-local space, so they would
+     * squash the block-local Z axis instead of the shaft — invisible at best,
+     * and a thin blade pushed off the socket at worst.
+     */
+    private static void drawShaftStub(WeaponModuleMachineBlockEntity machine, BlockState state,
+                                      PoseStack poseStack, VertexConsumer vb, int packedLight,
+                                      @Nullable Direction cellDir, Direction face) {
+        poseStack.pushPose();
+        if (cellDir != null) {
+            poseStack.translate(cellDir.getStepX(), 0.0, cellDir.getStepZ());
+        }
+        SuperByteBuffer shaft = STUB_BUFFERS.computeIfAbsent(face, f -> {
+            PoseStack stub = CachedBuffers.rotateToFace(f).get();
+            stub.translate(0f, 0f, 1f);
+            stub.scale(1f, 1f, MachineLayout.SHAFT_STUB_PX / 8f);
+            stub.translate(0f, 0f, -1f);
+            return SuperBufferFactory.getInstance()
+                    .createForBlock(AllPartialModels.SHAFT_HALF.get(), state, stub);
+        });
+        KineticBlockEntityRenderer.standardKineticRotationTransform(shaft, machine, packedLight)
+                .renderInto(poseStack, vb);
+        poseStack.popPose();
     }
 
     // --- workpiece ---

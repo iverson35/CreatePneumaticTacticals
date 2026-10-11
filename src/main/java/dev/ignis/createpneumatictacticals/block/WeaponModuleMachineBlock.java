@@ -41,7 +41,8 @@ import org.jetbrains.annotations.Nullable;
  * elements — only its particle texture, so breaking the machine still puffs the
  * right dust.
  */
-public class WeaponModuleMachineBlock extends HorizontalDirectionalBlock implements EntityBlock {
+public class WeaponModuleMachineBlock extends HorizontalDirectionalBlock
+        implements EntityBlock, com.simibubi.create.content.kinetics.base.IRotate {
 
     /** sliding door state (the door itself is part of the model, not the collision box) */
     public static final BooleanProperty OPEN = BooleanProperty.create("open");
@@ -64,18 +65,36 @@ public class WeaponModuleMachineBlock extends HorizontalDirectionalBlock impleme
         return new WeaponModuleMachineBlockEntity(pos, state);
     }
 
-    /** the master is the block entity holder: the server ticks the craft timer */
+    /** the master is the block entity holder: it ticks the job on both sides */
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
                                                                   BlockEntityType<T> type) {
-        if (level.isClientSide) return null;
         if (type != ModBlockEntities.WEAPON_MODULE_MACHINE.get()) return null;
         return (BlockEntityTicker<T>) (lvl, pos, bstate, be) -> {
             if (be instanceof WeaponModuleMachineBlockEntity machine) {
-                WeaponModuleMachineBlockEntity.serverTick(lvl, pos, bstate, machine);
+                machine.tick();
             }
         };
+    }
+
+    /**
+     * The machine is driven by a Create shaft on its length axis — its own
+     * right end (see {@link MachineLayout#shaftFace}); a shaft on the left end
+     * works too, it is the same axle. The right face, toward the extension
+     * cell, must answer {@code true} as well: that is the internal link the
+     * extension's kinetic block relays through, so a shaft outside the machine
+     * reaches this block entity.
+     */
+    @Override
+    public boolean hasShaftTowards(net.minecraft.world.level.LevelReader world, BlockPos pos,
+                                   BlockState state, Direction face) {
+        return face.getAxis() == MachineLayout.shaftAxis(MachineLayout.facing(state));
+    }
+
+    @Override
+    public Direction.Axis getRotationAxis(BlockState state) {
+        return MachineLayout.shaftAxis(MachineLayout.facing(state));
     }
 
     @Override
