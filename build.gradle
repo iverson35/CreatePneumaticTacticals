@@ -98,9 +98,6 @@ minecraft {
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--quickPlaySingleplayer', 'dev'
-            // TEMPORARY (harness): ./gradlew runClient -PcptHarness -PcptFacing=south
-            if (project.hasProperty('cptHarness')) property 'cpt.harness', 'true'
-            if (project.hasProperty('cptFacing')) property 'cpt.harness.facing', project.property('cptFacing')
         }
 
         // Second dev client for LAN testing: run `runClient` (host, auto-loads
