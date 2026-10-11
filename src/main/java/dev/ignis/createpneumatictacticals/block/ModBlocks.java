@@ -50,6 +50,23 @@ public final class ModBlocks {
     public static final RegistryObject<Item> AMMO_BOX_ITEM = BLOCK_ITEMS.register("ammo_box",
             () -> new AmmoBoxBlockItem(AMMO_BOX.get(), new Item.Properties().stacksTo(1)));
 
+    public static final RegistryObject<Block> WEAPON_MODULE_MACHINE_TOOL = BLOCKS.register("weapon_module_machine_tool",
+            // no tool requirement: the machine always drops itself with its whole
+            // contents (getDrops), so a wrong tool must not eat recipe/materials/output
+            () -> new WeaponModuleMachineBlock(BlockBehaviour.Properties.of()
+                    .strength(2.0F, 6.0F).noOcclusion().noLootTable()));
+
+    public static final RegistryObject<Item> WEAPON_MODULE_MACHINE_TOOL_ITEM =
+            BLOCK_ITEMS.register("weapon_module_machine_tool",
+                    () -> new WeaponModuleMachineBlockItem(WEAPON_MODULE_MACHINE_TOOL.get(),
+                            new Item.Properties()));
+
+    /** second cell of the machine: no item, no block entity, placed by the master */
+    public static final RegistryObject<Block> WEAPON_MODULE_MACHINE_TOOL_EXTENSION =
+            BLOCKS.register("weapon_module_machine_tool_extension",
+                    () -> new WeaponModuleMachineExtensionBlock(BlockBehaviour.Properties.of()
+                            .strength(2.0F, 6.0F).noOcclusion().noLootTable()));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus modBus) {
         BLOCKS.register(modBus);
         BLOCK_ITEMS.register(modBus);

@@ -30,6 +30,11 @@ public final class ModBlockEntities {
                     .of(AmmoBoxBlockEntity::new, ModBlocks.AMMO_BOX.get())
                     .build(null));
 
+    public static final RegistryObject<BlockEntityType<WeaponModuleMachineBlockEntity>> WEAPON_MODULE_MACHINE =
+            BLOCK_ENTITIES.register("weapon_module_machine_tool", () -> BlockEntityType.Builder
+                    .of(WeaponModuleMachineBlockEntity::new, ModBlocks.WEAPON_MODULE_MACHINE_TOOL.get())
+                    .build(null));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus modBus) {
         BLOCK_ENTITIES.register(modBus);
     }

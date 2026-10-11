@@ -13,11 +13,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import org.joml.Vector3f;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.cache.object.GeoCube;
-import software.bernie.geckolib.cache.object.GeoQuad;
-import software.bernie.geckolib.cache.object.GeoVertex;
 import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 
 import java.util.Map;
@@ -41,6 +37,9 @@ import java.util.Map;
 public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlockEntity> {
 
     /** cached bounds per gun stack (identity + module fingerprint) */
+    private static final java.util.WeakHashMap<CompoundTag, float[]> BOUNDS_CACHE =
+            new java.util.WeakHashMap<>();
+
     /**
      * The install preview for this bench: hovered free mount + held module,
      * only when the same validation the server applies would accept it. The
@@ -70,9 +69,6 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
 
     /** How far the gun slides toward its muzzle (gun-space -Z) on the bench. */
     static final float BENCH_MUZZLE_NUDGE = 1f / 16f;
-
-    private static final java.util.WeakHashMap<CompoundTag, float[]> BOUNDS_CACHE =
-            new java.util.WeakHashMap<>();
 
     public GunWorkbenchRenderer(BlockEntityRendererProvider.Context ctx) {}
 
@@ -197,9 +193,9 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
         if (receiver == null) return null;
         BakedGeoModel model = baked(receiver.id);
         if (model == null) return null;
-        Bounds b = new Bounds();
+        ModelBounds.Acc b = new ModelBounds.Acc();
         walkModules(gun, model, 0, 0, 0, b);
-        return b.valid ? new float[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ} : null;
+        return b.array();
     }
 
     /** receiver loc bone for a single-slot module type (null = child mount) */
@@ -223,11 +219,11 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
      * into barrel->muzzle and handguard->attachment chains.
      */
     static void walkModules(ItemStack gun, BakedGeoModel receiverModel,
-                            float ox, float oy, float oz, Bounds b) {
+                            float ox, float oy, float oz, ModelBounds.Acc b) {
         Map<ModuleType, ModuleDefinition> modules = GunNbt.readModules(gun);
         Map<dev.ignis.createpneumatictacticals.module.HandguardPosition, ModuleDefinition> atts =
                 GunNbt.readHandguardAttachments(gun);
-        accumulateCubes(receiverModel, ox, oy, oz, b);
+        ModelBounds.accumulate(receiverModel, b, ox, oy, oz);
 
         for (Map.Entry<ModuleType, ModuleDefinition> e : modules.entrySet()) {
             if (e.getKey() == ModuleType.RECEIVER) continue;
@@ -240,7 +236,7 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
             float mz = oz + bone.getPivotZ() / 16f;
             BakedGeoModel m = baked(e.getValue().id);
             if (m == null) continue;
-            accumulateCubes(m, mx, my, mz, b);
+            ModelBounds.accumulate(m, b, mx, my, mz);
 
             // child mounts
             if (e.getKey() == ModuleType.BARREL) {
@@ -250,10 +246,10 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
                     if (port != null) {
                         BakedGeoModel mm = baked(muzzle.id);
                         if (mm != null) {
-                            accumulateCubes(mm,
+                            ModelBounds.accumulate(mm, b,
                                     mx + port.getPivotX() / 16f,
                                     my + port.getPivotY() / 16f,
-                                    mz + port.getPivotZ() / 16f, b);
+                                    mz + port.getPivotZ() / 16f);
                         }
                     }
                 }
@@ -264,67 +260,12 @@ public class GunWorkbenchRenderer implements BlockEntityRenderer<GunWorkbenchBlo
                     if (pos == null) continue;
                     BakedGeoModel am = baked(att.getValue().id);
                     if (am == null) continue;
-                    accumulateCubes(am,
+                    ModelBounds.accumulate(am, b,
                             mx + pos.getPivotX() / 16f,
                             my + pos.getPivotY() / 16f,
-                            mz + pos.getPivotZ() / 16f, b);
+                            mz + pos.getPivotZ() / 16f);
                 }
             }
-        }
-    }
-
-    /** model-space AABB (blocks) of every cube in a baked model, null when empty */
-    static float[] modelBounds(BakedGeoModel model) {
-        Bounds b = new Bounds();
-        accumulateCubes(model, 0, 0, 0, b);
-        return b.valid ? new float[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ} : null;
-    }
-
-    /** union all cubes of the model (bones summed in px -> blocks) */
-    private static void accumulateCubes(BakedGeoModel model, float ox, float oy, float oz, Bounds b) {
-        for (software.bernie.geckolib.cache.object.GeoBone bone : model.topLevelBones()) {
-            accumulateBone(bone, ox, oy, oz, b);
-        }
-    }
-
-    private static void accumulateBone(software.bernie.geckolib.cache.object.GeoBone bone,
-                                       float px, float py, float pz, Bounds b) {
-        // the laser beam is an FX box reaching the beam's range (16+ blocks):
-        // GunModulesLayer hides it on every non-world pass, so the measured
-        // bounds must skip it too or the gun reads 16 blocks long
-        if (GunModulesLayer.BEAM_BONE.equals(bone.getName())) return;
-        float bx = px + bone.getPivotX() / 16f;
-        float by = py + bone.getPivotY() / 16f;
-        float bz = pz + bone.getPivotZ() / 16f;
-        for (GeoCube cube : bone.getCubes()) {
-            for (GeoQuad quad : cube.quads()) {
-                for (GeoVertex v : quad.vertices()) {
-                    Vector3f p = v.position();
-                    // cube vertices are relative to the cube pivot (px);
-                    // RenderUtils divides by 16 at draw time — do it here
-                    float cx = bx + p.x + (float) cube.pivot().x / 16f;
-                    float cy = by + p.y + (float) cube.pivot().y / 16f;
-                    float cz = bz + p.z + (float) cube.pivot().z / 16f;
-                    b.add(cx, cy, cz);
-                }
-            }
-        }
-        for (software.bernie.geckolib.cache.object.GeoBone child : bone.getChildBones()) {
-            accumulateBone(child, bx, by, bz, b);
-        }
-    }
-
-    static final class Bounds {
-        float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
-        float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
-        boolean valid;
-        void add(float x, float y, float z) {
-            minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z);
-            maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
-            valid = true;
-        }
-        float[] array() {
-            return valid ? new float[]{minX, minY, minZ, maxX, maxY, maxZ} : null;
         }
     }
 

@@ -34,6 +34,9 @@ public final class ClientModEvents {
         event.registerBlockEntityRenderer(
                 dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.AMMO_BOX.get(),
                 dev.ignis.createpneumatictacticals.client.render.AmmoBoxRenderer::new);
+        event.registerBlockEntityRenderer(
+                dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.WEAPON_MODULE_MACHINE.get(),
+                dev.ignis.createpneumatictacticals.client.render.WeaponModuleMachineRenderer::new);
     }
 
     @SubscribeEvent
@@ -45,6 +48,7 @@ public final class ClientModEvents {
                 dev.ignis.createpneumatictacticals.client.render.DyedTextures.invalidateCaches();
                 dev.ignis.createpneumatictacticals.client.render.GunTextureAtlas.invalidate();
                 dev.ignis.createpneumatictacticals.client.render.PodItemModel.invalidateLayers();
+                dev.ignis.createpneumatictacticals.client.render.WeaponModuleMachineRenderer.invalidateCaches();
             }
         });
     }

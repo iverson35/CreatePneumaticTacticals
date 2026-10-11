@@ -1,0 +1,9 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "createpneumatictacticals:block/weapon_module_machine_tool"
+      }
+    }
+  ]
+}

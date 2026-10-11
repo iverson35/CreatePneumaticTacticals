@@ -24,6 +24,8 @@ public final class MenuScreenBinding {
         event.enqueueWork(() -> {
             MenuScreens.register(CptMenuTypes.MODULE_WORKBENCH.get(), ModuleWorkbenchScreen::new);
             MenuScreens.register(CptMenuTypes.MODULE_TUNER.get(), ModuleTunerScreen::new);
+            MenuScreens.register(CptMenuTypes.WEAPON_MODULE_MACHINE.get(),
+                    dev.ignis.createpneumatictacticals.client.gui.WeaponModuleMachineScreen::new);
         });
     }
 

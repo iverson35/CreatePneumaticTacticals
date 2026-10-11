@@ -44,6 +44,19 @@ public final class CptMenuTypes {
                         return null;
                     }));
 
+    public static final RegistryObject<MenuType<WeaponModuleMachineMenu>> WEAPON_MODULE_MACHINE =
+            MENUS.register("weapon_module_machine_tool", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> {
+                        // same client-side lookup as the workbench: the BE comes
+                        // from the pos written by NetworkHooks.openScreen
+                        var pos = buf.readBlockPos();
+                        if (inv.player.level().getBlockEntity(pos)
+                                instanceof dev.ignis.createpneumatictacticals.block.entity.WeaponModuleMachineBlockEntity be) {
+                            return new WeaponModuleMachineMenu(id, inv, be);
+                        }
+                        return null;
+                    }));
+
     public static void register(IEventBus modBus) {
         MENUS.register(modBus);
     }

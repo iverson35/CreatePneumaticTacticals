@@ -37,5 +37,7 @@ public final class CptNetwork {
         CHANNEL.registerMessage(id++, HitBloodPacket.class, HitBloodPacket::encode, HitBloodPacket::decode, HitBloodPacket::handle);
         CHANNEL.registerMessage(id++, MuzzleSmokePacket.class, MuzzleSmokePacket::encode, MuzzleSmokePacket::decode, MuzzleSmokePacket::handle);
         CHANNEL.registerMessage(id++, GunSoundBroadcastPacket.class, GunSoundBroadcastPacket::encode, GunSoundBroadcastPacket::decode, GunSoundBroadcastPacket::handle);
+        // C2S (appended at the end: the ids above are already on the wire)
+        CHANNEL.registerMessage(id++, SetMachineRecipePacket.class, SetMachineRecipePacket::encode, SetMachineRecipePacket::decode, SetMachineRecipePacket::handle);
     }
 }
