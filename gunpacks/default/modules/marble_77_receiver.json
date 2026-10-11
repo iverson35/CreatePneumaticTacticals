@@ -4,13 +4,13 @@
   "gun_properties": {
     "reload_speed": 0.0,
     "fire_rate_multiplier": -0.3,
-    "damage_multiplier": 3,
+    "damage_multiplier": 4,
     "bullet_speed": 1,
     "gravity_multiplier": -0.9,
     "drag_multiplier": -0.2,
-    "ergonomics": -0.8,
+    "ergonomics": -0.4,
     "recoil_recovery": -0.8,
-    "hipfire_accuracy_multiplier": -0.5
+    "hipfire_accuracy_multiplier": 0.5
   },
   "gun_type": "shotgun",
   "fire_modes": [

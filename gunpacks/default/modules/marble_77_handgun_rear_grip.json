@@ -4,6 +4,6 @@
   "gun_properties": {
     "recoil_vertical_multiplier": -0.1,
     "recoil_horizontal_multiplier": -0.1,
-    "ergonomics": 0.2
+    "ergonomics": 0.4
   }
 }
