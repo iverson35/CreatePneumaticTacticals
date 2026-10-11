@@ -1,0 +1,7 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "minecraft:iron_ingot"}
+  ],
+  "result": "createpneumatictacticals:psts_sight_small_doc1"
+}

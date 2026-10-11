@@ -1,0 +1,7 @@
+{
+  "type": "createpneumatictacticals:cpt_module_crafting",
+  "ingredients": [
+    {"item": "minecraft:iron_ingot"}
+  ],
+  "result": "createpneumatictacticals:spiccato_711"
+}
