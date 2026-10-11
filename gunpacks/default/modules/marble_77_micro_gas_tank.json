@@ -1,0 +1,10 @@
+{
+  "name": "createpneumatictacticals:marble_77_micro_gas_tank",
+  "module_type": "supply",
+  "gun_properties": {
+    "fire_rate_multiplier": -0.1,
+    "reload_speed": -0.1
+  },
+  "supply_type": "internal_tank",
+  "air_per_shot": 20
+}

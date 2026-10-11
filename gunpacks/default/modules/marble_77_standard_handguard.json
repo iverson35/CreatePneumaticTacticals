@@ -1,0 +1,8 @@
+{
+  "name": "createpneumatictacticals:marble_77_standard_handguard",
+  "module_type": "handguard",
+  "gun_properties": {
+    "ergonomics": 0.1,
+    "hipfire_accuracy_multiplier": 0.1
+  }
+}

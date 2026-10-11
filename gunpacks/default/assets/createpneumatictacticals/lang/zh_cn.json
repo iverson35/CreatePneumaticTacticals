@@ -41,5 +41,12 @@
   "module.createpneumatictacticals.marble_17_oberz_barrel": "Marble-17 Oberz 截短枪管",
   "module.createpneumatictacticals.marble_17_oberz_handguard": "Marble-17 截短护木",
   "module.createpneumatictacticals.marble_17_oberz_rear_grip": "Marble-17 截短枪托",
-  "module.createpneumatictacticals.mak_3_ammo_15": "MAK-3 15发弹匣"
+  "module.createpneumatictacticals.mak_3_ammo_15": "MAK-3 15发弹匣",
+  "module.createpneumatictacticals.marble_77_receiver": "Marble-77 机匣",
+  "module.createpneumatictacticals.marble_77_micro_gas_tank": "Marble-77 微型气瓶",
+  "module.createpneumatictacticals.marble_77_standard_handguard": "Marble-77 标准护木",
+  "module.createpneumatictacticals.marble_77_competition_barrel": "Marble-77 竞赛枪管",
+  "module.createpneumatictacticals.marble_77_standard_barrel_base": "Marble-77 标准枪管底座",
+  "module.createpneumatictacticals.marble_77_handgun_rear_grip": "Marble-77 手枪式后握把",
+  "gun.createpneumatictacticals.marble_77": "Marble-77 霰弹枪"
 }

@@ -1,0 +1,9 @@
+{
+  "name": "createpneumatictacticals:marble_77_competition_barrel",
+  "module_type": "barrel",
+  "gun_type": "shotgun",
+  "gun_properties": {
+    "ergonomics": -0.1,
+    "range_multiplier": 1.5
+  }
+}

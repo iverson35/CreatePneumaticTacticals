@@ -1,0 +1,11 @@
+{
+  "name": "createpneumatictacticals:marble_77_standard_barrel_base",
+  "module_type": "feed",
+  "gun_type": "shotgun",
+  "gun_properties": {
+    "reload_speed": -0.1
+  },
+  "load_type": "round",
+  "load_amount": 1,
+  "clip_size": 1
+}

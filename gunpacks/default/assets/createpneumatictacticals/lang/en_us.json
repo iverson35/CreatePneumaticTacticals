@@ -41,5 +41,12 @@
   "module.createpneumatictacticals.marble_17_oberz_barrel": "Marble-17 Oberz Short Barrel",
   "module.createpneumatictacticals.marble_17_oberz_handguard": "Marble-17 Oberz Short Handguard",
   "module.createpneumatictacticals.marble_17_oberz_rear_grip": "Marble-17 Oberz Rear Grip",
-  "module.createpneumatictacticals.mak_3_ammo_15": "MAK-3 15-Round Magazine"
+  "module.createpneumatictacticals.mak_3_ammo_15": "MAK-3 15-Round Magazine",
+  "module.createpneumatictacticals.marble_77_receiver": "Marble-77 Receiver",
+  "module.createpneumatictacticals.marble_77_micro_gas_tank": "Marble-77 Micro Gas Tank",
+  "module.createpneumatictacticals.marble_77_standard_handguard": "Marble-77 Standard Handguard",
+  "module.createpneumatictacticals.marble_77_competition_barrel": "Marble-77 Competition Barrel",
+  "module.createpneumatictacticals.marble_77_standard_barrel_base": "Marble-77 Standard Barrel Base",
+  "module.createpneumatictacticals.marble_77_handgun_rear_grip": "Marble-77 Handgun Rear Grip",
+  "gun.createpneumatictacticals.marble_77": "Marble-77 Shotgun"
 }

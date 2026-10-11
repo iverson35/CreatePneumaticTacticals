@@ -15,7 +15,9 @@ split_unified_bbmodel.py -- 把「统合枪模」.bbmodel 拆成每模块一个 
   为原点、loc 旋转为单位阵的局部空间；
 - UV 从统合贴图裁出、去重、重排成每模块一张紧凑贴图（<=64x64 优先，
   内嵌回 bbmodel 并同时写出 <id>.png）；若统合 bbmodel 旁存在同尺寸的
-  <名>_glowmask.png / <名>_dye.png，按同一映射拆出每模块的掩码；
+  <名>_glowmask.png / <名>_dye.png，按同一映射拆出每模块的掩码
+  （模块的 UV 区域在发光掩码里全透明时不生成该模块的发光图：
+    模组找不到 <id>_glowmask.png 时本就跳过发光 pass，效果等价）；
 - 动画按骨骼归属分给各模块（只保留该模块骨骼的 animator），
   每个输出模型的根骨骼统一改名 main。音效关键帧默认分给机匣，
   effect 无命名空间时补 createpneumatictacticals:；同帧指令关键帧
@@ -384,7 +386,10 @@ def _resolve_locators(model, modules):
         if not cands:
             raise SystemExit(
                 f"错误：模块 {mod.id}（{mod.type}）在{scope}里找不到"
-                f"对应定位骨")
+                f"对应定位骨；若骨骼 "
+                f"{_dedup_base(model.bones[mod.root_uuid]['name'])!r} 其实"
+                f"是分组骨而不是模块，请给它改名避开「<模块类型>_」前缀"
+                f"（barrel_base / stock_root 这类名字会被当成模块）")
         mod.loc_uuid = cands[0]["uuid"]
         # 模块自身坐标系在统合坐标系里的位置（模组的挂载语义）：
         #   place(mod) = place(host) · [宿主坐标系里的挂点链]
@@ -1342,6 +1347,7 @@ def split(bbmodel_path, out_dir, geo=False, anim=False):
     outputs = {}
     exported = {}
     pixel_checks = []
+    masks_by_id = {}
     summary = []
 
     for mod in modules_order:
@@ -1361,16 +1367,26 @@ def split(bbmodel_path, out_dir, geo=False, anim=False):
         new_img.save(out_dir / png_name)
 
         mask_files = []
+        written_masks = []
         for suffix, mask_img in mask_inputs.items():
             m_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
             for r, (nx, ny) in mapping.items():
                 t, x1, y1, x2, y2 = r
                 m_img.paste(mask_img.crop((x1, y1, x2, y2)), (nx, ny))
+            if suffix == "_glowmask" and \
+                    m_img.getchannel("A").getextrema() == (0, 0):
+                # 该模块 UV 区域在发光掩码里全透明：alpha 是发光的唯一
+                # 依据（GeckoLib createImageMask 配方），全透明图与
+                # 「没有这张图」等价，写入只会白跑一次发光 pass
+                mask_files.append(f"{suffix}(跳过)")
+                continue
             m_name = f"{mod.id}{suffix}.png"
             m_img.save(out_dir / m_name)
             mask_files.append(m_name)
+            written_masks.append(m_name)
             pixel_checks.append((f"{mod.id}{suffix}", mapping, m_img,
                                  [mask_inputs[suffix]]))
+        masks_by_id[mod.id] = written_masks
 
         src_tex = data["textures"][0]
         new_tex = copy.deepcopy(src_tex)
@@ -1449,8 +1465,8 @@ def split(bbmodel_path, out_dir, geo=False, anim=False):
     for mod in modules_order:
         written.add(f"{mod.id}.bbmodel")
         written.add(f"{mod.id}.png")
-        for suffix in mask_inputs:
-            written.add(f"{mod.id}{suffix}.png")
+        for name in masks_by_id.get(mod.id, []):
+            written.add(name)
         for tag, suffix in (("geo", ".geo.json"),
                             ("anim", ".animation.json")):
             if (mod.id, tag) in exported:
