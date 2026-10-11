@@ -81,7 +81,7 @@ public final class MachineInteractions {
             level.setBlockAndUpdate(master, masterState
                     .setValue(WeaponModuleMachineBlock.OPEN, false));
             sound(level, master, SoundEvents.IRON_DOOR_CLOSE);
-            machine.onDoorClosed();
+            machine.tryStartCraft();
             return InteractionResult.CONSUME;
         }
 

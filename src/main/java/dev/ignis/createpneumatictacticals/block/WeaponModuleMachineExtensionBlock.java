@@ -113,6 +113,14 @@ public class WeaponModuleMachineExtensionBlock extends HorizontalDirectionalBloc
         return MachineInteractions.use(state, level, pos, player, hand, hit);
     }
 
+    /** a signal on this half starts the machine too: see {@link WeaponModuleMachineBlock#redstoneStart} */
+    @Override
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block fromBlock,
+                                BlockPos fromPos, boolean isMoving) {
+        super.neighborChanged(state, level, pos, fromBlock, fromPos, isMoving);
+        WeaponModuleMachineBlock.redstoneStart(level, pos, state);
+    }
+
     /** breaking either half takes the whole machine: the master drops, this half never does */
     @Override
     @Deprecated

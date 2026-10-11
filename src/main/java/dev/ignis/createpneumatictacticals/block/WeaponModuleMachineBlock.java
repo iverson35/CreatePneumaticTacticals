@@ -149,6 +149,35 @@ public class WeaponModuleMachineBlock extends HorizontalDirectionalBlock
         return MachineInteractions.use(state, level, pos, player, hand, hit);
     }
 
+    /**
+     * A redstone signal reaching either half asks the machine to start — the
+     * same check the closing door makes, so an automated line can feed the
+     * stations and then pulse redstone instead of having to work the door by
+     * hand. Level triggered, not edge triggered: the check is idempotent (a
+     * running job, an open clamp or a missing material all ignore it), so
+     * running it on every block update while the machine is powered is safe.
+     * An open door means the clamp is being loaded by hand, so no start.
+     */
+    public static void redstoneStart(Level level, BlockPos halfPos, BlockState halfState) {
+        if (level.isClientSide) return;
+        BlockPos master = MachineLayout.masterOf(halfPos, halfState);
+        BlockState masterState = level.getBlockState(master);
+        if (!masterState.is(ModBlocks.WEAPON_MODULE_MACHINE_TOOL.get())) return;
+        if (masterState.getValue(OPEN)) return;
+        // either half being powered counts: the machine is one unit
+        if (!level.hasNeighborSignal(halfPos) && !level.hasNeighborSignal(master)) return;
+        if (level.getBlockEntity(master) instanceof WeaponModuleMachineBlockEntity machine) {
+            machine.tryStartCraft();
+        }
+    }
+
+    @Override
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block fromBlock,
+                                BlockPos fromPos, boolean isMoving) {
+        super.neighborChanged(state, level, pos, fromBlock, fromPos, isMoving);
+        redstoneStart(level, pos, state);
+    }
+
     @Override
     @Deprecated
     public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {

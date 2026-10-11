@@ -165,7 +165,10 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
                     recipe.getId(), recipe.getIngredientList().size(), MATERIAL_SLOTS);
             return false;
         }
-        this.recipeId = recipe == null ? null : recipe.getId();
+        ResourceLocation newId = recipe == null ? null : recipe.getId();
+        if (java.util.Objects.equals(newId, recipeId)) return true;   // same recipe: nothing to change
+        ejectOutput();
+        this.recipeId = newId;
         ejectUnneeded(recipe);
         setChanged();
         return true;
@@ -183,6 +186,20 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
                 eject(stack);
             }
         }
+    }
+
+    /**
+     * Give a finished part still waiting in the output slot back to the world.
+     * The clamp holds one thing at a time: a product left in place while a new
+     * job runs would be drawn as the new recipe's part (the clamp renders the
+     * current recipe), and taking it out would consume the new job's materials
+     * on the spot. So both a recipe change and the closing door eject it.
+     */
+    private void ejectOutput() {
+        if (!hasOutput()) return;
+        ItemStack out = items.get(OUTPUT_SLOT);
+        items.set(OUTPUT_SLOT, ItemStack.EMPTY);
+        eject(out);
     }
 
     /** drop an item in front of the machine, just above the machine's own height */
@@ -288,11 +305,19 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
 
     // --- machining ---
 
-    /** the door just closed: start machining when everything the recipe needs is in place */
-    public void onDoorClosed() {
+    /**
+     * Ask the machine to start: everything the recipe needs must be in place.
+     * Called when the door closes and when a redstone signal reaches either half
+     * (an automated line can feed the stations and then pulse redstone instead
+     * of having to work the door by hand). A product still waiting in the output
+     * slot is given back first — the clamp must never hold a finished part and a
+     * fresh workpiece at once, and its slot has to be free for this job's part.
+     */
+    public void tryStartCraft() {
         if (isCrafting() || level == null) return;
         ModuleCraftingRecipe recipe = currentRecipe();
         if (recipe == null || !materialsComplete()) return;
+        ejectOutput();
         craftTicks = 0f;
         craftTotal = Math.max(1, recipe.getIngredientList().size() * TICKS_PER_MATERIAL);
         setChanged();
@@ -313,18 +338,16 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
             float rate = craftRate();
             if (rate <= 0f) return;
             craftTicks = Math.min(craftTotal, craftTicks + rate);
-            if (level.isClientSide) return;
-            if (craftTicks >= craftTotal) finishCraft();
-        } else if (!level.isClientSide) {
-            finishCraft(); // held at 100% until the product is taken out
         }
+        // the client's counter is a mirror of the server's: only the server finishes
+        if (!level.isClientSide && craftTicks >= craftTotal) finishCraft();
     }
 
     /**
      * Consume the stationed materials and put the product into the output slot.
      * A recipe that disappeared (datapack reload) cancels the job and keeps the
-     * materials, and an occupied output slot makes the machine hold at 100%
-     * until the product is taken out.
+     * materials. The output slot is free by construction: a job only starts on a
+     * closed door, and {@link #onDoorClosed()} hands any waiting product back.
      */
     private void finishCraft() {
         ModuleCraftingRecipe recipe = currentRecipe();
@@ -334,7 +357,6 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
             setChanged();
             return;
         }
-        if (!items.get(OUTPUT_SLOT).isEmpty()) return;
         ItemStack result = recipe.resultStack();
         ModuleDefinition def = ModuleManager.get(recipe.getModuleId());
         if (def != null && level != null) {
@@ -525,20 +547,13 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
         ContainerHelper.loadAllItems(tag, this.items);
         this.craftTicks = tag.getFloat(TAG_CRAFT_TICKS);
         this.craftTotal = tag.getInt(TAG_CRAFT_TOTAL);
-        // the door is an interpolated render state: a fresh load jumps straight
-        // to the target instead of animating from a pose the player never saw
-        this.doorAnimValue = getBlockState().hasProperty(WeaponModuleMachineBlock.OPEN)
-                && getBlockState().getValue(WeaponModuleMachineBlock.OPEN) ? 1f : 0f;
-        this.doorAnimFrom = this.doorAnimValue;
-        this.doorAnimTarget = this.doorAnimValue > 0.5f;
-        this.doorAnimStart = Double.NEGATIVE_INFINITY;
-        // the eased mechanism state is meaningless across a load: let the path
-        // (or the rest pose) place it outright on the first frame
-        this.mechFixZ = 0f;
-        this.mechBaseX = 0f;
-        this.mechBaseY = 0f;
-        this.mechRunning = false;
-        this.mechEaseStart = Double.NEGATIVE_INFINITY;
+        // the door and the mechanism are NOT touched here. Create funnels both
+        // chunk loads and incremental syncs through readClient, so a packet
+        // landing the tick the job ends would zero the mechanism mid-motion and
+        // snap it home instead of letting the renderer ease it there. Neither
+        // needs a reset: a fresh block entity already starts at rest, and the
+        // door snaps to its block state on its own first frame (see
+        // WeaponModuleMachineRenderer#doorProgress).
     }
 
     /**

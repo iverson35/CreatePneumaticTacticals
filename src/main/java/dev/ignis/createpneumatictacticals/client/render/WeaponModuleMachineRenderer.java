@@ -258,6 +258,15 @@ public final class WeaponModuleMachineRenderer implements BlockEntityRenderer<We
      */
     private static float doorProgress(WeaponModuleMachineBlockEntity machine, BlockState state, float now) {
         boolean open = state.getValue(WeaponModuleMachineBlock.OPEN);
+        // a machine this client has never animated (fresh block entity, chunk
+        // reload) starts where the door actually is: it must not slide from a
+        // pose the player never saw
+        if (machine.doorAnimStart == Double.NEGATIVE_INFINITY) {
+            machine.doorAnimTarget = open;
+            machine.doorAnimValue = open ? 1f : 0f;
+            machine.doorAnimFrom = machine.doorAnimValue;
+            return machine.doorAnimValue;
+        }
         if (machine.doorAnimTarget != open) {
             machine.doorAnimTarget = open;
             machine.doorAnimFrom = machine.doorAnimValue;
