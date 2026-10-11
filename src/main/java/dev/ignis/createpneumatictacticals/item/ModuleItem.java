@@ -7,6 +7,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -119,6 +120,19 @@ public class ModuleItem extends Item implements GeoItem {
     public static void setRolls(ItemStack stack, @Nullable CompoundTag rolls) {
         if (rolls == null || rolls.isEmpty()) stack.removeTagKey(ModuleRoll.TAG_ROLLS);
         else stack.getOrCreateTag().put(ModuleRoll.TAG_ROLLS, rolls.copy());
+    }
+
+    /**
+     * Roll a freshly made module's manufacturing stats (see {@link ModuleRoll})
+     * onto the stack — the ONE place a newly crafted module is randomized, so
+     * every station that makes one (the module workbench today, the machine
+     * tool) hands out the same distribution. A module id with no definition is
+     * left at its authored values.
+     */
+    public static void rollManufactured(ItemStack stack, ResourceLocation moduleId, RandomSource rng) {
+        ModuleDefinition def = ModuleManager.get(moduleId);
+        if (def == null) return;
+        setRolls(stack, ModuleRoll.toTag(ModuleRoll.roll(def, rng)));
     }
 
     /**

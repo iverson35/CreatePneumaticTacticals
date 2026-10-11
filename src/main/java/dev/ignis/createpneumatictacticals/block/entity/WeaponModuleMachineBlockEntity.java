@@ -4,9 +4,6 @@ import com.mojang.logging.LogUtils;
 import dev.ignis.createpneumatictacticals.block.MachineLayout;
 import dev.ignis.createpneumatictacticals.block.WeaponModuleMachineBlock;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
-import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
-import dev.ignis.createpneumatictacticals.module.ModuleManager;
-import dev.ignis.createpneumatictacticals.module.ModuleRoll;
 import dev.ignis.createpneumatictacticals.recipe.ModRecipes;
 import dev.ignis.createpneumatictacticals.recipe.ModuleCraftingRecipe;
 import net.minecraft.core.BlockPos;
@@ -358,10 +355,9 @@ public class WeaponModuleMachineBlockEntity extends com.simibubi.create.content.
             return;
         }
         ItemStack result = recipe.resultStack();
-        ModuleDefinition def = ModuleManager.get(recipe.getModuleId());
-        if (def != null && level != null) {
-            ModuleItem.setRolls(result, ModuleRoll.toTag(ModuleRoll.roll(def, level.random)));
-        }
+        // manufacturing roll: the finished module carries randomized stats,
+        // the same distribution the module workbench hands out
+        if (level != null) ModuleItem.rollManufactured(result, recipe.getModuleId(), level.random);
         List<Ingredient> ingredients = recipe.getIngredientList();
         for (int i = 0; i < ingredients.size(); i++) items.set(i, ItemStack.EMPTY);
         items.set(OUTPUT_SLOT, result);
