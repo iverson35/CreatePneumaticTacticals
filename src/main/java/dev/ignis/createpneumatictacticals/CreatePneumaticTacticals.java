@@ -45,6 +45,27 @@ public class CreatePneumaticTacticals {
             com.simibubi.create.api.stress.BlockStressValues.IMPACTS.register(
                     dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_MODULE_MACHINE_TOOL.get(),
                     () -> 4.0);
+            // Contraption compatibility. A glued plate already moves and rotates
+            // with any contraption: nothing tags it NON_MOVABLE or
+            // RELOCATION_NOT_SUPPORTED, its PushReaction is NORMAL, it has a
+            // collision shape and no loot-table-only handling - and the block
+            // entity travels with it (Create stores saveWithFullMetadata plus
+            // getUpdateTag, and rebuilds it from that NBT). What is missing
+            // without this hook is the wall mount half: Create's own attached
+            // blocks (ladders, wall torches, signs) come along when the block
+            // they hang on moves, ours would be left floating. The check is
+            // asked "is this block attached toward that neighbour", so answer
+            // on the plate's back face only; an AttachedCheck never drags the
+            // support in the other direction, and a glued plate still moves on
+            // its own.
+            com.simibubi.create.api.contraption.BlockMovementChecks.registerAttachedCheck(
+                    (state, level, pos, direction) -> {
+                        if (!(state.getBlock() instanceof dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock))
+                            return com.simibubi.create.api.contraption.BlockMovementChecks.CheckResult.PASS;
+                        return com.simibubi.create.api.contraption.BlockMovementChecks.CheckResult.of(
+                                direction == state.getValue(dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock.FACING)
+                                        .getOpposite());
+                    });
         });
     }
 }

@@ -9,6 +9,7 @@ import dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock;
 import dev.ignis.createpneumatictacticals.block.entity.WeaponPegboardBlockEntity;
 import dev.ignis.createpneumatictacticals.item.GunItem;
 import dev.ignis.createpneumatictacticals.item.ModuleItem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -59,7 +60,10 @@ public final class WeaponPegboardRenderer implements BlockEntityRenderer<WeaponP
                     hang.stack(), partialTick, poseStack, buffer, light, packedOverlay, false);
         }
         PegboardPreview.Target ghost = PegboardPreview.current();
-        if (ghost != null && ghost.pos().equals(pos)) {
+        // the preview belongs to the level the player stands in: a plate on a
+        // contraption (or in a schematic preview) draws in a virtual level
+        // whose local coordinates can collide with a world position
+        if (ghost != null && board.getLevel() == Minecraft.getInstance().level && ghost.pos().equals(pos)) {
             drawPosed(facing, ghost.x(), ghost.y(),
                     new PegboardHang.Orient(ghost.vertical(), ghost.sign()),
                     ghost.stack(), partialTick, poseStack, buffer, light, packedOverlay, true);

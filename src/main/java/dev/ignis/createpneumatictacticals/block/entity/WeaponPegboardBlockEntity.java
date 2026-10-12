@@ -1,6 +1,10 @@
 package dev.ignis.createpneumatictacticals.block.entity;
 
+import com.simibubi.create.api.contraption.transformable.TransformableBlockEntity;
+import com.simibubi.create.content.contraptions.StructureTransform;
 import dev.ignis.createpneumatictacticals.block.PegboardGrid;
+import dev.ignis.createpneumatictacticals.block.PegboardHang;
+import dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -24,7 +28,7 @@ import java.util.List;
  * synced to clients in full — the renderer draws it — and drops with the
  * plate (see {@code WeaponPegboardBlock#getDrops}).
  */
-public class WeaponPegboardBlockEntity extends BlockEntity {
+public class WeaponPegboardBlockEntity extends BlockEntity implements TransformableBlockEntity {
 
     public static final String TAG_HANGS = "Hangs";
     public static final String TAG_COUNT = "Count";
@@ -179,5 +183,32 @@ public class WeaponPegboardBlockEntity extends BlockEntity {
         if (this.level != null && !this.level.isClientSide) {
             this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
         }
+    }
+
+    // --- contraption rotation: Create disassembles a rotated structure through
+    // a StructureTransform and hands it to the block entity so stored data can
+    // follow. The plate's own state needs none of this (Create rotates it), but
+    // the hang list does: a hole is model-space px on the plate's frame and a
+    // pose's sign is read along that frame's axes, so both have to be
+    // re-expressed in the frame of the state Create re-places the plate with —
+    // which is what PegboardHang#follow does, off the transform itself instead
+    // of off a table of cases.
+
+    @Override
+    public void transform(BlockEntity blockEntity, StructureTransform transform) {
+        if (!(blockEntity instanceof WeaponPegboardBlockEntity board)) return;
+        board.followStructureTransform(transform);
+    }
+
+    private void followStructureTransform(StructureTransform transform) {
+        BlockState plate = this.getBlockState();
+        for (int i = 0; i < this.hangs.size(); i++) {
+            Hang hang = this.hangs.get(i);
+            PegboardHang.Placement placement = PegboardHang.follow(transform, plate,
+                    hang.x(), hang.y(), hang.vertical(), hang.sign());
+            this.hangs.set(i, new Hang(hang.stack(), placement.x(), placement.y(),
+                    placement.orient().vertical(), placement.orient().sign()));
+        }
+        this.setChanged();
     }
 }
