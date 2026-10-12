@@ -291,6 +291,17 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
      */
     public static void renderStandalone(ItemStack stack, PoseStack poseStack,
                                         MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        renderStandalone(stack, poseStack, bufferSource, packedLight, packedOverlay, false);
+    }
+
+    /**
+     * {@code ghost} draws the gun through the translucent blue preview colour
+     * instead of its own: the whole stack, installed modules included (see
+     * {@link GhostPreview#tintAll}).
+     */
+    public static void renderStandalone(ItemStack stack, PoseStack poseStack,
+                                        MultiBufferSource bufferSource, int packedLight, int packedOverlay,
+                                        boolean ghost) {
         if (!(stack.getItem() instanceof GeoGunItem gunItem)) return;
         GunGeoModel model = (GunGeoModel) BENCH_RENDERER.getGeoModel();
         model.setStack(stack);
@@ -314,14 +325,17 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
             ResourceLocation texture = model.getTextureResource(gunItem);
             GunTextureAtlas.Slot slot = GunTextureAtlas.acquire(texture, null);
             RenderType type;
-            if (slot != null && GunTextureAtlas.retarget(baked, slot)) type = GunTextureAtlas.CUTOUT;
-            else {
+            if (slot != null && GunTextureAtlas.retarget(baked, slot)) {
+                type = ghost ? GunTextureAtlas.TRANSLUCENT : GunTextureAtlas.CUTOUT;
+            } else {
                 GunTextureAtlas.retarget(baked, null);
-                type = model.getRenderType(gunItem, texture);
+                type = ghost ? RenderType.entityTranslucent(texture) : model.getRenderType(gunItem, texture);
             }
             VertexConsumer buffer = bufferSource.getBuffer(type);
             BENCH_RENDERER.reRender(baked, poseStack, bufferSource, gunItem, type, buffer,
-                    partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);
+                    partialTick, packedLight, packedOverlay,
+                    ghost ? GhostPreview.R : 1f, ghost ? GhostPreview.G : 1f,
+                    ghost ? GhostPreview.B : 1f, ghost ? GhostPreview.A : 1f);
             // reRender does NOT run the render layers (GeckoLib only does that
             // in defaultRender) — without this the installed modules and the
             // emissive pass never draw on the bench

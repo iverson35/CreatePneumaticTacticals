@@ -45,6 +45,11 @@ public final class ModBlockEntities {
                     .of(AmmoBoxBlockEntity::new, ModBlocks.AMMO_BOX.get())
                     .build(null));
 
+    public static final RegistryObject<BlockEntityType<WeaponPegboardBlockEntity>> WEAPON_PEGBOARD =
+            BLOCK_ENTITIES.register("weapon_pegboard", () -> BlockEntityType.Builder
+                    .of(WeaponPegboardBlockEntity::new, ModBlocks.WEAPON_PEGBOARD.get())
+                    .build(null));
+
     public static final RegistryObject<BlockEntityType<WeaponModuleMachineBlockEntity>> WEAPON_MODULE_MACHINE =
             BLOCK_ENTITIES.register("weapon_module_machine_tool", () -> BlockEntityType.Builder
                     .of(WeaponModuleMachineBlockEntity::new, ModBlocks.WEAPON_MODULE_MACHINE_TOOL.get())

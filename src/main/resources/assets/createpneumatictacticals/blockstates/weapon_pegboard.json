@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "createpneumatictacticals:block/weapon_pegboard"
+    },
+    "facing=east": {
+      "model": "createpneumatictacticals:block/weapon_pegboard",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "createpneumatictacticals:block/weapon_pegboard",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "createpneumatictacticals:block/weapon_pegboard",
+      "y": 270
+    }
+  }
+}

@@ -61,7 +61,8 @@ public final class AimHandler {
                 && player.getMainHandItem().getItem() instanceof GeoGunItem
                 && mc.options.keyUse.isDown()
                 && !MuzzleClearance.isBlocked()
-                && !benchFocused(mc);
+                && !benchFocused(mc)
+                && !pegboardFocused(mc);
     }
 
     /**
@@ -79,6 +80,22 @@ public final class AimHandler {
         if (held.getItem() instanceof GeoGunItem) return true;
         ModuleDefinition def = ModuleManager.definitionOf(held);
         return def != null && def.type == ModuleType.RECEIVER;
+    }
+
+    /**
+     * True while the crosshair picks a weapon pegboard's front face. The plate
+     * answers that click itself — hang the held gun/module, or sneak-take —
+     * through vanilla's block use, so aiming must not own the button and
+     * {@link #onClickInput} must let the use through instead of swallowing it.
+     * Hits on the plate's thin sides are excluded (the block passes those on).
+     */
+    private static boolean pegboardFocused(Minecraft mc) {
+        if (mc.level == null || mc.hitResult == null
+                || !(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit)) return false;
+        net.minecraft.world.level.block.state.BlockState state = mc.level.getBlockState(hit.getBlockPos());
+        return state.getBlock() instanceof dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock
+                && hit.getDirection() == state.getValue(
+                        dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock.FACING);
     }
 
     /** Smoothed aim transition progress, render-interpolated. 0 = hip, 1 = fully aimed. */
@@ -196,6 +213,10 @@ public final class AimHandler {
                 event.setSwingHand(false);
                 return;
             }
+            // weapon pegboard: the plate itself answers the click (hang with a
+            // gun or module, sneak-take) on the server, so let vanilla's block
+            // use run instead of swallowing the click for aiming
+            if (pegboardFocused(mc)) return;
             if (!holdingGun) return;
         } else if (!holdingGun) {
             return;

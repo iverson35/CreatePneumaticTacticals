@@ -69,6 +69,8 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
     public void render(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel model,
                        RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
                        float partialTick, int packedLight, int packedOverlay) {
+        // a ghost preview is one flat translucent silhouette: no emissive pass
+        if (GhostPreview.tintAll) return;
         // skinned receiver: the AW skin owns the emissives, and its cubes
         // are all hidden anyway — a glow reRender would draw nothing at
         // best and double-draw at worst
@@ -99,6 +101,7 @@ public final class GunGlowLayer extends GeoRenderLayer<GeoGunItem> {
                                        PoseStack poseStack, MultiBufferSource bufferSource,
                                        float partialTick, ResourceLocation textureId,
                                        GeoRenderer<GeoGunItem> renderer) {
+        if (GhostPreview.tintAll) return; // ghost preview: no emissive pass
         if (!hasGlowMask(textureId)) return;
         RenderType glow = legacyGlow(textureId);
         if (glow == null) return;

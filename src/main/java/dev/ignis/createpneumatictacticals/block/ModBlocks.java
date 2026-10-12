@@ -50,6 +50,15 @@ public final class ModBlocks {
     public static final RegistryObject<Item> AMMO_BOX_ITEM = BLOCK_ITEMS.register("ammo_box",
             () -> new AmmoBoxBlockItem(AMMO_BOX.get(), new Item.Properties().stacksTo(1)));
 
+    public static final RegistryObject<Block> WEAPON_PEGBOARD = BLOCKS.register("weapon_pegboard",
+            // no tool requirement: the plate always drops itself plus every
+            // item hung on it (getDrops), so a wrong tool must not eat them
+            () -> new WeaponPegboardBlock(BlockBehaviour.Properties.of()
+                    .strength(0.5F, 6.0F).noOcclusion()));
+
+    public static final RegistryObject<Item> WEAPON_PEGBOARD_ITEM = BLOCK_ITEMS.register("weapon_pegboard",
+            () -> new BlockItem(WEAPON_PEGBOARD.get(), new Item.Properties()));
+
     public static final RegistryObject<Block> WEAPON_MODULE_MACHINE_TOOL = BLOCKS.register("weapon_module_machine_tool",
             // no tool requirement: the machine always drops itself with its whole
             // contents (getDrops), so a wrong tool must not eat recipe/materials/output

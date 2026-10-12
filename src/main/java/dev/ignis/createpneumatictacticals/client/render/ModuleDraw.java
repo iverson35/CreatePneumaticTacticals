@@ -42,6 +42,15 @@ public final class ModuleDraw {
     /** draw the module's model at rest in the caller's pose (the caller places and orients it) */
     public static void draw(ItemStack stack, PoseStack poseStack, MultiBufferSource buffer,
                             float partialTick, int packedLight, int packedOverlay) {
+        draw(stack, poseStack, buffer, partialTick, packedLight, packedOverlay, false);
+    }
+
+    /**
+     * {@code ghost} draws the module translucent in the shared preview colour
+     * ({@link GhostPreview}) instead of its own textures.
+     */
+    public static void draw(ItemStack stack, PoseStack poseStack, MultiBufferSource buffer,
+                            float partialTick, int packedLight, int packedOverlay, boolean ghost) {
         if (!(stack.getItem() instanceof ModuleItem moduleItem)) return;
         ModuleGeoModel model = geoModel();
         model.setStack(stack);
@@ -51,11 +60,14 @@ public final class ModuleDraw {
         try {
             ResourceLocation texture = model.getTextureResource(moduleItem);
             GunTextureAtlas.retarget(baked, null);
-            RenderType type = RenderType.entityCutoutNoCull(texture);
+            RenderType type = ghost ? RenderType.entityTranslucent(texture)
+                    : RenderType.entityCutoutNoCull(texture);
             // reRender (isReRender = true) skips handleAnimations and the item
             // centring translate, exactly like the bench's staged gun
             RENDERER.reRender(baked, poseStack, buffer, moduleItem, type, buffer.getBuffer(type),
-                    partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);
+                    partialTick, packedLight, packedOverlay,
+                    ghost ? GhostPreview.R : 1f, ghost ? GhostPreview.G : 1f,
+                    ghost ? GhostPreview.B : 1f, ghost ? GhostPreview.A : 1f);
         } finally {
             GunAnimations.restoreBones(saved);
         }

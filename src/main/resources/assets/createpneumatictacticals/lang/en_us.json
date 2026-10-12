@@ -13,6 +13,7 @@
   "block.createpneumatictacticals.module_workbench": "Module Workbench",
   "block.createpneumatictacticals.module_tuner": "Module Tuner",
   "block.createpneumatictacticals.ammo_box": "Pod Box",
+  "block.createpneumatictacticals.weapon_pegboard": "Weapon Pegboard",
   "block.createpneumatictacticals.weapon_module_machine_tool": "Weapon Module Machine Tool",
   "block.createpneumatictacticals.weapon_module_machine_tool_extension": "Machine Tool Frame",
   "tooltip.createpneumatictacticals.ammo_box_content": "Contains: %s x%s",

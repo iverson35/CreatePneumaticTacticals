@@ -13,6 +13,7 @@
   "block.createpneumatictacticals.module_workbench": "配件加工台",
   "block.createpneumatictacticals.module_tuner": "配件调整桌",
   "block.createpneumatictacticals.ammo_box": "盒装气动舱",
+  "block.createpneumatictacticals.weapon_pegboard": "武器挂板",
   "block.createpneumatictacticals.weapon_module_machine_tool": "武器配件机床",
   "block.createpneumatictacticals.weapon_module_machine_tool_extension": "机床框架",
   "tooltip.createpneumatictacticals.ammo_box_content": "内含：%s x%s",

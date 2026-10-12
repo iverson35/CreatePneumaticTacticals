@@ -43,8 +43,6 @@ final class WorkbenchMarkerRenderer {
     private static final float SIZE_MIN = 0.035f;
     private static final float SIZE_MAX = 0.085f;
     private static final float REF_DIST = 1.6f;
-    /** preview tint (translucent blue) */
-    private static final float PREVIEW_R = 0.4f, PREVIEW_G = 0.6f, PREVIEW_B = 1f, PREVIEW_A = 0.5f;
 
     private static final ResourceLocation TEX_PLUS = tex("wb_plus");
     private static final ResourceLocation TEX_MINUS = tex("wb_minus");

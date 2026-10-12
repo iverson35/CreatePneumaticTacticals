@@ -37,6 +37,9 @@ public final class ClientModEvents {
         event.registerBlockEntityRenderer(
                 dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.WEAPON_MODULE_MACHINE.get(),
                 dev.ignis.createpneumatictacticals.client.render.WeaponModuleMachineRenderer::new);
+        event.registerBlockEntityRenderer(
+                dev.ignis.createpneumatictacticals.block.entity.ModBlockEntities.WEAPON_PEGBOARD.get(),
+                dev.ignis.createpneumatictacticals.client.render.WeaponPegboardRenderer::new);
     }
 
     @SubscribeEvent
@@ -58,6 +61,7 @@ public final class ClientModEvents {
     @SubscribeEvent
     public static void onModifyBakingResult(net.minecraftforge.client.event.ModelEvent.ModifyBakingResult event) {
         dev.ignis.createpneumatictacticals.client.render.PodItemModel.wrap(event.getModels());
+        dev.ignis.createpneumatictacticals.client.render.PegboardCTBehaviour.wrap(event.getModels());
     }
 
     /**

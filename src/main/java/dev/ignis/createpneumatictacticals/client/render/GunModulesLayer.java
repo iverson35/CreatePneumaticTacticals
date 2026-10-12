@@ -101,9 +101,6 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
      *  driving main moves the skin with the model (docs §3.9) */
     private static final String MAIN_BONE = "main";
 
-    /** [+] preview tint (translucent blue) */
-    private static final float PREVIEW_R = 0.4f, PREVIEW_G = 0.6f, PREVIEW_B = 1f, PREVIEW_A = 0.5f;
-
     @Override
     public void render(PoseStack poseStack, GeoGunItem animatable, BakedGeoModel receiverModel,
                        RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer,
@@ -233,25 +230,30 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
                         phys = CharmPhysics.update(ctx.stack, target, model, ctx.poseStack, ctx.animId);
                     }
                     boolean ghostPass = ghostHere != null;
+                    // the ghost channel is also entered for a WHOLE stack (the
+                    // pegboard's placement preview): every module of the gun
+                    // then draws in the preview colour too, no glow pass, and
+                    // children keep drawing — one flat silhouette
+                    boolean tint = ghostPass || GhostPreview.tintAll;
                     // paint source mirrors the hidden flag: ghost previews
                     // read the held item's own Paint NBT (what install will
                     // actually produce), installed modules the gun's copy
                     ResourceLocation paintId = ghostPass ? ModuleItem.getPaint(ghostHere.stack())
                             : GunNbt.getPaint(ctx.stack, target.id);
-                    BodyDraw draw = bodyDraw(model, ctx.stack, target, paintId, ghostPass);
+                    BodyDraw draw = bodyDraw(model, ctx.stack, target, paintId, tint);
                     getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable, draw.type(),
                             ctx.bufferSource.getBuffer(draw.type()), ctx.partialTick, ctx.packedLight,
                             ctx.packedOverlay,
-                            ghostPass ? PREVIEW_R : 1, ghostPass ? PREVIEW_G : 1,
-                            ghostPass ? PREVIEW_B : 1, ghostPass ? PREVIEW_A : 1);
+                            tint ? GhostPreview.R : 1, tint ? GhostPreview.G : 1,
+                            tint ? GhostPreview.B : 1, tint ? GhostPreview.A : 1);
                     if (ghostPass) return; // a preview is one module, no glow pass, no children
-                    if (draw.atlasGlow()) {
+                    if (draw.atlasGlow() && !tint) {
                         // fullbright emissive pass from the glow atlas (the
                         // geo_glowing_layer recipe bound to the glow canvas)
                         getRenderer().reRender(model, ctx.poseStack, ctx.bufferSource, ctx.animatable,
                                 GunTextureAtlas.GLOW, ctx.bufferSource.getBuffer(GunTextureAtlas.GLOW),
                                 ctx.partialTick, GunGlowLayer.FULLBRIGHT, GunGlowLayer.NO_OVERLAY, 1, 1, 1, 1);
-                    } else if (draw.legacyTexture() != null) {
+                    } else if (draw.legacyTexture() != null && !tint) {
                         // fullbright emissive pass for modules with a <name>_glowmask.png
                         GunGlowLayer.renderForModule(model, ctx.animatable, ctx.poseStack, ctx.bufferSource,
                                 ctx.partialTick, draw.legacyTexture(), getRenderer());

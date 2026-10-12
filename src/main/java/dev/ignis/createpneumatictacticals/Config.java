@@ -48,6 +48,11 @@ public class Config {
             .comment("Camera distance in blocks beyond which cosmetic gun modules (sights, muzzle devices, charms, rail attachments) are not rendered; 0 disables")
             .defineInRange("lodDistance", 32, 0, 256);
 
+    public static final ForgeConfigSpec.IntValue PEGBOARD_RENDER_DISTANCE = CLIENT_BUILDER
+            .comment("Camera distance in blocks within which items hung on weapon pegboards are rendered;"
+                    + " 0 disables (the placement preview is drawn by the same renderer, so it disappears too)")
+            .defineInRange("pegboardRenderDistance", 24, 0, 256);
+
     public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     public static boolean bloodParticles;
@@ -59,6 +64,7 @@ public class Config {
     public static boolean charmPhysics;
     public static boolean gunAtlas;
     public static int lodDistance;
+    public static int pegboardRenderDistance;
 
 
     @SubscribeEvent
@@ -73,6 +79,7 @@ public class Config {
             charmPhysics = CHARM_PHYSICS.get();
             gunAtlas = GUN_ATLAS.get();
             lodDistance = LOD_DISTANCE.get();
+            pegboardRenderDistance = PEGBOARD_RENDER_DISTANCE.get();
         }
     }
 }
