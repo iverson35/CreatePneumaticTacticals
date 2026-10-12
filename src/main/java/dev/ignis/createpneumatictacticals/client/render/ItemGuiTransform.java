@@ -21,6 +21,10 @@ import java.util.WeakHashMap;
  * so the baked model's bounding box is measured once (weak-keyed by the
  * baked model, so resource reloads re-measure), recentered, rotated with
  * vanilla's [30, 225, 0] block transform and scaled to fill the slot.
+ *
+ * <p>A caller that already knows the box passes it in ({@link
+ * #apply(PoseStack, float[], boolean)}) — the gun icon fits the assembled
+ * gun, whose box spans the receiver AND its installed modules.
  */
 public final class ItemGuiTransform {
 
@@ -47,16 +51,39 @@ public final class ItemGuiTransform {
             b = BOUNDS.computeIfAbsent(model, ItemGuiTransform::measure);
         }
         if (b == null) return; // empty model: nothing to fit
+        fit(poseStack, b[0], b[1], b[2], b[3], b[4], b[5], flipZ);
+    }
 
+    /**
+     * Same fit, for a box measured elsewhere: {@code box} is
+     * {@code [minX, minY, minZ, maxX, maxY, maxZ]} in blocks, in the space
+     * the geometry is actually drawn in (bone X mirrored, cube pivots and
+     * rotations applied) — {@link ModelBounds}'s order and conventions.
+     *
+     * <p>The gun icon uses this with {@code GunWorkbenchRenderer.bounds}, so
+     * the icon fits the ASSEMBLED gun — receiver plus installed barrel,
+     * magazine, sights — instead of the receiver body alone, which left the
+     * long parts poking out of the slot.
+     */
+    public static void apply(PoseStack poseStack, float[] box, boolean flipZ) {
+        if (box == null) return;
+        fit(poseStack,
+                (box[0] + box[3]) / 2f, (box[1] + box[4]) / 2f, (box[2] + box[5]) / 2f,
+                (box[3] - box[0]) / 2f, (box[4] - box[1]) / 2f, (box[5] - box[2]) / 2f, flipZ);
+    }
+
+    /** {@code c} = box center, {@code h} = half-extents, blocks */
+    private static void fit(PoseStack poseStack, float cx, float cy, float cz,
+                            float hx, float hy, float hz, boolean flipZ) {
         Quaternionf rot = Axis.YP.rotationDegrees(75).mul(Axis.XP.rotationDegrees(20));
         if (flipZ) rot.mul(Axis.ZP.rotationDegrees(180)); // model-space flip first
         // projected half-extent of the rotated bounding box on screen axes
         float spanX = 0, spanY = 0;
         for (int i = 0; i < 8; i++) {
             Vector3f w = new Vector3f(
-                    (i & 1) == 0 ? b[3] : -b[3],
-                    (i & 2) == 0 ? b[4] : -b[4],
-                    (i & 4) == 0 ? b[5] : -b[5]).rotate(rot);
+                    (i & 1) == 0 ? hx : -hx,
+                    (i & 2) == 0 ? hy : -hy,
+                    (i & 4) == 0 ? hz : -hz).rotate(rot);
             spanX = Math.max(spanX, Math.abs(w.x));
             spanY = Math.max(spanY, Math.abs(w.y));
         }
@@ -70,7 +97,7 @@ public final class ItemGuiTransform {
                 .rotate(new Quaternionf(rot).invert());
         poseStack.scale(scale, scale, scale);
         poseStack.mulPose(rot);
-        poseStack.translate(need.x - b[0] - 0.5f, need.y - b[1] - 0.51f, need.z - b[2] - 0.5f);
+        poseStack.translate(need.x - cx - 0.5f, need.y - cy - 0.51f, need.z - cz - 0.5f);
     }
 
     private static float[] measure(BakedGeoModel model) {

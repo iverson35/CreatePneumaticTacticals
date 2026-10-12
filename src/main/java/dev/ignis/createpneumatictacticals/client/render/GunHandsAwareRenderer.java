@@ -223,8 +223,13 @@ public final class GunHandsAwareRenderer extends GeoItemRenderer<GeoGunItem> {
                 && itemDistSq(poseStack) > lod * (float) lod;
         ((GunGeoModel) getGeoModel()).setStack(stack);
         if (context == ItemDisplayContext.GUI) {
-            // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display"
-            ItemGuiTransform.apply(poseStack,
+            // auto-fitted vanilla-style 3/4 view; geckolib ignores geo.json "display".
+            // Fit the WHOLE assembled gun (receiver + installed modules) — the same
+            // gun-space box the workbench poses its staged gun from — not the
+            // receiver body alone, which let barrels/magazines poke out of the slot.
+            float[] gunBox = GunWorkbenchRenderer.bounds(stack);
+            if (gunBox != null) ItemGuiTransform.apply(poseStack, gunBox, false);
+            else ItemGuiTransform.apply(poseStack, // receiver not baked: receiver-only fit
                     getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable)));
         }
         if (firstPerson) {
