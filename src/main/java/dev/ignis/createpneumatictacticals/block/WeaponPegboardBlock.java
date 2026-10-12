@@ -62,13 +62,24 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
     private static final int PLATE_THICKNESS = 3;
 
     /**
-     * Model-space z (px) of the plate's front face — the plane a hung item's
-     * back leaves from. Model +z runs from the room side (0) toward the wall
-     * (16); {@link PegboardGrid#toWorld} and the blockstate's y rotation carry
-     * that direction into every facing, so {@code 16 - thickness} is the front
-     * face plane for all four.
+     * How far the patterned board is raised off the plain plate (px). The board
+     * is a sheet whose front covers the whole face at
+     * {@link #HANG_PLANE_PX} and whose rim faces are inset 1 px, so they stand
+     * on the plate's frame instead of on the block boundary — see the block
+     * model. The board's connection sheet holes out that 1 px border wherever
+     * the board does not run on across it, which is where the raise shows as a
+     * recess with the plate's frame at the bottom.
      */
-    public static final int HANG_PLANE_PX = 16 - PLATE_THICKNESS;
+    private static final double BOARD_RAISE_PX = 0.5;
+
+    /**
+     * Model-space z (px) of the raised board's front face — the plane a hung
+     * item's back leaves from. Model +z runs from the room side (0) toward the
+     * wall (16); {@link PegboardGrid#toWorld} and the blockstate's y rotation
+     * carry that direction into every facing, so the plate's front minus the
+     * raise is the right plane for all four.
+     */
+    public static final double HANG_PLANE_PX = 16 - PLATE_THICKNESS - BOARD_RAISE_PX;
 
     /** sneak-take reach around the click point (px): under the 4 px hole spacing */
     public static final int TAKE_RADIUS_PX = 6;
@@ -81,7 +92,8 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
     public static final EnumProperty<PegboardMaterial> MATERIAL =
             EnumProperty.create("material", PegboardMaterial.class);
 
-    private static final int[][] PLATE_CUBES = {
+    /** one box covering plate and raised board: their union is flush in x and y */
+    private static final double[][] PLATE_CUBES = {
             {0, 0, HANG_PLANE_PX, 16, 16, 16},
     };
 
@@ -91,8 +103,8 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
         Map<Direction, VoxelShape> shapes = new EnumMap<>(Direction.class);
         for (Direction facing : Direction.Plane.HORIZONTAL) {
             VoxelShape shape = Shapes.empty();
-            for (int[] c : PLATE_CUBES) {
-                int[] r = rotateCube(c, facing);
+            for (double[] c : PLATE_CUBES) {
+                double[] r = rotateCube(c, facing);
                 shape = Shapes.or(shape, Block.box(r[0], r[1], r[2], r[3], r[4], r[5]));
             }
             shapes.put(facing, shape.optimize());
@@ -101,11 +113,11 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
     }
 
     /** same origin-vs-centre rotation as GunWorkbenchBlock.rotateCube */
-    private static int[] rotateCube(int[] c, Direction facing) {
+    private static double[] rotateCube(double[] c, Direction facing) {
         return switch (facing) {
-            case EAST -> new int[]{16 - c[5], c[1], c[0], 16 - c[2], c[4], c[3]};
-            case SOUTH -> new int[]{16 - c[3], c[1], 16 - c[5], 16 - c[0], c[4], 16 - c[2]};
-            case WEST -> new int[]{c[2], c[1], 16 - c[3], c[5], c[4], 16 - c[0]};
+            case EAST -> new double[]{16 - c[5], c[1], c[0], 16 - c[2], c[4], c[3]};
+            case SOUTH -> new double[]{16 - c[3], c[1], 16 - c[5], 16 - c[0], c[4], 16 - c[2]};
+            case WEST -> new double[]{c[2], c[1], 16 - c[3], c[5], c[4], 16 - c[0]};
             default -> c; // NORTH: as authored
         };
     }

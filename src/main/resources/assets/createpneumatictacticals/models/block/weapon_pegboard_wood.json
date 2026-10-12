@@ -3,20 +3,152 @@
   "textures": {
     "particle": "createpneumatictacticals:block/weapon_pegboard_wood",
     "front": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "frame": "createpneumatictacticals:block/weapon_pegboard_frame_wood",
     "edge": "createpneumatictacticals:block/weapon_pegboard_edge_wood",
     "back": "createpneumatictacticals:block/weapon_pegboard_back_wood"
   },
   "elements": [
     {
-      "from": [0, 0, 13],
-      "to": [16, 16, 16],
+      "from": [
+        0,
+        0,
+        13
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
       "faces": {
-        "north": {"uv": [0, 0, 16, 16], "texture": "#front"},
-        "south": {"uv": [0, 0, 16, 16], "texture": "#back"},
-        "east": {"uv": [0, 0, 16, 16], "texture": "#edge"},
-        "west": {"uv": [16, 0, 0, 16], "texture": "#edge"},
-        "up": {"uv": [16, 0, 0, 16], "texture": "#edge", "rotation": 90},
-        "down": {"uv": [0, 0, 16, 16], "texture": "#edge", "rotation": 90}
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#back"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        },
+        "west": {
+          "uv": [
+            16,
+            0,
+            0,
+            16
+          ],
+          "texture": "#edge"
+        },
+        "up": {
+          "uv": [
+            16,
+            0,
+            0,
+            16
+          ],
+          "texture": "#edge",
+          "rotation": 90
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge",
+          "rotation": 90
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        12.5
+      ],
+      "to": [
+        16,
+        16,
+        13
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#front"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        1,
+        12.5
+      ],
+      "to": [
+        15,
+        15,
+        13
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            2,
+            1,
+            1,
+            15
+          ],
+          "texture": "#front"
+        },
+        "west": {
+          "uv": [
+            15,
+            1,
+            14,
+            15
+          ],
+          "texture": "#front"
+        },
+        "up": {
+          "uv": [
+            15,
+            1,
+            1,
+            2
+          ],
+          "texture": "#front"
+        },
+        "down": {
+          "uv": [
+            15,
+            14,
+            1,
+            15
+          ],
+          "texture": "#front"
+        }
       }
     }
   ]

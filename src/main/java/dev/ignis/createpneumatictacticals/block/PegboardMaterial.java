@@ -41,10 +41,14 @@ public enum PegboardMaterial implements StringRepresentable {
 
     /**
      * Suffix of this material's texture names and item id:
-     * {@code weapon_pegboard<suffix>}, {@code weapon_pegboard_edge<suffix>},
-     * {@code weapon_pegboard_back<suffix>} and
-     * {@code weapon_pegboard_connected<suffix>} — the single source both the
-     * item registration and {@code PegboardCTBehaviour} read.
+     * {@code weapon_pegboard<suffix>} (the patterned board, whose connection
+     * sheet is {@code weapon_pegboard_connected<suffix>}),
+     * {@code weapon_pegboard_frame<suffix>} (the plain plate the board hangs
+     * on: the sheet holes out at every border the board does not run across,
+     * and this frame shows through it),
+     * {@code weapon_pegboard_edge<suffix>} and
+     * {@code weapon_pegboard_back<suffix>} — the single source both the item
+     * registration and {@code PegboardCTBehaviour} read.
      */
     public String suffix() {
         return this.suffix;
