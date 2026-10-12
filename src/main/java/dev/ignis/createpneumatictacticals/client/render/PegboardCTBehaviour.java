@@ -41,12 +41,18 @@ import java.util.Map;
  *     like where the board ends.
  * </ul>
  *
- * <p>The sheet's four rim faces are a 1 px inset box of their own ({@code from
- * [1,1,12.5] to [15,15,13]}), so they stand on that frame rather than on the
- * block boundary; they sample the tile's own edge lines. Create's {@link
- * CTModel} skips every quad whose sprite is not the shift's source, and
- * {@link #getShift} answers for the facing direction only, so the rims, the
- * plate's frame and the item model all keep what they were authored with.
+ * <p>The sheet is a 0.5 px slab whose front covers the whole 16x16 face, so its
+ * own box faces carry its thickness at the block boundary: at a seam the two
+ * plates butt there and each sheet's end face is what a grazing view catches —
+ * flush, no step, the board material running on. Where the board stops short of
+ * the boundary, that edge is instead the separate 1 px inset box ({@code from
+ * [1,1,12.5] to [15,15,13]}) of four rim faces, standing on the plate's frame.
+ * Both boxes sample the tile's own edge lines, and one caveat comes with the
+ * static model: at an unmerged border the slab's end faces still sit at the
+ * block boundary next to the hole, a 0.5 px lip. Create's {@link CTModel} skips
+ * every quad whose sprite is not the shift's source, and {@link #getShift}
+ * answers for the facing direction only, so all of them keep what they were
+ * authored with.
  *
  * <p>Connection follows the merged rectangle, not plain adjacency: a
  * same-facing, same-material plate that falls OUTSIDE the rectangle is

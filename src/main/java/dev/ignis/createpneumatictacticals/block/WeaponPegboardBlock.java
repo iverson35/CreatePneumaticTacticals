@@ -63,12 +63,13 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
 
     /**
      * How far the patterned board is raised off the plain plate (px). The board
-     * is a sheet whose front covers the whole face at
-     * {@link #HANG_PLANE_PX} and whose rim faces are inset 1 px, so they stand
-     * on the plate's frame instead of on the block boundary — see the block
-     * model. The board's connection sheet holes out that 1 px border wherever
-     * the board does not run on across it, which is where the raise shows as a
-     * recess with the plate's frame at the bottom.
+     * is a slab whose front covers the whole face at
+     * {@link #HANG_PLANE_PX}: its own box faces are its thickness at the block
+     * boundary (what a seam shows), and a separate 1 px inset box of rim faces
+     * gives it its edge where the board stops short of the boundary, standing
+     * on the plate's frame — see the block model. The board's connection sheet
+     * holes out that border wherever the board does not run on across it, which
+     * is where the raise shows as a recess with the frame at the bottom.
      */
     private static final double BOARD_RAISE_PX = 0.5;
 
