@@ -1,63 +1,963 @@
 {
   "variants": {
-    "facing=north,material=wood": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_wood"
+    "facing=north,material=wood,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_0"
     },
-    "facing=east,material=wood": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "facing=east,material=wood,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_0",
       "y": 90
     },
-    "facing=south,material=wood": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "facing=south,material=wood,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_0",
       "y": 180
     },
-    "facing=west,material=wood": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "facing=west,material=wood,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_0",
       "y": 270
     },
-    "facing=north,material=andesite": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_andesite"
+    "facing=north,material=wood,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_1"
     },
-    "facing=east,material=andesite": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+    "facing=east,material=wood,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_1",
       "y": 90
     },
-    "facing=south,material=andesite": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+    "facing=south,material=wood,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_1",
       "y": 180
     },
-    "facing=west,material=andesite": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+    "facing=west,material=wood,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_1",
       "y": 270
     },
-    "facing=north,material=brass": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_brass"
+    "facing=north,material=wood,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_2"
     },
-    "facing=east,material=brass": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+    "facing=east,material=wood,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_2",
       "y": 90
     },
-    "facing=south,material=brass": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+    "facing=south,material=wood,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_2",
       "y": 180
     },
-    "facing=west,material=brass": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+    "facing=west,material=wood,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_2",
       "y": 270
     },
-    "facing=north,material=cast_iron": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron"
+    "facing=north,material=wood,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_3"
     },
-    "facing=east,material=cast_iron": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
+    "facing=east,material=wood,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_3",
       "y": 90
     },
-    "facing=south,material=cast_iron": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
+    "facing=south,material=wood,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_3",
       "y": 180
     },
-    "facing=west,material=cast_iron": {
-      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
+    "facing=west,material=wood,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_3",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_4"
+    },
+    "facing=east,material=wood,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_4",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_4",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_4",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_5"
+    },
+    "facing=east,material=wood,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_5",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_5",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_5",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_6"
+    },
+    "facing=east,material=wood,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_6",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_6",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_6",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_7"
+    },
+    "facing=east,material=wood,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_7",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_7",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_7",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_8"
+    },
+    "facing=east,material=wood,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_8",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_8",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_8",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_9"
+    },
+    "facing=east,material=wood,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_9",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_9",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_9",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_10"
+    },
+    "facing=east,material=wood,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_10",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_10",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_10",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_11"
+    },
+    "facing=east,material=wood,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_11",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_11",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_11",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_12"
+    },
+    "facing=east,material=wood,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_12",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_12",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_12",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_13"
+    },
+    "facing=east,material=wood,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_13",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_13",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_13",
+      "y": 270
+    },
+    "facing=north,material=wood,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_14"
+    },
+    "facing=east,material=wood,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_14",
+      "y": 90
+    },
+    "facing=south,material=wood,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_14",
+      "y": 180
+    },
+    "facing=west,material=wood,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_14",
+      "y": 270
+    },
+    "facing=north,material=wood,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_15"
+    },
+    "facing=east,material=wood,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_15",
+      "y": 90
+    },
+    "facing=south,material=wood,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_15",
+      "y": 180
+    },
+    "facing=west,material=wood,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood_15",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_0"
+    },
+    "facing=east,material=andesite,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_0",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_0",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_0",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_1"
+    },
+    "facing=east,material=andesite,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_1",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_1",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_1",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_2"
+    },
+    "facing=east,material=andesite,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_2",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_2",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_2",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_3"
+    },
+    "facing=east,material=andesite,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_3",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_3",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_3",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_4"
+    },
+    "facing=east,material=andesite,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_4",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_4",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_4",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_5"
+    },
+    "facing=east,material=andesite,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_5",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_5",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_5",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_6"
+    },
+    "facing=east,material=andesite,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_6",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_6",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_6",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_7"
+    },
+    "facing=east,material=andesite,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_7",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_7",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_7",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_8"
+    },
+    "facing=east,material=andesite,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_8",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_8",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_8",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_9"
+    },
+    "facing=east,material=andesite,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_9",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_9",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_9",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_10"
+    },
+    "facing=east,material=andesite,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_10",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_10",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_10",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_11"
+    },
+    "facing=east,material=andesite,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_11",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_11",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_11",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_12"
+    },
+    "facing=east,material=andesite,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_12",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_12",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_12",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_13"
+    },
+    "facing=east,material=andesite,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_13",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_13",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_13",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_14"
+    },
+    "facing=east,material=andesite,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_14",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_14",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_14",
+      "y": 270
+    },
+    "facing=north,material=andesite,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_15"
+    },
+    "facing=east,material=andesite,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_15",
+      "y": 90
+    },
+    "facing=south,material=andesite,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_15",
+      "y": 180
+    },
+    "facing=west,material=andesite,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite_15",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_0"
+    },
+    "facing=east,material=brass,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_0",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_0",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_0",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_1"
+    },
+    "facing=east,material=brass,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_1",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_1",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_1",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_2"
+    },
+    "facing=east,material=brass,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_2",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_2",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_2",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_3"
+    },
+    "facing=east,material=brass,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_3",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_3",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_3",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_4"
+    },
+    "facing=east,material=brass,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_4",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_4",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_4",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_5"
+    },
+    "facing=east,material=brass,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_5",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_5",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_5",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_6"
+    },
+    "facing=east,material=brass,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_6",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_6",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_6",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_7"
+    },
+    "facing=east,material=brass,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_7",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_7",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_7",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_8"
+    },
+    "facing=east,material=brass,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_8",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_8",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_8",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_9"
+    },
+    "facing=east,material=brass,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_9",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_9",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_9",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_10"
+    },
+    "facing=east,material=brass,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_10",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_10",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_10",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_11"
+    },
+    "facing=east,material=brass,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_11",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_11",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_11",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_12"
+    },
+    "facing=east,material=brass,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_12",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_12",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_12",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_13"
+    },
+    "facing=east,material=brass,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_13",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_13",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_13",
+      "y": 270
+    },
+    "facing=north,material=brass,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_14"
+    },
+    "facing=east,material=brass,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_14",
+      "y": 90
+    },
+    "facing=south,material=brass,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_14",
+      "y": 180
+    },
+    "facing=west,material=brass,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_14",
+      "y": 270
+    },
+    "facing=north,material=brass,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_15"
+    },
+    "facing=east,material=brass,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_15",
+      "y": 90
+    },
+    "facing=south,material=brass,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_15",
+      "y": 180
+    },
+    "facing=west,material=brass,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass_15",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_0"
+    },
+    "facing=east,material=cast_iron,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_0",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_0",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_0",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_1"
+    },
+    "facing=east,material=cast_iron,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_1",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_1",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=false,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_1",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_2"
+    },
+    "facing=east,material=cast_iron,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_2",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_2",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_2",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_3"
+    },
+    "facing=east,material=cast_iron,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_3",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_3",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=true,up=false,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_3",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_4"
+    },
+    "facing=east,material=cast_iron,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_4",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_4",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_4",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_5"
+    },
+    "facing=east,material=cast_iron,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_5",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_5",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=false,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_5",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_6"
+    },
+    "facing=east,material=cast_iron,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_6",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_6",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_6",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_7"
+    },
+    "facing=east,material=cast_iron,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_7",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_7",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=true,up=true,down=false": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_7",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_8"
+    },
+    "facing=east,material=cast_iron,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_8",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_8",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_8",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_9"
+    },
+    "facing=east,material=cast_iron,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_9",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_9",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=false,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_9",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_10"
+    },
+    "facing=east,material=cast_iron,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_10",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_10",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_10",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_11"
+    },
+    "facing=east,material=cast_iron,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_11",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_11",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=true,up=false,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_11",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_12"
+    },
+    "facing=east,material=cast_iron,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_12",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_12",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_12",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_13"
+    },
+    "facing=east,material=cast_iron,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_13",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_13",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=false,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_13",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_14"
+    },
+    "facing=east,material=cast_iron,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_14",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_14",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=false,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_14",
+      "y": 270
+    },
+    "facing=north,material=cast_iron,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_15"
+    },
+    "facing=east,material=cast_iron,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_15",
+      "y": 90
+    },
+    "facing=south,material=cast_iron,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_15",
+      "y": 180
+    },
+    "facing=west,material=cast_iron,left=true,right=true,up=true,down=true": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron_15",
       "y": 270
     }
   }

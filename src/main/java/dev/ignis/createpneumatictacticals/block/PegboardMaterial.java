@@ -5,9 +5,8 @@ import net.minecraft.util.StringRepresentable;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A plate's material: which texture set its model and its connected texture
- * use. Carried as the {@code weapon_pegboard}'s {@code material} blockstate
- * property.
+ * A plate's material: which texture set its models use. Carried as the
+ * {@code weapon_pegboard}'s {@code material} blockstate property.
  *
  * <p>Materials do separate boards — plates of different materials stay
  * separate {@link PegboardPanel}s, each with its own frame, so a mixed wall
@@ -41,14 +40,15 @@ public enum PegboardMaterial implements StringRepresentable {
 
     /**
      * Suffix of this material's texture names and item id:
-     * {@code weapon_pegboard<suffix>} (the patterned board, whose connection
-     * sheet is {@code weapon_pegboard_connected<suffix>}),
+     * {@code weapon_pegboard<suffix>} (the seamless patterned board, which
+     * {@code tools/make_pegboard_models.py} derives from the authored
+     * {@code tools/pegboard/weapon_pegboard<suffix>.png}),
      * {@code weapon_pegboard_frame<suffix>} (the plain plate the board hangs
-     * on: the sheet holes out at every border the board does not run across,
-     * and this frame shows through it),
+     * on: the board stops 1 px short of every border it does not run across,
+     * and this frame shows through that groove),
      * {@code weapon_pegboard_edge<suffix>} and
-     * {@code weapon_pegboard_back<suffix>} — the single source both the item
-     * registration and {@code PegboardCTBehaviour} read.
+     * {@code weapon_pegboard_back<suffix>} — the single source the item
+     * registration and that model generator read.
      */
     public String suffix() {
         return this.suffix;

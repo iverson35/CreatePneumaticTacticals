@@ -11,12 +11,12 @@ import java.util.function.Predicate;
 /**
  * The merged rectangle a pegboard block belongs to.
  *
- * <p>Adjacent pegboards of the same facing read as ONE plate: the connected
- * texture removes the seams inside the rectangle and keeps the frame on its
- * outer edges, so the shape of the rectangle is what the player sees. The
- * rectangle is the largest-area inscribed rectangle of the block's connected
- * cluster (a 4-connected blob in the {horizontal axis} x {Y} plane); blocks
- * that fall outside it draw as standalone 1x1 plates.
+ * <p>Adjacent pegboards of the same facing and material read as ONE plate: the
+ * board runs to the block boundary across the borders inside the rectangle and
+ * keeps the frame on the rest, so the shape of the rectangle is what the player
+ * sees. The rectangle is the largest-area inscribed rectangle of the block's
+ * connected cluster (a 4-connected blob in the {horizontal axis} x {Y} plane);
+ * blocks that fall outside it draw as standalone 1x1 plates.
  *
  * <p>A cluster that fits within {@link #MAX_SPAN} x {@link #MAX_SPAN} merges
  * whole, wherever it sits. A bigger one is cut into {@link #MAX_SPAN}-wide
@@ -25,8 +25,9 @@ import java.util.function.Predicate;
  * of every block falling back to 1x1. The grid is aligned to world coordinates
  * so both plates at a seam measure the same way and agree on the cut.
  *
- * <p>Pure math on block positions — no level, no block state — so the block,
- * its renderer and the connected-texture behaviour all measure the same way.
+ * <p>Pure math on block positions — no level, no block state — so the block
+ * (which stamps its four borders from it) and the hang renderer measure the
+ * same way.
  */
 public final class PegboardPanel {
 

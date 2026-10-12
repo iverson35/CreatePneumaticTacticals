@@ -23,19 +23,6 @@ public final class ClientModEvents {
         event.register(ModKeybinds.INTERACT);
     }
 
-    /**
-     * The board's connection sheet holes out every border the board does not run
-     * across, and the plate 0.5 px behind shows its frame through those texels:
-     * on the solid layer they would write depth and hide it, so the block needs
-     * alpha test.
-     */
-    @SubscribeEvent
-    public static void onClientSetup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
-        net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(
-                dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_PEGBOARD.get(),
-                net.minecraft.client.renderer.RenderType.cutout());
-    }
-
     @SubscribeEvent
     public static void onRegisterBlockEntityRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(
@@ -74,7 +61,6 @@ public final class ClientModEvents {
     @SubscribeEvent
     public static void onModifyBakingResult(net.minecraftforge.client.event.ModelEvent.ModifyBakingResult event) {
         dev.ignis.createpneumatictacticals.client.render.PodItemModel.wrap(event.getModels());
-        dev.ignis.createpneumatictacticals.client.render.PegboardCTBehaviour.wrap(event.getModels());
     }
 
     /**
