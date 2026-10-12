@@ -195,6 +195,7 @@ final class WorkbenchStatsPanel {
             body.add(fmt("fire_rate_multiplier", stats.fireRateMultiplier));
             body.add(fmt("range_multiplier", stats.rangeMultiplier));
             body.add(fmt("hipfire_accuracy_multiplier", stats.hipfireAccuracyMultiplier));
+            if (stats.isShotgun()) body.add(fmt("choke", stats.choke));
             body.add(fmt("ergonomics", stats.ergonomics));
             body.add(fmt("aim_zoom", stats.aimZoom));
             body.add(fmt("tactical_aim_zoom", stats.tacticalAimZoom));
@@ -216,6 +217,9 @@ final class WorkbenchStatsPanel {
             // air drag is a page-2 (full spec) row only: page 1 carries the
             // core set the item tooltip mirrors
             body.add(fmt("gravity_multiplier", stats.gravityMultiplier));
+            // ... and choke joins it for the one caliber that has a pellet
+            // pattern, in the same spot the item tooltip puts it
+            if (stats.isShotgun()) body.add(fmt("choke", stats.choke));
         }
 
         if (full) {

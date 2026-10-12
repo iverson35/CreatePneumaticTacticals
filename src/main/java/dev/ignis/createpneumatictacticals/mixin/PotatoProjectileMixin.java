@@ -409,11 +409,11 @@ public abstract class PotatoProjectileMixin {
     private void createpneumatictacticals$gunHitEntity(EntityHitResult ray, CallbackInfo ci) {
         PotatoProjectileEntity self = cpt$self();
         if (!cpt$isGunShot(self)) return;
-        // gun shots never collide with each other: a split burst shares the
-        // launch ray with only ~0.1 block of ring offset (less than the 0.25
-        // hitbox), so pellets would annihilate each other on tick 1-2.
-        // Create's vanilla handler grants a 10-tick grace instead — wrong
-        // for guns, where a burst is one shot and must not self-destruct.
+        // gun shots never collide with each other: a split burst leaves the
+        // same muzzle on neighboring rays (a pellet cone sample apart, well
+        // inside the 0.25 hitbox), so pellets would annihilate each other on
+        // tick 1-2. Create's vanilla handler grants a 10-tick grace instead —
+        // wrong for guns, where a burst is one shot and must not self-destruct.
         if (ray.getEntity() instanceof PotatoProjectileEntity other && cpt$isGunShot(other)) {
             ci.cancel();
             return;

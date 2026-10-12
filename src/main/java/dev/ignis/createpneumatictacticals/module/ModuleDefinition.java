@@ -73,7 +73,7 @@ public final class ModuleDefinition {
     public final double reloadSpeed, damageMultiplier, fireRateMultiplier,
             hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
             recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery,
-            gravityMultiplier, dragMultiplier, rangeMultiplier;
+            gravityMultiplier, dragMultiplier, rangeMultiplier, choke;
     /** muzzle: -5..1 gas suppression; -1 = double smoke, +1 = none */
     public final double gasSuppression;
     /**
@@ -199,6 +199,7 @@ public final class ModuleDefinition {
         this.gravityMultiplier = b.gravityMultiplier;
         this.dragMultiplier = b.dragMultiplier;
         this.rangeMultiplier = b.rangeMultiplier;
+        this.choke = b.choke;
         this.gasSuppression = b.gasSuppression;
         this.unique = b.unique;
         this.gasGuides = b.gasGuides;
@@ -279,6 +280,7 @@ public final class ModuleDefinition {
         b.gravityMultiplier = GsonHelper.getAsDouble(props, "gravity_multiplier", 0);
         b.dragMultiplier = GsonHelper.getAsDouble(props, "drag_multiplier", 0);
         b.rangeMultiplier = GsonHelper.getAsDouble(props, "range_multiplier", 0);
+        b.choke = GsonHelper.getAsDouble(props, "choke", 0);
         b.unique = GsonHelper.getAsBoolean(props, "unique", false);
         if (type == ModuleType.MUZZLE) {
             b.gasSuppression = net.minecraft.util.Mth.clamp(
@@ -436,7 +438,7 @@ public final class ModuleDefinition {
         private double reloadSpeed, damageMultiplier, fireRateMultiplier,
                 hipfireAccuracyMultiplier, ergonomics, bulletSpeed,
                 recoilVerticalMultiplier, recoilHorizontalMultiplier, recoilRecovery,
-                gravityMultiplier, dragMultiplier, rangeMultiplier;
+                gravityMultiplier, dragMultiplier, rangeMultiplier, choke;
         private double gasSuppression;
         private boolean unique;
         private final List<GasGuide> gasGuides = new ArrayList<>();

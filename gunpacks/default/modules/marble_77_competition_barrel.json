@@ -4,6 +4,6 @@
   "gun_type": "shotgun",
   "gun_properties": {
     "ergonomics": -0.1,
-    "range_multiplier": 1.5
+    "range_multiplier": -0.5
   }
 }

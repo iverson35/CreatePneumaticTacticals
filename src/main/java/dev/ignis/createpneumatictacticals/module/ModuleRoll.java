@@ -54,6 +54,7 @@ public final class ModuleRoll {
     public enum Attr {
         RELOAD_SPEED("reload_speed", true, d -> d.reloadSpeed),
         HIPFIRE_ACCURACY("hipfire_accuracy_multiplier", true, d -> d.hipfireAccuracyMultiplier),
+        CHOKE("choke", true, d -> d.choke),
         ERGONOMICS("ergonomics", true, d -> d.ergonomics),
         RECOIL_VERTICAL("recoil_vertical_multiplier", false, d -> d.recoilVerticalMultiplier),
         RECOIL_HORIZONTAL("recoil_horizontal_multiplier", false, d -> d.recoilHorizontalMultiplier),

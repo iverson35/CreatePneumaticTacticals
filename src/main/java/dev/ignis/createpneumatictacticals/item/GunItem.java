@@ -77,6 +77,11 @@ public class GunItem extends Item {
             tooltip.add(stat(stats.recoilVerticalMultiplier, "recoil_vertical_multiplier"));
             tooltip.add(stat(stats.recoilHorizontalMultiplier, "recoil_horizontal_multiplier"));
             tooltip.add(stat(stats.gravityMultiplier, "gravity_multiplier"));
+            // 收束 only exists for guns with a pellet pattern to constrict,
+            // i.e. the shotgun-caliber ones (calibers match strictly)
+            if (stats.isShotgun()) {
+                tooltip.add(stat(stats.choke, "choke"));
+            }
         } else {
             tooltip.add(Component.translatable("tooltip." + CreatePneumaticTacticals.MODID + ".stats_hint")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));

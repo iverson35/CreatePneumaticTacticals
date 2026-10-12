@@ -6,7 +6,7 @@ package dev.ignis.createpneumatictacticals.gun;
  * accuracy model. Both consumers MUST read it here:
  * <ul>
  *   <li>server {@code GunFireHandler.spreadDegrees} — the authoritative
- *       pellet spread</li>
+ *       hipfire aim error (one sample per shot, shared by every pellet)</li>
  *   <li>client {@code SpreadModel.currentSpread} — the crosshair gap, which
  *       must mirror the server or the reticle lies</li>
  * </ul>

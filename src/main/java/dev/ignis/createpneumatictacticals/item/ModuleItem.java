@@ -307,6 +307,7 @@ public class ModuleItem extends Item implements GeoItem {
         stats.put("damage_multiplier", def.damageMultiplier);
         stats.put("fire_rate_multiplier", def.fireRateMultiplier);
         stats.put("hipfire_accuracy_multiplier", ModuleRoll.value(def, ModuleRoll.Attr.HIPFIRE_ACCURACY, rolls));
+        stats.put("choke", ModuleRoll.value(def, ModuleRoll.Attr.CHOKE, rolls));
         stats.put("ergonomics", ModuleRoll.value(def, ModuleRoll.Attr.ERGONOMICS, rolls));
         stats.put("bullet_speed", def.bulletSpeed);
         stats.put("recoil_vertical_multiplier", ModuleRoll.value(def, ModuleRoll.Attr.RECOIL_VERTICAL, rolls));

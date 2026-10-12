@@ -4,6 +4,7 @@ import dev.ignis.createpneumatictacticals.module.HandguardPosition;
 import dev.ignis.createpneumatictacticals.module.ModuleDefinition;
 import dev.ignis.createpneumatictacticals.module.ModuleRoll;
 import net.minecraft.util.Mth;
+import dev.ignis.createpneumatictacticals.module.GunType;
 import dev.ignis.createpneumatictacticals.module.ModuleType;
 import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
@@ -87,6 +88,14 @@ public final class GunStats {
      * in gun_properties as {@code range_multiplier}.
      */
     public double rangeMultiplier = 1.0;
+    /**
+     * Pellet-pattern constriction (收束): additive over modules on a 0 base,
+     * clamped -1..1. The ammo's own pellet cone ({@code AmmoExtension.pelletSpread})
+     * is scaled by {@code 1 - choke}, so positive tightens the pattern (1 =
+     * every pellet on one line) and negative widens it (up to 2x). Only the
+     * split rounds of a shotgun-caliber gun have a pattern for it to act on.
+     */
+    public double choke = 0;
     /** total muzzle gas suppression, clamped -5..1; smoke = (1 - v) * base (±1 = ±100%) */
     public double gasSuppression = 0;
     public double aimZoom = 1.25;
@@ -202,6 +211,7 @@ public final class GunStats {
         s.gravityMultiplier += def.gravityMultiplier;            // never rolled
         s.dragMultiplier += def.dragMultiplier;                  // never rolled
         s.rangeMultiplier += def.rangeMultiplier;                // never rolled
+        s.choke += ModuleRoll.value(def, ModuleRoll.Attr.CHOKE, rolls);
         s.gasSuppression += ModuleRoll.value(def, ModuleRoll.Attr.GAS_SUPPRESSION, rolls);
     }
 
@@ -251,10 +261,23 @@ public final class GunStats {
         s.gravityMultiplier = Mth.clamp(s.gravityMultiplier, 0.1, 3.0);
         s.dragMultiplier = Mth.clamp(s.dragMultiplier, 0.1, 3.0);
         s.rangeMultiplier = Mth.clamp(s.rangeMultiplier, 0.1, 3.0);
+        // choke feeds 1 - choke as the pellet cone's scale: -1 doubles the
+        // pattern, +1 collapses it onto one line
+        s.choke = Mth.clamp(s.choke, -1, 1);
         s.gasSuppression = Mth.clamp(s.gasSuppression, -5, 1);
     }
 
     public boolean isComplete() {
         return receiver != null && feed != null && supply != null && barrel != null;
+    }
+
+    /**
+     * True when the receiver's caliber is SHOTGUN. Calibers match strictly
+     * ({@link GunType#accepts}), so this is exactly the set of guns that fire
+     * the split multi-pellet rounds — the only ones the {@link #choke} stat
+     * has a pellet pattern to act on.
+     */
+    public boolean isShotgun() {
+        return receiver != null && receiver.gunType == GunType.SHOTGUN;
     }
 }

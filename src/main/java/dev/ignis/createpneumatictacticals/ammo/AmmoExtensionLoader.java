@@ -103,6 +103,7 @@ public final class AmmoExtensionLoader extends SimpleJsonResourceReloadListener 
             }
         }
         ext.spread = optDouble(json, "spread", ext.spread);
+        ext.pelletSpread = optDouble(json, "pellet_spread", ext.pelletSpread);
         ext.headshotMultiplier = optDouble(json, "headshot_multiplier", ext.headshotMultiplier);
         if (json.has("gun_type")) {
             ext.gunType = GunType.byName(json.get("gun_type").getAsString(), ext.gunType);

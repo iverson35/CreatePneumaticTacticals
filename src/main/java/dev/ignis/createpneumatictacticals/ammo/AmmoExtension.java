@@ -42,6 +42,10 @@ public final class AmmoExtension {
     // fire_rate_multiplier
     public double damage = -1;              // <=0: use Create's type.damage()
     public double spread = 1.0;              // degrees; S0 of the hipfire accuracy model
+    public double pelletSpread = 3.0;        // degrees; the round's own muzzle cone,
+                                             // sampled per pellet about the shot's
+                                             // (shared) hipfire line; only used when
+                                             // Create's type.split() > 1
     public double headshotMultiplier = 1.5;
     public GunType gunType = GunType.LIGHT;  // HEAVY receivers accept lighter ammo
 

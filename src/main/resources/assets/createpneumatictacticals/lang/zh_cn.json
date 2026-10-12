@@ -56,6 +56,7 @@
   "stat.createpneumatictacticals.fire_rate_multiplier": "射速倍率",
   "stat.createpneumatictacticals.reload_speed": "换弹速度",
   "stat.createpneumatictacticals.hipfire_accuracy_multiplier": "腰射精度",
+  "stat.createpneumatictacticals.choke": "收束",
   "stat.createpneumatictacticals.ergonomics": "人机工效",
   "stat.createpneumatictacticals.bullet_speed": "弹速",
   "stat.createpneumatictacticals.recoil_vertical_multiplier": "垂直后座",

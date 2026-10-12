@@ -55,12 +55,13 @@ public final class GunFireHandler {
     private GunFireHandler() {}
 
     /**
-     * Server-authoritative spread in degrees (mirrors the client
-     * SpreadModel). {@code aim} is the firing frame's ADS progress from the
-     * fire packet: the cone closes along the client's own smoothstep, so the
-     * gun only reaches pinpoint once it is actually at the sight line, and a
-     * shot fired mid-raise lands between hipfire and aimed. Mob shooters
-     * pass 0 (they have no aim transition).
+     * Server-authoritative HIPFIRE AIM ERROR in degrees (mirrors the client
+     * SpreadModel), sampled once per shot and shared by every pellet of a
+     * split round. {@code aim} is the firing frame's ADS progress from the
+     * fire packet: the error closes along the client's own smoothstep, so the
+     * whole pattern only reaches the sight line once the gun is actually up,
+     * and a shot fired mid-raise lands between hipfire and aimed. Mob
+     * shooters pass 0 (they have no aim transition).
      */
     private static double spreadDegrees(LivingEntity shooter, AmmoExtension ext, GunStats stats, float aim) {
         String key = shooter.getStringUUID();
@@ -87,8 +88,8 @@ public final class GunFireHandler {
     /**
      * Rotate the unit {@code dir} by a random angle within a cone of
      * {@code spreadDeg} (uniform over the disc: radius sqrt-sampled, angle
-     * uniform). Returns a unit vector when given one; callers normalize
-     * again after adding split-pellet ring offsets.
+     * uniform). Returns a unit vector, so a caller can chain it (pellet cone
+     * about the shot's aim line) without re-normalizing.
      */
     private static Vec3 applySpread(Vec3 dir, double spreadDeg) {
         if (spreadDeg <= 0) return dir;
@@ -261,6 +262,11 @@ public final class GunFireHandler {
             }
         }
         int pellets = Math.max(1, type.split());
+        // hipfire aim error: ONE sample for the whole shot, shared by every
+        // pellet — hipfire is the gun not being lined up, so it displaces the
+        // entire pattern. The round's own dispersion (pelletSpread) is then
+        // sampled per pellet about this shared line.
+        Vec3 baseDir = applySpread(look, spreadDeg);
         // Vanilla clamps BOTH velocity channels to +-3.9 per axis: the spawn
         // packet (ClientboundAddEntityPacket) and the per-change motion packet
         // (ClientboundSetEntityMotionPacket). Above that the dominant axis is
@@ -284,21 +290,15 @@ public final class GunFireHandler {
             if (contentStack == null) return;
             contentStack.setTag(null);
             projectile.setItem(contentStack);
-            Vec3 dir = applySpread(look, spreadDeg);
-            if (pellets > 1) {
-                // Create's spray (PotatoCannonItem.use): per-pellet deterministic
-                // ring offset + jitter in the plane perpendicular to the shot.
-                // Reimplemented here because catnip's VecHelper is not on the
-                // compile classpath.
-                double ang = Math.toRadians((360.0 / pellets) * i
-                        + 360.0 * shooter.getRandom().nextFloat()
-                        + 40 * (shooter.getRandom().nextFloat() - 0.5f));
-                Vec3 upAxis = Math.abs(dir.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
-                Vec3 u = dir.cross(upAxis).normalize();
-                Vec3 w = dir.cross(u).normalize();
-                dir = dir.add(u.scale(Math.cos(ang) * 0.1)).add(w.scale(Math.sin(ang) * 0.1));
-            }
-            dir = dir.normalize();
+            // the round's own muzzle cone: a split round scatters its pellets
+            // inside it, each on its own uniform sample about the shared aim
+            // line (a single-projectile round follows that line exactly, which
+            // is what makes a fully aimed single shot pinpoint). The gun's
+            // choke (收束) scales that cone: 1 - choke, clamped by GunStats to
+            // 0..2, so positive tightens the pattern and negative widens it.
+            Vec3 dir = pellets > 1
+                    ? applySpread(baseDir, ext.pelletSpread * (1 - stats.choke))
+                    : baseDir;
             // launch at the dynamic muzzle distance (receiver->barrel->
             // muzzle-device chain measured from the models' Z-axis bones;
             // 0.5 legacy default when the pack lacks the bones). Cone apex

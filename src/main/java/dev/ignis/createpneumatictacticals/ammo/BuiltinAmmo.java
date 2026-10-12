@@ -65,7 +65,7 @@ public final class BuiltinAmmo {
     static {
         // weakest first: caliber + falloff start (blocks) + damage (ours)
         ammo("create:beetroot").caliber(GunType.LIGHT).range(16.0).damage(3.0);
-        ammo("create:glow_berry").caliber(GunType.SHOTGUN).range(16.0).damage(3.0);
+        ammo("create:glow_berry").caliber(GunType.SHOTGUN).range(16.0).damage(3.0).bounce(2,0.9);
         ammo("create:chorus_fruit").caliber(GunType.MEDIUM).range(18.5).damage(4.4);
         ammo("create:melon_slice").caliber(GunType.LIGHT).range(18.5).damage(4.4);
         ammo("create:suspicious_stew").caliber(GunType.MEDIUM).range(18.5).damage(4.4);
@@ -117,6 +117,7 @@ public final class BuiltinAmmo {
         @Nullable private Double falloffRate;
         @Nullable private Double damage;
         @Nullable private Double spread;
+        @Nullable private Double pelletSpread;
         @Nullable private Double headshot;
         @Nullable private Double affectRadius;
         @Nullable private Double explosionKnockback;
@@ -162,6 +163,14 @@ public final class BuiltinAmmo {
             return this;
         }
 
+        /** the round's own muzzle cone in degrees: each pellet of a split round
+         *  samples its own direction inside it, about the shot's shared hipfire
+         *  line (only used when the type splits into more than one projectile) */
+        public Builder pelletSpread(double v) {
+            this.pelletSpread = v;
+            return this;
+        }
+
         /** headshot damage multiplier */
         public Builder headshot(double v) {
             this.headshot = v;
@@ -203,6 +212,7 @@ public final class BuiltinAmmo {
             if (falloffRate != null) ext.damageFalloffRate = falloffRate;
             if (damage != null) ext.damage = damage;
             if (spread != null) ext.spread = spread;
+            if (pelletSpread != null) ext.pelletSpread = pelletSpread;
             if (headshot != null) ext.headshotMultiplier = headshot;
             if (affectRadius != null) ext.affectRadius = affectRadius;
             if (explosionKnockback != null) ext.explosionKnockback = explosionKnockback;
