@@ -10,6 +10,21 @@ import net.minecraftforge.registries.RegistryObject;
 
 /**
  * Block entity registrations.
+ *
+ * <p>Every block entity here holds items, and Create's schematic pipeline is what
+ * keeps them from being duplicated by a blueprint print: the schematicannon, the
+ * creative print and the deployer all put a placed block's stored NBT through
+ * {@code BlockHelper#prepareBlockEntityData} first, and that returns {@code null}
+ * for anything implementing neither {@code PartialSafeNBT} nor a
+ * {@code SafeNbtWriter} - so the freshly placed block entity is left untouched and
+ * prints empty, however much the blueprint file itself still carries.
+ *
+ * <p>Keep it that way: implementing {@code PartialSafeNBT} is exactly what would
+ * route our NBT through {@code writeSafe} instead. {@link
+ * WeaponModuleMachineBlockEntity} already gets that interface from Create's
+ * {@code SmartBlockEntity}, and safely: its {@code writeSafe} never reaches the
+ * machine's own {@code write}, and its behaviour list is empty (see {@code
+ * addBehaviours}), so nothing opts into the safe tag either.
  */
 public final class ModBlockEntities {
 
