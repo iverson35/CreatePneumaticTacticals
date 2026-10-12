@@ -77,6 +77,12 @@ public final class ModCreativeTabs {
         output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.MODULE_TUNER_ITEM.get()));
         output.accept(new ItemStack(dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_PEGBOARD_ITEM.get()));
         output.accept(new ItemStack(
+                dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_PEGBOARD_ANDESITE_ITEM.get()));
+        output.accept(new ItemStack(
+                dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_PEGBOARD_BRASS_ITEM.get()));
+        output.accept(new ItemStack(
+                dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_PEGBOARD_CAST_IRON_ITEM.get()));
+        output.accept(new ItemStack(
                 dev.ignis.createpneumatictacticals.block.ModBlocks.WEAPON_MODULE_MACHINE_TOOL_ITEM.get()));
     }
 

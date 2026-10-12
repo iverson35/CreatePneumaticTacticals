@@ -34,7 +34,7 @@ import java.util.Set;
 public final class ModelBounds {
 
     /** FX bones that must not count: the laser beam box reaches the beam's 16+ block range */
-    private static final Set<String> SKIPPED_BONES = Set.of(GunModulesLayer.BEAM_BONE);
+    private static final Set<String> SKIPPED_BONES = Set.of(ModuleDraw.BEAM_BONE);
 
     /** mutable union of vertex positions, in blocks */
     static final class Acc {

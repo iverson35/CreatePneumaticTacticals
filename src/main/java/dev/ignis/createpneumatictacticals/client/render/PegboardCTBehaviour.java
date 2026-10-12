@@ -7,6 +7,7 @@ import com.simibubi.create.foundation.block.connected.CTSpriteShifter;
 import com.simibubi.create.foundation.block.connected.ConnectedTextureBehaviour;
 import dev.ignis.createpneumatictacticals.CreatePneumaticTacticals;
 import dev.ignis.createpneumatictacticals.block.ModBlocks;
+import dev.ignis.createpneumatictacticals.block.PegboardMaterial;
 import dev.ignis.createpneumatictacticals.block.PegboardPanel;
 import dev.ignis.createpneumatictacticals.block.WeaponPegboardBlock;
 import net.minecraft.client.renderer.block.BlockModelShaper;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumMap;
 import java.util.Map;
 
 /**
@@ -32,13 +34,31 @@ import java.util.Map;
  * next to it. Create's {@link AllCTTypes#RECTANGLE} supplies the 4x4 atlas
  * cell lookup ({@code x + y * 4} for left/right x up/down), its
  * {@link CTModel} the per-face index and the UV rewrite.
+ *
+ * <p>Each {@link PegboardMaterial} has its own shift pair (plain plate ->
+ * 64x64 atlas), so the frame that survives is drawn in the plate's own
+ * material. Materials are part of the connection test: only plates of the
+ * same facing AND material merge, so a brass plate next to an andesite one
+ * keeps its own full frame and the two read as separate boards.
  */
 public final class PegboardCTBehaviour extends ConnectedTextureBehaviour.Base {
 
-    /** 16x16 base tile, 64x64 atlas of 4x4 cells */
-    private static final CTSpriteShiftEntry SHIFT = CTSpriteShifter.getCT(AllCTTypes.RECTANGLE,
-            new ResourceLocation(CreatePneumaticTacticals.MODID, "block/weapon_pegboard"),
-            new ResourceLocation(CreatePneumaticTacticals.MODID, "block/weapon_pegboard_connected"));
+    /** per material: 16x16 base tile, 64x64 atlas of 4x4 cells */
+    private static final Map<PegboardMaterial, CTSpriteShiftEntry> SHIFTS = buildShifts();
+
+    private static Map<PegboardMaterial, CTSpriteShiftEntry> buildShifts() {
+        Map<PegboardMaterial, CTSpriteShiftEntry> shifts = new EnumMap<>(PegboardMaterial.class);
+        for (PegboardMaterial material : PegboardMaterial.values()) {
+            shifts.put(material, CTSpriteShifter.getCT(AllCTTypes.RECTANGLE,
+                    texture("weapon_pegboard" + material.suffix()),
+                    texture("weapon_pegboard_connected" + material.suffix())));
+        }
+        return shifts;
+    }
+
+    private static ResourceLocation texture(String path) {
+        return new ResourceLocation(CreatePneumaticTacticals.MODID, "block/" + path);
+    }
 
     public static final PegboardCTBehaviour INSTANCE = new PegboardCTBehaviour();
 
@@ -49,8 +69,9 @@ public final class PegboardCTBehaviour extends ConnectedTextureBehaviour.Base {
     @Override
     public CTSpriteShiftEntry getShift(BlockState state, Direction direction, @Nullable TextureAtlasSprite sprite) {
         if (!(state.getBlock() instanceof WeaponPegboardBlock)) return null;
-        // front only: the 1 px rim keeps the plain edge texture
-        return direction == state.getValue(WeaponPegboardBlock.FACING) ? SHIFT : null;
+        // front only: the 3 px rim keeps the plain edge texture
+        if (direction != state.getValue(WeaponPegboardBlock.FACING)) return null;
+        return SHIFTS.get(state.getValue(WeaponPegboardBlock.MATERIAL));
     }
 
     @Override
@@ -61,12 +82,17 @@ public final class PegboardCTBehaviour extends ConnectedTextureBehaviour.Base {
             return false;
         }
         Direction facing = state.getValue(WeaponPegboardBlock.FACING);
+        PegboardMaterial material = state.getValue(WeaponPegboardBlock.MATERIAL);
         if (other.getValue(WeaponPegboardBlock.FACING) != facing) return false;
+        if (other.getValue(WeaponPegboardBlock.MATERIAL) != material) return false;
         Direction.Axis uAxis = PegboardPanel.uAxis(facing);
         PegboardPanel.Panel panel = PegboardPanel.panelOf(pos, facing, candidate -> {
             BlockState candidateState = reader.getBlockState(candidate);
-            return candidateState.getBlock() == state.getBlock()
-                    && candidateState.getValue(WeaponPegboardBlock.FACING) == facing;
+            // same facing and material only: a board is one material throughout,
+            // so a mixed wall reads as separate boards instead of one
+            return candidateState.getBlock() instanceof WeaponPegboardBlock
+                    && candidateState.getValue(WeaponPegboardBlock.FACING) == facing
+                    && candidateState.getValue(WeaponPegboardBlock.MATERIAL) == material;
         });
         return panel.contains(PegboardPanel.u(otherPos, uAxis), otherPos.getY());
     }

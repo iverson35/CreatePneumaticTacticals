@@ -9,6 +9,9 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 /**
  * Block registrations.
  */
@@ -56,8 +59,37 @@ public final class ModBlocks {
             () -> new WeaponPegboardBlock(BlockBehaviour.Properties.of()
                     .strength(0.5F, 6.0F).noOcclusion()));
 
-    public static final RegistryObject<Item> WEAPON_PEGBOARD_ITEM = BLOCK_ITEMS.register("weapon_pegboard",
-            () -> new BlockItem(WEAPON_PEGBOARD.get(), new Item.Properties()));
+    /**
+     * One item per material, all placing {@link #WEAPON_PEGBOARD}: the item
+     * carries the material in (see {@link WeaponPegboardBlockItem}), so the
+     * item id matches the texture set — {@code weapon_pegboard<material.suffix()>}.
+     */
+    private static final Map<PegboardMaterial, RegistryObject<Item>> WEAPON_PEGBOARD_ITEMS =
+            new EnumMap<>(PegboardMaterial.class);
+
+    public static final RegistryObject<Item> WEAPON_PEGBOARD_ITEM =
+            pegboardItem(PegboardMaterial.WOOD);
+
+    public static final RegistryObject<Item> WEAPON_PEGBOARD_ANDESITE_ITEM =
+            pegboardItem(PegboardMaterial.ANDESITE);
+
+    public static final RegistryObject<Item> WEAPON_PEGBOARD_BRASS_ITEM =
+            pegboardItem(PegboardMaterial.BRASS);
+
+    public static final RegistryObject<Item> WEAPON_PEGBOARD_CAST_IRON_ITEM =
+            pegboardItem(PegboardMaterial.CAST_IRON);
+
+    private static RegistryObject<Item> pegboardItem(PegboardMaterial material) {
+        RegistryObject<Item> item = BLOCK_ITEMS.register("weapon_pegboard" + material.suffix(),
+                () -> new WeaponPegboardBlockItem(WEAPON_PEGBOARD.get(), new Item.Properties(), material));
+        WEAPON_PEGBOARD_ITEMS.put(material, item);
+        return item;
+    }
+
+    /** the item a plate of this material is placed from and drops as */
+    public static Item itemFor(PegboardMaterial material) {
+        return WEAPON_PEGBOARD_ITEMS.get(material).get();
+    }
 
     public static final RegistryObject<Block> WEAPON_MODULE_MACHINE_TOOL = BLOCKS.register("weapon_module_machine_tool",
             // no tool requirement: the machine always drops itself with its whole

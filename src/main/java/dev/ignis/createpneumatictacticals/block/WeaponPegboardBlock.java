@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -35,8 +36,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Weapon pegboard (武器挂板): a 1 px thick plate, four horizontal facings,
- * that hangs guns and modules on a 4 px hole grid. Right-click its front with
+ * Weapon pegboard (武器挂板): a 3 px thick plate, four horizontal facings,
+ * that hangs guns and modules on a 4 px hole grid. The plate hugs the back of
+ * its block, so it mounts against a wall with its front (and everything hung
+ * on it) facing the room; right-click that front with
  * a gun or a module to hang it on the hole the crosshair points at (the same
  * hole refuses a second item); sneak-right-click takes the item nearest to
  * the click. Horizontal facing (furnace convention, the front faces the
@@ -51,14 +54,35 @@ import java.util.Map;
  */
 public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements EntityBlock {
 
-    /** plate thickness (px), on the facing side of the block */
-    private static final int PLATE_THICKNESS = 1;
+    /**
+     * Plate thickness (px). The plate's back sits on the block's FAR side, so
+     * the board reads as a panel bolted to a wall with its front facing the
+     * room, instead of the hanging face being the block boundary itself.
+     */
+    private static final int PLATE_THICKNESS = 3;
+
+    /**
+     * Model-space z (px) of the plate's front face — the plane a hung item's
+     * back leaves from. Model +z runs from the room side (0) toward the wall
+     * (16); {@link PegboardGrid#toWorld} and the blockstate's y rotation carry
+     * that direction into every facing, so {@code 16 - thickness} is the front
+     * face plane for all four.
+     */
+    public static final int HANG_PLANE_PX = 16 - PLATE_THICKNESS;
 
     /** sneak-take reach around the click point (px): under the 4 px hole spacing */
     public static final int TAKE_RADIUS_PX = 6;
 
+    /**
+     * Texture set of this plate. Materials restrict connection: see
+     * {@code PegboardCTBehaviour}, which merges the panel only across plates
+     * of the same material.
+     */
+    public static final EnumProperty<PegboardMaterial> MATERIAL =
+            EnumProperty.create("material", PegboardMaterial.class);
+
     private static final int[][] PLATE_CUBES = {
-            {0, 0, 0, 16, 16, PLATE_THICKNESS},
+            {0, 0, HANG_PLANE_PX, 16, 16, 16},
     };
 
     private static final Map<Direction, VoxelShape> SHAPES = buildShapes();
@@ -88,12 +112,14 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
 
     public WeaponPegboardBlock(Properties properties) {
         super(properties);
-        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.stateDefinition.any()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(MATERIAL, PegboardMaterial.WOOD));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, MATERIAL);
     }
 
     @Override
@@ -161,13 +187,16 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
 
     /**
      * No loot table in this mod: the plate drops itself, plus every hang on
-     * THIS block (each block entity owns only its own hangs).
+     * THIS block (each block entity owns only its own hangs). Four items share
+     * this block, one per material, so the drop has to look the item up from
+     * the state — {@code new ItemStack(this)} would always yield the last one
+     * registered.
      */
     @Override
     @Deprecated
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder drops) {
         List<ItemStack> out = new ArrayList<>();
-        out.add(new ItemStack(this));
+        out.add(new ItemStack(ModBlocks.itemFor(state.getValue(MATERIAL))));
         BlockEntity be = drops.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (be instanceof WeaponPegboardBlockEntity board) {
             for (WeaponPegboardBlockEntity.Hang hang : board.hangs()) {
@@ -175,5 +204,23 @@ public class WeaponPegboardBlock extends HorizontalDirectionalBlock implements E
             }
         }
         return out;
+    }
+
+    /**
+     * Creative break: vanilla drops nothing at all there, but whatever hangs on
+     * the board is still the player's, so it falls anyway — only the plate
+     * itself is skipped (it is free to re-place). Survival is untouched:
+     * {@link #getDrops} hands out the plate and its contents there, so popping
+     * them here as well would duplicate them.
+     */
+    @Override
+    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide && player.isCreative()
+                && level.getBlockEntity(pos) instanceof WeaponPegboardBlockEntity board) {
+            for (ItemStack stack : board.takeAllHangs()) {
+                popResource(level, pos, stack);
+            }
+        }
+        super.playerWillDestroy(level, pos, state, player);
     }
 }

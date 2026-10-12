@@ -10,10 +10,12 @@ import org.joml.Vector3f;
  * where its bounding box meets the plate. Pure math, shared by the server
  * (which records the choice) and the client (which draws it and previews it).
  *
- * <p>Gun model convention (see {@code GunWorkbenchRenderer}): {@code +Z} is
- * the muzzle, {@code +Y} is up on the gun, {@code +X} the thickness. A hang is
- * described by an {@link Orient} — vertical/horizontal plus a sign along the
- * board's horizontal axis or Y — and turned into the world rotation by
+ * <p>Gun model convention (author geo, see {@code _receiver.geo.json}): the
+ * muzzle is the model's {@code -Z} ({@code loc_barrel} at z = -3.5 px against
+ * {@code loc_stock} at +4.5), {@code +Y} is up on the gun, {@code +X} the
+ * thickness. A hang is described by an {@link Orient} — vertical/horizontal
+ * plus a sign along the board's horizontal axis or Y, i.e. the side the
+ * muzzle points to — and turned into the world rotation by
  * {@link #basis(Direction, Orient)}.
  */
 public final class PegboardHang {
@@ -47,17 +49,23 @@ public final class PegboardHang {
      * <p>Horizontal: the muzzle runs along the board, the gun stays upright
      * (sights up). Vertical: the muzzle runs up/down and the gun's top faces
      * away from the plate (sights out).
+     *
+     * <p>The muzzle sits on the model's <b>-Z</b> (author convention: the
+     * receiver's {@code loc_barrel} is at z = -3.5 px, {@code loc_stock} at
+     * +4.5, and a barrel's cubes run to z = -9), so every muzzle direction
+     * below is the NEGATED image of model +Z — that is what makes
+     * {@code Orient.sign} read as "the side the muzzle points to".
      */
     public static Matrix3f basis(Direction facing, Orient orient) {
         Vector3f ey;
         Vector3f ez;
         if (orient.vertical()) {
-            ez = new Vector3f(0f, orient.sign(), 0f);
+            ez = new Vector3f(0f, -orient.sign(), 0f);
             ey = normal(facing);
         } else {
             Direction.Axis axis = PegboardPanel.uAxis(facing);
-            ez = new Vector3f(axis == Direction.Axis.X ? orient.sign() : 0f, 0f,
-                    axis == Direction.Axis.Z ? orient.sign() : 0f);
+            ez = new Vector3f(axis == Direction.Axis.X ? -orient.sign() : 0f, 0f,
+                    axis == Direction.Axis.Z ? -orient.sign() : 0f);
             ey = new Vector3f(0f, 1f, 0f);
         }
         Vector3f ex = new Vector3f(ey).cross(ez);

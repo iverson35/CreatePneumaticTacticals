@@ -1,18 +1,63 @@
 {
   "variants": {
-    "facing=north": {
-      "model": "createpneumatictacticals:block/weapon_pegboard"
+    "facing=north,material=wood": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood"
     },
-    "facing=east": {
-      "model": "createpneumatictacticals:block/weapon_pegboard",
+    "facing=east,material=wood": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
       "y": 90
     },
-    "facing=south": {
-      "model": "createpneumatictacticals:block/weapon_pegboard",
+    "facing=south,material=wood": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
       "y": 180
     },
-    "facing=west": {
-      "model": "createpneumatictacticals:block/weapon_pegboard",
+    "facing=west,material=wood": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_wood",
+      "y": 270
+    },
+    "facing=north,material=andesite": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite"
+    },
+    "facing=east,material=andesite": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+      "y": 90
+    },
+    "facing=south,material=andesite": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+      "y": 180
+    },
+    "facing=west,material=andesite": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_andesite",
+      "y": 270
+    },
+    "facing=north,material=brass": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass"
+    },
+    "facing=east,material=brass": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+      "y": 90
+    },
+    "facing=south,material=brass": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+      "y": 180
+    },
+    "facing=west,material=brass": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_brass",
+      "y": 270
+    },
+    "facing=north,material=cast_iron": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron"
+    },
+    "facing=east,material=cast_iron": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
+      "y": 90
+    },
+    "facing=south,material=cast_iron": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
+      "y": 180
+    },
+    "facing=west,material=cast_iron": {
+      "model": "createpneumatictacticals:block/weapon_pegboard_cast_iron",
       "y": 270
     }
   }

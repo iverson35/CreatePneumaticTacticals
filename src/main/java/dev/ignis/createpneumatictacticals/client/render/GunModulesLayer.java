@@ -90,12 +90,6 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
     /** mount locator to preview + the held module stack */
     public record Ghost(ResourceLocation mountId, ItemStack stack) {}
 
-    /**
-     * World-space FX bone (laser lines): hidden on every non-world pass and
-     * excluded from the workbench bounds — its cube stretches to the beam's
-     * range, which would otherwise blow up the measured gun size.
-     */
-    public static final String BEAM_BONE = "laser_beam";
     /** every module model's top-level root bone (author convention); AW
      *  module skins ride this bone's animated transform so an animation
      *  driving main moves the skin with the model (docs §3.9) */
@@ -178,7 +172,7 @@ public final class GunModulesLayer extends GeoRenderLayer<GeoGunItem> {
         // dropped gun has no beam FX; the world pass (where the laser
         // actually points) keeps it
         CoreGeoBone beam = ModuleGunGeoModel.INSTANCE.getAnimationProcessor()
-                .getBone(BEAM_BONE);
+                .getBone(ModuleDraw.BEAM_BONE);
         boolean hideBeam = !animationsEnabled && beam != null;
         if (hideBeam) beam.setHidden(true);
         if (animationsEnabled) {

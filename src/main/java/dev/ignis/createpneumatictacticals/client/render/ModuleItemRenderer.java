@@ -71,17 +71,20 @@ public final class ModuleItemRenderer extends GeoItemRenderer<ModuleItem> {
         java.util.Map<software.bernie.geckolib.core.animatable.model.CoreGeoBone, float[]> saved =
                 GunAnimations.snapshotBones(getGeoModel());
         GunAnimations.resetToRestPose(getGeoModel());
-        // GUI icon: hide the beam bone (laser lines are world-space FX,
-        // not part of the item silhouette) — restored right after the pass
+        // laser lines are world-space FX a FIRING gun emits; nothing about a
+        // standalone module item (icon, hand, item frame, dropped, tool rack)
+        // fires, so the beam bone is hidden on every pass — restored right
+        // after, honouring whatever an outer pass wanted
         software.bernie.geckolib.core.animatable.model.CoreGeoBone beam =
-                getGeoModel().getAnimationProcessor().getBone("laser_beam");
-        if (context == ItemDisplayContext.GUI && beam != null) {
+                getGeoModel().getAnimationProcessor().getBone(ModuleDraw.BEAM_BONE);
+        boolean beamWasHidden = beam != null && beam.isHidden();
+        if (beam != null) {
             beam.setHidden(true);
         }
         try {
             super.renderByItem(stack, context, poseStack, bufferSource, packedLight, packedOverlay);
         } finally {
-            if (beam != null) beam.setHidden(false);
+            if (beam != null) beam.setHidden(beamWasHidden);
             GunAnimations.restoreBones(saved);
         }
     }

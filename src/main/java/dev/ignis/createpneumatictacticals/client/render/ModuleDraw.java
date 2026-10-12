@@ -29,6 +29,16 @@ import java.util.Map;
  */
 public final class ModuleDraw {
 
+    /**
+     * Every module model's world-space FX bone (laser lines, author
+     * convention). Only a firing gun has a beam to point somewhere, so every
+     * display pass hides it: the item pass (icon, hand, frame, dropped) and
+     * {@link #draw} (pegboard hang, bench, machine). {@code ModelBounds} also
+     * skips it — its cube stretches to the beam's range, which would otherwise
+     * blow up any measured module size.
+     */
+    public static final String BEAM_BONE = "laser_beam";
+
     private static final ModuleItemRenderer RENDERER = new ModuleItemRenderer();
 
     private ModuleDraw() {
@@ -57,6 +67,11 @@ public final class ModuleDraw {
         BakedGeoModel baked = model.getBakedModel(model.getModelResource(moduleItem));
         Map<CoreGeoBone, float[]> saved = GunAnimations.snapshotBones(model);
         GunAnimations.resetToRestPose(model);
+        // displayed modules are never firing: hide the laser FX bone (the
+        // snapshot above only covers bone transforms, so undo it by hand)
+        CoreGeoBone beam = model.getAnimationProcessor().getBone(BEAM_BONE);
+        boolean beamWasHidden = beam != null && beam.isHidden();
+        if (beam != null) beam.setHidden(true);
         try {
             ResourceLocation texture = model.getTextureResource(moduleItem);
             GunTextureAtlas.retarget(baked, null);
@@ -69,6 +84,7 @@ public final class ModuleDraw {
                     ghost ? GhostPreview.R : 1f, ghost ? GhostPreview.G : 1f,
                     ghost ? GhostPreview.B : 1f, ghost ? GhostPreview.A : 1f);
         } finally {
+            if (beam != null) beam.setHidden(beamWasHidden);
             GunAnimations.restoreBones(saved);
         }
     }

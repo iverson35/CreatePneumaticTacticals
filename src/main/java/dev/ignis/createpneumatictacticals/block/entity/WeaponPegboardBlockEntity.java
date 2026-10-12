@@ -90,6 +90,19 @@ public class WeaponPegboardBlockEntity extends BlockEntity {
         return taken;
     }
 
+    /**
+     * Removes and returns every hang, dropping the board's list. Used by the
+     * creative break path, where vanilla's drop pipeline never runs.
+     */
+    public List<ItemStack> takeAllHangs() {
+        if (this.hangs.isEmpty()) return List.of();
+        List<ItemStack> out = new ArrayList<>(this.hangs.size());
+        for (Hang hang : this.hangs) out.add(hang.stack().copy());
+        this.hangs.clear();
+        this.setChanged();
+        return out;
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);

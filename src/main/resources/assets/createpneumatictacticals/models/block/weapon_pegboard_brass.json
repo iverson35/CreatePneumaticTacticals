@@ -1,0 +1,9 @@
+{
+  "parent": "createpneumatictacticals:block/weapon_pegboard_wood",
+  "textures": {
+    "particle": "createpneumatictacticals:block/weapon_pegboard_brass",
+    "front": "createpneumatictacticals:block/weapon_pegboard_brass",
+    "edge": "createpneumatictacticals:block/weapon_pegboard_edge_brass",
+    "back": "createpneumatictacticals:block/weapon_pegboard_back_brass"
+  }
+}

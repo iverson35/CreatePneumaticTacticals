@@ -18,15 +18,19 @@ import java.util.function.Predicate;
  * cluster (a 4-connected blob in the {horizontal axis} x {Y} plane); blocks
  * that fall outside it draw as standalone 1x1 plates.
  *
+ * <p>A cluster that fits within {@link #MAX_SPAN} x {@link #MAX_SPAN} merges
+ * whole, wherever it sits. A bigger one is cut into {@link #MAX_SPAN}-wide
+ * chunks on a world-aligned grid, and each chunk merges on its own — so a wall
+ * tiles into boards with a frame at every {@link #MAX_SPAN}-block seam, instead
+ * of every block falling back to 1x1. The grid is aligned to world coordinates
+ * so both plates at a seam measure the same way and agree on the cut.
+ *
  * <p>Pure math on block positions — no level, no block state — so the block,
  * its renderer and the connected-texture behaviour all measure the same way.
- * The cluster is at most {@link #MAX_SPAN} x {@link #MAX_SPAN} cells; anything
- * bigger is left unmerged (every block 1x1) rather than picking a big
- * rectangle out of a wall-sized sprawl.
  */
 public final class PegboardPanel {
 
-    /** clusters wider or taller than this never merge */
+    /** boards are at most this wide and tall; bigger clusters are cut into this grid */
     public static final int MAX_SPAN = 8;
 
     /** an inclusive rectangle in board coordinates: u = horizontal axis, v = Y */
@@ -60,13 +64,38 @@ public final class PegboardPanel {
 
     /**
      * The panel {@code pos} belongs to: the largest inscribed rectangle of its
-     * cluster, or {@code pos}'s own 1x1 panel when it is outside that rectangle
-     * — or when the cluster is larger than {@link #MAX_SPAN} on either axis.
+     * cluster, or {@code pos}'s own 1x1 panel when it falls outside that
+     * rectangle.
+     *
+     * <p>The whole cluster is tried first, so the merge does not depend on where
+     * the chunk grid happens to run. Only a cluster bigger than
+     * {@link #MAX_SPAN} falls through to the world-aligned chunk that holds
+     * {@code pos}.
      *
      * @param isBoard cluster membership; must accept {@code pos} itself
      */
     public static Panel panelOf(BlockPos pos, Direction facing, Predicate<BlockPos> isBoard) {
         Direction.Axis axis = uAxis(facing);
+        Panel whole = inscribed(pos, facing, isBoard, axis,
+                Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
+        if (whole != null) return whole;
+        int u = u(pos, axis);
+        int v = pos.getY();
+        int cellU = Math.floorDiv(u, MAX_SPAN) * MAX_SPAN;
+        int cellV = Math.floorDiv(v, MAX_SPAN) * MAX_SPAN;
+        Panel chunk = inscribed(pos, facing, isBoard, axis,
+                cellU, cellV, cellU + MAX_SPAN - 1, cellV + MAX_SPAN - 1);
+        return chunk != null ? chunk : single(pos, facing);
+    }
+
+    /**
+     * The largest inscribed rectangle of the cluster cells inside the window;
+     * {@code null} when the cluster reaches past the window (which for the
+     * unbounded window means it is bigger than {@link #MAX_SPAN} on an axis),
+     * or when {@code pos} ends up outside the rectangle.
+     */
+    private static Panel inscribed(BlockPos pos, Direction facing, Predicate<BlockPos> isBoard, Direction.Axis axis,
+                                   int windowU0, int windowV0, int windowU1, int windowV1) {
         // the axis perpendicular to the board plane: every cluster cell shares it
         Direction.Axis depth = facing.getAxis();
         int depthCoord = depth == Direction.Axis.X ? pos.getX() : pos.getZ();
@@ -83,6 +112,7 @@ public final class PegboardPanel {
             for (int[] step : STEPS) {
                 int nu = (int) cell[0] + step[0];
                 int nv = (int) cell[1] + step[1];
+                if (nu < windowU0 || nu > windowU1 || nv < windowV0 || nv > windowV1) continue;
                 if (!cells.add(key(nu, nv))) continue;
                 BlockPos next = axis == Direction.Axis.X
                         ? new BlockPos(nu, nv, depthCoord)
@@ -95,16 +125,15 @@ public final class PegboardPanel {
                 if (nu > maxU) maxU = nu;
                 if (nv < minV) minV = nv;
                 if (nv > maxV) maxV = nv;
-                if (maxU - minU + 1 > MAX_SPAN || maxV - minV + 1 > MAX_SPAN) {
-                    return single(pos, facing);
-                }
+                // only an unbounded window can outgrow MAX_SPAN
+                if (maxU - minU + 1 > MAX_SPAN || maxV - minV + 1 > MAX_SPAN) return null;
                 queue.add(new long[]{nu, nv});
             }
         }
 
         int spanU = maxU - minU + 1;
         int spanV = maxV - minV + 1;
-        // 512 candidate rectangles at most: cheap enough to measure per call
+        // 64 cells and at most 64*... candidate rectangles: cheap enough per call
         boolean[][] solid = new boolean[spanU][spanV];
         for (long cell : cells) {
             int u = (int) (cell >> 32);
@@ -132,7 +161,7 @@ public final class PegboardPanel {
                 }
             }
         }
-        return best != null && best.contains(startU, startV) ? best : single(pos, facing);
+        return best != null && best.contains(startU, startV) ? best : null;
     }
 
     /** area first (largest), then topmost, then leftmost, then narrowest */

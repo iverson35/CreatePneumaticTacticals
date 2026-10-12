@@ -77,7 +77,9 @@ public final class WeaponPegboardRenderer implements BlockEntityRenderer<WeaponP
         boolean flip = stack.getItem() instanceof ModuleItem && ModuleItemRenderer.isBottomOnly(stack);
         if (flip) bounds = ModuleDraw.flipZ(bounds);
 
-        double[] anchorPx = PegboardGrid.toWorld(holeX, holeY, 0, facing);
+        // the plate hugs the wall side of the block, so the face items leave
+        // from is its front plane, HANG_PLANE_PX px into model space
+        double[] anchorPx = PegboardGrid.toWorld(holeX, holeY, WeaponPegboardBlock.HANG_PLANE_PX, facing);
         // BLOCK-LOCAL: the block-entity dispatcher already translated by
         // pos - camera, so only the hole offset inside this block is left to
         // apply. Adding the block position here would draw every hang a whole

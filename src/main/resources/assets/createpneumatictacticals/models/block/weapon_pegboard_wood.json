@@ -1,0 +1,23 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "front": "createpneumatictacticals:block/weapon_pegboard_wood",
+    "edge": "createpneumatictacticals:block/weapon_pegboard_edge_wood",
+    "back": "createpneumatictacticals:block/weapon_pegboard_back_wood"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 13],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 16], "texture": "#front"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#back"},
+        "east": {"uv": [0, 0, 3, 16], "texture": "#edge"},
+        "west": {"uv": [3, 0, 0, 16], "texture": "#edge"},
+        "up": {"uv": [3, 0, 0, 16], "texture": "#edge", "rotation": 90},
+        "down": {"uv": [0, 0, 3, 16], "texture": "#edge", "rotation": 90}
+      }
+    }
+  ]
+}
